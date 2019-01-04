@@ -2,7 +2,7 @@ extern crate corewa_rs;
 
 use corewa_rs::load_file;
 
-const TEST_PROGRAM: &'static str = "
+const TEST_PROGRAM: &str = "
     MOV.I 0, 1
     DAT 0, 0
 ";
@@ -13,7 +13,9 @@ fn test_parse() {
 
     let program = load_file::parse(TEST_PROGRAM);
 
-    assert_eq!(program, load_file::Opcode::Mov);
+    let first_opcode = program.get_opcode(0).unwrap();
 
-    println!("{:?}", program);
+    assert_eq!(first_opcode, load_file::Opcode::Mov);
+
+    println!("{:#?}", program);
 }
