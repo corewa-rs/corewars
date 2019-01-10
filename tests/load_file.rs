@@ -1,21 +1,20 @@
 extern crate corewa_rs;
+extern crate indoc;
 
 use corewa_rs::load_file;
-
-const TEST_PROGRAM: &str = "
-    MOV.I 0, 1
-    DAT 0, 0
-";
+use indoc::indoc;
 
 #[test]
 fn test_parse() {
-    println!("Parsing program:\n{}", TEST_PROGRAM);
+    let test_program = indoc!(r#"
+        MOV 0, 1
+        DAT 1, 2
+        MOV 1, 0
+    "#);
 
-    let program = load_file::parse(TEST_PROGRAM);
+    println!("Parsing program:\n{}", test_program);
 
-    let first_opcode = program.get_opcode(0).unwrap();
+    let program = load_file::parse(test_program);
 
-    assert_eq!(first_opcode, load_file::Opcode::Mov);
-
-    println!("{:#?}", program);
+    println!("Loaded program:\n{}", program.dump());
 }
