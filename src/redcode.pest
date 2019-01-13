@@ -6,11 +6,11 @@ assembly_file = {
     EOI
 }
 
-instruction = { opcode ~ field ~ "," ~ field }
+instruction = { opcode ~ field ~ ("," ~ field)? }
 
 field = { mode ~ expr }
 
-opcode = { ^"DAT" | ^"MOV" }
+opcode = { ^"DAT" | ^"MOV" | ^"JMP" }
 
 mode = { "#"? }
 

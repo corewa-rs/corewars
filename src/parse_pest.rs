@@ -52,8 +52,6 @@ fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
 }
 
 fn parse_field(field_pair: Pair<Rule>) -> Field {
-    println!("Parsing field: {:#?}", field_pair);
-
     let mut address_mode = AddressMode::default();
     let mut value = 0i32;
 

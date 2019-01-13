@@ -6,6 +6,7 @@ pub const CORE_SIZE: usize = 8000;
 pub enum Opcode {
     Mov,
     Dat,
+    Jmp,
 }
 
 impl Opcode {
@@ -14,6 +15,7 @@ impl Opcode {
         match self {
             Mov => "MOV",
             Dat => "DAT",
+            Jmp => "JMP",
         }
         .to_owned()
     }
@@ -27,6 +29,7 @@ impl FromStr for Opcode {
         match input_str {
             "MOV" => Ok(Mov),
             "DAT" => Ok(Dat),
+            "JMP" => Ok(Jmp),
             _ => Err(format!("Invalid opcode '{}'", input_str)),
         }
     }
