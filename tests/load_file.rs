@@ -1,16 +1,10 @@
 extern crate corewa_rs;
-extern crate indoc;
 
 use corewa_rs::load_file;
-use indoc::indoc;
 
 #[test]
 fn test_parse() {
-    let test_program = indoc!(r#"
-        MOV 0, 1
-        DAT 1, 2
-        MOV 1, 0
-    "#);
+    let test_program = include_str!("test_file.red");
 
     println!("Parsing program:\n{}", test_program);
 
