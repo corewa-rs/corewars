@@ -1,0 +1,19 @@
+WHITESPACE = _{ " " | "\t" }
+
+assembly_file = {
+    SOI ~
+    (instruction? ~ NEWLINE)+ ~
+    EOI
+}
+
+instruction = { opcode ~ field ~ "," ~ field }
+
+field = { mode ~ expr }
+
+opcode = { ^"DAT" | ^"MOV" }
+
+mode = { "#"? }
+
+expr = { number }
+
+number = @{ ASCII_DIGIT+ }

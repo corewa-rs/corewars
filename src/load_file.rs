@@ -1,8 +1,6 @@
-use std::{num::ParseIntError, str::FromStr, vec};
+use std::{str::FromStr, vec};
 
-use nom::{digit, line_ending, IResult};
-
-const CORE_SIZE: usize = 8000;
+pub const CORE_SIZE: usize = 8000;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Opcode {
@@ -22,20 +20,20 @@ impl Opcode {
 }
 
 impl FromStr for Opcode {
-    type Err = &'static str;
+    type Err = String;
 
     fn from_str(input_str: &str) -> Result<Self, Self::Err> {
         use self::Opcode::*;
         match input_str {
             "MOV" => Ok(Mov),
             "DAT" => Ok(Dat),
-            _ => Err("Invalid opcode"),
+            _ => Err(format!("Invalid opcode '{}'", input_str)),
         }
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum AddressMode {
+pub enum AddressMode {
     Immediate,
     Direct,
 }
@@ -51,10 +49,29 @@ impl AddressMode {
     }
 }
 
+impl Default for AddressMode {
+    fn default() -> AddressMode {
+        AddressMode::Direct
+    }
+}
+
+impl FromStr for AddressMode {
+    type Err = String;
+
+    fn from_str(input_str: &str) -> Result<Self, Self::Err> {
+        use self::AddressMode::*;
+        match input_str {
+            "#" => Ok(Immediate),
+            "" => Ok(Direct),
+            _ => Err(format!("Invalid address mode '{}'", input_str)),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct Field {
-    value: i32,
-    address_mode: AddressMode,
+pub struct Field {
+    pub value: i32,
+    pub address_mode: AddressMode,
 }
 
 impl Field {
@@ -75,8 +92,8 @@ impl Default for Field {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
-    a: Field,
-    b: Option<Field>,
+    pub a: Field,
+    pub b: Option<Field>,
 }
 
 impl Default for Instruction {
@@ -105,7 +122,7 @@ impl Instruction {
 
 #[derive(Debug)]
 pub struct Program {
-    instructions: vec::Vec<Instruction>,
+    pub instructions: vec::Vec<Instruction>,
 }
 
 impl Program {
@@ -125,49 +142,4 @@ impl Program {
                 result + &instruction.to_string() + "\n"
             })
     }
-}
-
-named!(take_opcode<&str, Opcode>, ws!(
-    map_res!(
-        alt!(
-            tag!("MOV") | tag!("DAT")
-        ),
-        FromStr::from_str
-    ))
-);
-
-named!(int32<&str, i32>, ws!(
-    map_res!(digit, FromStr::from_str))
-);
-
-named!(take_instruction<&str, Instruction>, ws!(
-    do_parse!(
-        op: take_opcode >>
-        field_a: int32 >> tag!(",") >>
-        field_b: int32 >>
-        (Instruction {
-            opcode: op,
-            a: Field{value: field_a, ..Default::default()},
-            b: Some(Field{value: field_b, ..Default::default()}),
-        })
-    )
-));
-
-named!(take_program<&str, vec::Vec<Instruction>>, many0!(take_instruction));
-
-pub fn parse(file_contents: &str) -> Program {
-    let mut program = Program {
-        instructions: vec![Instruction::default(); CORE_SIZE],
-    };
-
-    // TODO proper error handling
-    if let IResult::Done(_, parsed_program) = take_program(file_contents) {
-        for (i, &instruction) in parsed_program.iter().enumerate() {
-            program.instructions[i] = instruction;
-        }
-    } else {
-        println!("Parser was not Done")
-    }
-
-    program
 }
