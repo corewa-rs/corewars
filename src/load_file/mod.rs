@@ -2,6 +2,9 @@ use std::{str::FromStr, vec};
 
 pub const CORE_SIZE: usize = 8000;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Opcode {
     Mov,
