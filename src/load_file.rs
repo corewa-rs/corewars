@@ -2,10 +2,6 @@ use std::{str::FromStr, vec};
 
 pub const CORE_SIZE: usize = 8000;
 
-#[cfg(test)]
-#[path = "./tests/load_file_test.rs"]
-mod tests;
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Opcode {
     Mov,
@@ -20,8 +16,7 @@ impl Opcode {
             Mov => "MOV",
             Dat => "DAT",
             Jmp => "JMP",
-        }
-        .to_owned()
+        }.to_owned()
     }
 }
 
@@ -30,7 +25,7 @@ impl FromStr for Opcode {
 
     fn from_str(input_str: &str) -> Result<Self, Self::Err> {
         use self::Opcode::*;
-        match input_str {
+        match input_str.to_uppercase().as_ref() {
             "MOV" => Ok(Mov),
             "DAT" => Ok(Dat),
             "JMP" => Ok(Jmp),
@@ -51,8 +46,7 @@ impl AddressMode {
         match self {
             Immediate => "#",
             Direct => "",
-        }
-        .to_owned()
+        }.to_owned()
     }
 }
 
@@ -149,4 +143,27 @@ impl Program {
                 result + &instruction.to_string() + "\n"
             })
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn opcode_from_str() {
+        assert_eq!(Opcode::from_str("MOV").unwrap(), Opcode::Mov);
+        assert_eq!(Opcode::from_str("MoV").unwrap(), Opcode::Mov);
+        assert_eq!(Opcode::from_str("mov").unwrap(), Opcode::Mov);
+
+        assert_eq!(Opcode::from_str("dat").unwrap(), Opcode::Dat);
+        assert_eq!(Opcode::from_str("jmp").unwrap(), Opcode::Jmp);
+    }
+
+    #[test]
+    fn address_mode_from_str() {
+        assert_eq!(AddressMode::from_str("#").unwrap(), AddressMode::Immediate);
+        assert_eq!(AddressMode::from_str("").unwrap(), AddressMode::Direct);
+    }
+
 }
