@@ -3,6 +3,7 @@ use std::{str::FromStr, vec};
 pub const CORE_SIZE: usize = 8000;
 
 #[cfg(test)]
+#[path = "./tests/load_file_test.rs"]
 mod tests;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
