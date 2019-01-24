@@ -1,4 +1,4 @@
-use std::{fmt::Debug, str::FromStr, string::ToString};
+use std::{fmt::Debug, string::ToString};
 
 pub const CORE_SIZE: usize = 8000;
 
@@ -14,22 +14,10 @@ impl Default for Opcode {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AddressMode {
-    Immediate,
-    Direct,
-}
-
-impl AddressMode {
-    pub fn to_string(self) -> String {
-        use self::AddressMode::*;
-        match self {
-            Immediate => "#",
-            Direct => "",
-        }
-        .to_owned()
-    }
-}
+enum_string!(pub AddressMode, {
+    Immediate => "#",
+    Direct => "",
+});
 
 impl Default for AddressMode {
     fn default() -> AddressMode {
@@ -37,27 +25,14 @@ impl Default for AddressMode {
     }
 }
 
-impl FromStr for AddressMode {
-    type Err = String;
-
-    fn from_str(input_str: &str) -> Result<Self, Self::Err> {
-        use self::AddressMode::*;
-        match input_str {
-            "#" => Ok(Immediate),
-            "" => Ok(Direct),
-            _ => Err(format!("Invalid address mode '{}'", input_str)),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Field {
-    pub value: i32,
     pub address_mode: AddressMode,
+    pub value: i32,
 }
 
-impl Field {
-    pub fn to_string(self) -> String {
+impl ToString for Field {
+    fn to_string(&self) -> String {
         format!("{}{}", self.address_mode.to_string(), self.value)
     }
 }
@@ -69,8 +44,8 @@ pub struct Instruction {
     pub field_b: Field,
 }
 
-impl Instruction {
-    pub fn to_string(&self) -> String {
+impl ToString for Instruction {
+    fn to_string(&self) -> String {
         format!(
             "{} {}, {}",
             self.opcode.to_string(),
@@ -81,7 +56,7 @@ impl Instruction {
 }
 
 pub struct Core {
-    pub instructions: [Instruction; CORE_SIZE],
+    instructions: [Instruction; CORE_SIZE],
 }
 
 impl Core {
@@ -122,19 +97,18 @@ mod tests {
 
     #[test]
     fn default_instruction() {
-        assert_eq!(
-            Instruction::default(),
-            Instruction {
-                opcode: Opcode::Dat,
-                field_a: Field {
-                    value: 0,
-                    address_mode: AddressMode::Direct
-                },
-                field_b: Field {
-                    value: 0,
-                    address_mode: AddressMode::Direct
-                }
-            }
-        )
+        let expected_instruction = Instruction {
+            opcode: Opcode::Dat,
+            field_a: Field {
+                address_mode: AddressMode::Direct,
+                value: 0,
+            },
+            field_b: Field {
+                address_mode: AddressMode::Direct,
+                value: 0,
+            },
+        };
+
+        assert_eq!(Instruction::default(), expected_instruction)
     }
 }

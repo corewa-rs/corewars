@@ -1,43 +1,66 @@
-use crate::load_file::{AddressMode, Core, Field, Instruction, Opcode};
+use std::{convert::From, str::FromStr};
 
 use pest::{
+    error::Error as PestError,
     iterators::{Pair, Pairs},
     Parser,
 };
 
-use std::str::FromStr;
+use crate::load_file::{AddressMode, Core, Field, Instruction, Opcode};
+
+#[derive(Debug)]
+pub struct Error {
+    details: String,
+}
+
+impl Error {
+    pub fn no_input() -> Error {
+        Error {
+            details: "No input found".to_owned(),
+        }
+    }
+}
+
+impl<Rule> From<PestError<Rule>> for Error {
+    fn from(pest_error: PestError<Rule>) -> Error {
+        Error {
+            details: format!(
+                "Error parsing rule '{}' at location '{:?}",
+                stringify!(Rule),
+                pest_error.line_col
+            ),
+        }
+    }
+}
 
 #[derive(Parser)]
-#[grammar = "redcode.pest"]
+#[grammar = "data/redcode.pest"]
 struct RedcodeParser;
 
-pub fn parse(file_contents: &str) -> Core {
-    let mut program = Core::default();
+pub fn parse(file_contents: &str) -> Result<Core, Error> {
+    let mut core = Core::default();
 
-    let parse_result = RedcodeParser::parse(Rule::assembly_file, file_contents)
-        .expect("Error during parse of file")
+    let parse_result = RedcodeParser::parse(Rule::assembly_file, file_contents)?
         .next()
-        .unwrap();
+        .ok_or_else(Error::no_input)?;
 
     for (i, instruction) in parse_result.into_inner().enumerate() {
         let instruction_inner = instruction.into_inner();
         if instruction_inner.peek().is_some() {
-            program.instructions[i] = parse_instruction(instruction_inner);
+            core.set(i, parse_instruction(instruction_inner));
         }
     }
 
-    program
+    Ok(core)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
     let opcode = parse_opcode(&instruction_pairs.next().unwrap());
 
     let field_a = parse_field(instruction_pairs.next().unwrap());
-
-    let field_b = match instruction_pairs.next() {
-        Some(b_pair) => parse_field(b_pair),
-        _ => Field::default(),
-    };
+    let field_b = instruction_pairs
+        .next()
+        .map_or_else(Field::default, parse_field);
 
     Instruction {
         opcode,
@@ -51,20 +74,24 @@ fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
 }
 
 fn parse_field(field_pair: Pair<Rule>) -> Field {
-    let mut address_mode = AddressMode::default();
-    let mut value = 0i32;
+    let mut inner_pairs = field_pair.into_inner();
+    let mut next_pair = inner_pairs
+        .next()
+        .expect("Attempt to parse 'field' with no inner pairs");
 
-    for inner_pair in field_pair.into_inner() {
-        match inner_pair.as_rule() {
-            Rule::mode => address_mode = AddressMode::from_str(inner_pair.as_str()).unwrap(),
-            Rule::expr => value = parse_value(&inner_pair),
-            unknown => panic!("Unexpected rule found: {:?}", unknown),
-        }
-    }
+    let address_mode = if next_pair.as_rule() == Rule::mode {
+        let mode = AddressMode::from_str(next_pair.as_str()).unwrap();
+        next_pair = inner_pairs
+            .next()
+            .expect("Attempt to parse 'field' with 'mode' pair but nothing else");
+        mode
+    } else {
+        AddressMode::default()
+    };
 
     Field {
-        value,
         address_mode,
+        value: parse_value(&next_pair),
     }
 }
 
