@@ -1,37 +1,16 @@
-use std::{str::FromStr, vec};
+use std::{fmt::Debug, str::FromStr, string::ToString};
 
 pub const CORE_SIZE: usize = 8000;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Opcode {
-    Mov,
-    Dat,
-    Jmp,
-}
+enum_string!(pub Opcode, {
+    Mov => "MOV",
+    Dat => "DAT",
+    Jmp => "JMP",
+});
 
-impl Opcode {
-    pub fn to_string(self) -> String {
-        use self::Opcode::*;
-        match self {
-            Mov => "MOV",
-            Dat => "DAT",
-            Jmp => "JMP",
-        }
-        .to_owned()
-    }
-}
-
-impl FromStr for Opcode {
-    type Err = String;
-
-    fn from_str(input_str: &str) -> Result<Self, Self::Err> {
-        use self::Opcode::*;
-        match input_str {
-            "MOV" => Ok(Mov),
-            "DAT" => Ok(Dat),
-            "JMP" => Ok(Jmp),
-            _ => Err(format!("Invalid opcode '{}'", input_str)),
-        }
+impl Default for Opcode {
+    fn default() -> Opcode {
+        Opcode::Dat
     }
 }
 
@@ -71,7 +50,7 @@ impl FromStr for AddressMode {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Field {
     pub value: i32,
     pub address_mode: AddressMode,
@@ -83,52 +62,29 @@ impl Field {
     }
 }
 
-impl Default for Field {
-    fn default() -> Field {
-        Field {
-            value: 0,
-            address_mode: AddressMode::Direct,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
-    pub a: Field,
-    pub b: Option<Field>,
-}
-
-impl Default for Instruction {
-    fn default() -> Instruction {
-        Instruction {
-            opcode: Opcode::Dat,
-            a: Field::default(),
-            b: Some(Field::default()),
-        }
-    }
+    pub field_a: Field,
+    pub field_b: Field,
 }
 
 impl Instruction {
     pub fn to_string(&self) -> String {
         format!(
-            "{} {}{}",
+            "{} {}, {}",
             self.opcode.to_string(),
-            self.a.to_string(),
-            match &self.b {
-                Some(field) => format!(", {}", field.to_string()),
-                None => "".to_owned(),
-            }
+            self.field_a.to_string(),
+            self.field_b.to_string(),
         )
     }
 }
 
-#[derive(Debug)]
-pub struct Program {
-    pub instructions: vec::Vec<Instruction>,
+pub struct Core {
+    pub instructions: [Instruction; CORE_SIZE],
 }
 
-impl Program {
+impl Core {
     pub fn get(&self, index: usize) -> Option<&Instruction> {
         self.instructions.get(index)
     }
@@ -144,5 +100,41 @@ impl Program {
             .fold(String::new(), |result, instruction| {
                 result + &instruction.to_string() + "\n"
             })
+    }
+}
+
+impl Default for Core {
+    fn default() -> Core {
+        Core {
+            instructions: [Instruction::default(); CORE_SIZE],
+        }
+    }
+}
+
+impl Debug for Core {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(formatter, "{}", self.dump())
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_instruction() {
+        assert_eq!(
+            Instruction::default(),
+            Instruction {
+                opcode: Opcode::Dat,
+                field_a: Field {
+                    value: 0,
+                    address_mode: AddressMode::Direct
+                },
+                field_b: Field {
+                    value: 0,
+                    address_mode: AddressMode::Direct
+                }
+            }
+        )
     }
 }

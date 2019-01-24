@@ -1,4 +1,4 @@
-use crate::load_file::{AddressMode, Field, Instruction, Opcode, Program, CORE_SIZE};
+use crate::load_file::{AddressMode, Core, Field, Instruction, Opcode};
 
 use pest::{
     iterators::{Pair, Pairs},
@@ -9,12 +9,10 @@ use std::str::FromStr;
 
 #[derive(Parser)]
 #[grammar = "redcode.pest"]
-pub struct RedcodeParser;
+struct RedcodeParser;
 
-pub fn parse(file_contents: &str) -> Program {
-    let mut program = Program {
-        instructions: vec![Instruction::default(); CORE_SIZE],
-    };
+pub fn parse(file_contents: &str) -> Core {
+    let mut program = Core::default();
 
     let parse_result = RedcodeParser::parse(Rule::assembly_file, file_contents)
         .expect("Error during parse of file")
@@ -34,17 +32,18 @@ pub fn parse(file_contents: &str) -> Program {
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
     let opcode = parse_opcode(&instruction_pairs.next().unwrap());
 
-    let a = parse_field(instruction_pairs.next().unwrap());
+    let field_a = parse_field(instruction_pairs.next().unwrap());
 
-    let b = {
-        if let Some(b_pair) = instruction_pairs.next() {
-            Some(parse_field(b_pair))
-        } else {
-            None
-        }
+    let field_b = match instruction_pairs.next() {
+        Some(b_pair) => parse_field(b_pair),
+        _ => Field::default(),
     };
 
-    Instruction { opcode, a, b }
+    Instruction {
+        opcode,
+        field_a,
+        field_b,
+    }
 }
 
 fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
