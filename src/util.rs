@@ -45,6 +45,8 @@ macro_rules! enum_string {
 }
 
 mod tests {
+    // seems to be a case of https://github.com/rust-lang/rust/issues/45268
+    #[allow(unused_imports)]
     use std::{str::FromStr, string::ToString};
 
     mod submod {

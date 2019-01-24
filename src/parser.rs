@@ -104,6 +104,8 @@ fn parse_value(value_pair: &Pair<Rule>) -> i32 {
 }
 
 mod tests {
+    // seems to be a case of https://github.com/rust-lang/rust/issues/45268
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
