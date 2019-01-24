@@ -6,6 +6,5 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "*"
-nom = "*"
 pest_derive = "*"
 pest = "*"
