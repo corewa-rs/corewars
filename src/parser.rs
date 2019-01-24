@@ -38,6 +38,10 @@ impl<Rule> From<PestError<Rule>> for Error {
 struct RedcodeParser;
 
 pub fn parse(file_contents: &str) -> Result<Core, Error> {
+    if file_contents.is_empty() {
+        return Err(Error::no_input());
+    }
+
     let mut core = Core::default();
 
     let parse_result = RedcodeParser::parse(Rule::assembly_file, file_contents)?
@@ -97,4 +101,44 @@ fn parse_field(field_pair: Pair<Rule>) -> Field {
 
 fn parse_value(value_pair: &Pair<Rule>) -> i32 {
     i32::from_str_radix(value_pair.as_str(), 10).unwrap()
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_empty() {
+        let result = parse("");
+        assert!(result.is_err());
+
+        assert_eq!(result.unwrap_err().details, "No input found");
+    }
+
+    #[test]
+    fn parse_simple_file() {
+        let mut expected_core = Core::default();
+
+        expected_core.set(
+            0,
+            Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
+        );
+        expected_core.set(
+            1,
+            Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
+        );
+        expected_core.set(2, Instruction::default());
+        expected_core.set(
+            3,
+            Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
+        );
+
+        let simple_input = "
+            mov 1, 3
+            mov 100, #12
+            dat 0, 0
+            jmp 123, 45
+        ";
+
+        assert_eq!(parse(simple_input).unwrap(), expected_core);
+    }
 }
