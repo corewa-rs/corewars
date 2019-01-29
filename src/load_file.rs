@@ -3,9 +3,26 @@ use std::{fmt, string::ToString};
 pub const CORE_SIZE: usize = 8000;
 
 enum_string!(pub Opcode, {
-    Mov => "MOV",
     Dat => "DAT",
+    Mov => "MOV",
+    Add => "ADD",
+    Sub => "SUB",
+    Mul => "MUL",
+    Div => "DIV",
+    Mod => "MOD",
     Jmp => "JMP",
+    Jmz => "JMZ",
+    Jmn => "JMN",
+    Djn => "DJN",
+    Cmp => "CMP",
+    Seq => "SEQ",
+    Sne => "SNE",
+    Slt => "SLT",
+    Spl => "SPL",
+    Nop => "NOP",
+    Org => "ORG",
+    Equ => "EQU",
+    End => "END",
 });
 
 impl Default for Opcode {

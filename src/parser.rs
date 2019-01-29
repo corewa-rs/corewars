@@ -122,6 +122,22 @@ mod tests {
     }
 
     #[test]
+    fn parse_comment() {
+        let result = parse("mov 0, 0; nothing after semicolon should matter");
+
+        let mut expected_core = Core::default();
+        expected_core.set(
+            0,
+            Instruction {
+                opcode: Opcode::Mov,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(result.unwrap(), expected_core);
+    }
+
+    #[test]
     fn parse_simple_file() {
         let mut expected_core = Core::default();
 
@@ -133,7 +149,7 @@ mod tests {
             1,
             Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
         );
-        expected_core.set(2, Instruction::default());
+        // expected_core.set(2, Instruction::default());
         expected_core.set(
             3,
             Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
@@ -145,6 +161,8 @@ mod tests {
             dat 0, 0
             jmp 123, 45
         ";
+
+        eprintln!("Simple file: '{}'", simple_input);
 
         assert_eq!(parse(simple_input).unwrap(), expected_core);
     }
