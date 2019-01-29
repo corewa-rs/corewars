@@ -18,7 +18,7 @@ macro_rules! enum_string {
             $($variant,)*
         }
 
-        impl ::std::string::ToString for $name {
+        impl std::string::ToString for $name {
             fn to_string(&self) -> String {
                 use self::$name::*;
                 match *self {
@@ -27,7 +27,7 @@ macro_rules! enum_string {
             }
         }
 
-        impl ::std::str::FromStr for $name {
+        impl std::str::FromStr for $name {
             type Err = String;
             fn from_str(input_str: &str) -> Result<Self, Self::Err> {
                 use self::$name::*;

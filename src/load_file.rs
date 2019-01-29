@@ -1,4 +1,4 @@
-use std::{fmt::Debug, string::ToString};
+use std::{fmt, string::ToString};
 
 pub const CORE_SIZE: usize = 8000;
 
@@ -112,24 +112,21 @@ impl Default for Core {
     }
 }
 
-impl Debug for Core {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl fmt::Debug for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.dump())
     }
 }
 
 impl PartialEq for Core {
     fn eq(&self, rhs: &Self) -> bool {
-        for (i, instruction) in self.instructions.iter().enumerate() {
-            if let Some(other_instruction) = rhs.get(i) {
-                if other_instruction != instruction {
-                    return false;
-                }
-            } else {
+        for (self_instruction, other_instruction) in
+            self.instructions.iter().zip(rhs.instructions.iter())
+        {
+            if self_instruction != other_instruction {
                 return false;
             }
         }
-
         true
     }
 }
