@@ -53,11 +53,15 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         .next()
         .ok_or_else(Error::no_input)?;
 
-    for (i, instruction) in parse_result.into_inner().enumerate() {
-        let instruction_inner = instruction.into_inner();
-        if instruction_inner.peek().is_some() {
-            core.set(i, parse_instruction(instruction_inner));
-        }
+    for (i, instruction_inner) in parse_result
+        .into_inner()
+        .filter_map(|instruction_inner| {
+            let inner_pair = instruction_inner.into_inner();
+            inner_pair.peek().map(|_| inner_pair)
+        })
+        .enumerate()
+    {
+        core.set(i, parse_instruction(instruction_inner));
     }
 
     Ok(core)
@@ -121,46 +125,105 @@ mod tests {
         assert_eq!(result.unwrap_err().details, "No input found");
     }
 
-    // TODO break out smaller test cases, e.g. "Field", ""
-
     #[test]
-    fn parse_line_with_comment() {
-        let line = "mov #1, 3; foo\n";
+    fn parse_field() {
         parses_to! {
             parser: RedcodeParser,
-            input: line,
-            rule: Rule::Line,
+            input: "123",
+            rule: Rule::Field,
             tokens: [
-                Line(0, line.len(), [
-                    Operation(0, 3, [
-                        Opcode(0, 3)
+                Field(0, 3, [
+                    Expr(0, 3, [
+                        Number(0, 3)
                     ]),
-                    Field(4, 6, [
-                        Mode(4, 5),
-                        Expr(5, 6, [
-                            Number(5, 6)
-                        ]),
-                    ]),
-                    Field(8, 9, [
-                        Expr(8, 9, [
-                            Number(8, 9)
-                        ])
-                    ]),
-                    COMMENT(9, line.len() - 1)
                 ])
             ]
         };
     }
 
     #[test]
+    fn parse_field_with_mode() {
+        parses_to! {
+            parser: RedcodeParser,
+            input: "#123",
+            rule: Rule::Field,
+            tokens: [
+                Field(0, 4, [
+                    Mode(0, 1),
+                    Expr(1, 4, [
+                        Number(1, 4)
+                    ]),
+                ])
+            ]
+        };
+    }
+
+    #[allow(clippy::cyclomatic_complexity)]
+    #[test]
+    fn parse_instruction() {
+        parses_to! {
+            parser: RedcodeParser,
+            input: "mov #1, 3",
+            rule: Rule::Instruction,
+            tokens: [
+                Operation(0, 3, [
+                    Opcode(0, 3)
+                ]),
+                Field(4, 6, [
+                    Mode(4, 5),
+                    Expr(5, 6, [
+                        Number(5, 6)
+                    ])
+                ]),
+                Field(8, 9, [
+                    Expr(8, 9, [
+                       Number(8, 9)
+                    ])
+                ]),
+            ]
+        };
+    }
+
+    #[test]
+    fn parse_comment() {
+        parses_to! {
+            parser: RedcodeParser,
+            input: "; foo bar\n",
+            rule: Rule::COMMENT,
+            tokens: [
+                COMMENT(0, 9)
+            ]
+        }
+    }
+
+    #[test]
     fn parse_simple_file() {
         let simple_input = "
-            mov 1, 3
+            mov 1, 3 ; make sure comments parse out
             mov 100, #12
             dat 0, 0
             jmp 123, 45
         ";
 
-        unimplemented!("Need to test parse of short file");
+        let mut expected_core = Core::default();
+
+        expected_core.set(
+            0,
+            Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
+        );
+        expected_core.set(
+            1,
+            Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
+        );
+        expected_core.set(
+            2,
+            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
+        );
+        expected_core.set(
+            3,
+            Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
+        );
+
+        assert_eq!(parse(simple_input).unwrap(), expected_core);
     }
 }

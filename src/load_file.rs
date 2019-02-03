@@ -1,6 +1,6 @@
-use std::{fmt, string::ToString};
+use std::{fmt, string::ToString, vec};
 
-pub const CORE_SIZE: usize = 8000;
+pub const DEFAULT_CORE_SIZE: usize = 8000;
 
 enum_string!(pub Opcode, {
     Dat => "DAT",
@@ -99,16 +99,30 @@ impl ToString for Instruction {
 }
 
 pub struct Core {
-    instructions: [Instruction; CORE_SIZE],
+    instructions: vec::Vec<Instruction>,
 }
 
 impl Core {
+    pub fn new(core_size: usize) -> Core {
+        Core {
+            instructions: vec![Instruction::default(); core_size],
+        }
+    }
+
     pub fn get(&self, index: usize) -> Option<&Instruction> {
         self.instructions.get(index)
     }
 
     pub fn set(&mut self, index: usize, value: Instruction) {
         self.instructions[index] = value;
+    }
+
+    pub fn dump_all(&self) -> String {
+        self.instructions
+            .iter()
+            .fold(String::new(), |result, instruction| {
+                result + &instruction.to_string() + "\n"
+            })
     }
 
     pub fn dump(&self) -> String {
@@ -123,15 +137,13 @@ impl Core {
 
 impl Default for Core {
     fn default() -> Core {
-        Core {
-            instructions: [Instruction::default(); CORE_SIZE],
-        }
+        Core::new(DEFAULT_CORE_SIZE)
     }
 }
 
 impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.dump())
+        write!(formatter, "{}", self.dump_all())
     }
 }
 
