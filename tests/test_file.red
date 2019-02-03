@@ -4,7 +4,7 @@ mov 1, 0
 
 jmp 123
 
-add 1, 2
+add # 1, @ 2
 sub 3, 4
 mul 5, 6
 div 7, 8
@@ -19,6 +19,8 @@ sne  0
 slt  0
 spl  0
 nop  0
-org  0
-equ  0
-end  0 ; TODO optional operands for END or possibly some other opcodes?
+
+; TODO rewrite grammar to handle org, equ, end
+; org  0
+; equ  0
+; end  0

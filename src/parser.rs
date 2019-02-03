@@ -155,19 +155,47 @@ mod tests {
 
     #[test]
     fn parse_field_with_mode() {
-        parses_to! {
-            parser: RedcodeParser,
-            input: "#123",
-            rule: Rule::Field,
-            tokens: [
-                Field(0, 4, [
-                    AddressMode(0, 1),
-                    Expr(1, 4, [
-                        Number(1, 4)
+        for test_input in [
+            "#123", "$123", "*123", "@123", "{123", "<123", "}123", ">123",
+        ]
+        .iter()
+        {
+            parses_to! {
+                parser: RedcodeParser,
+                input: test_input,
+                rule: Rule::Field,
+                tokens: [
+                    Field(0, 4, [
+                        AddressMode(0, 1),
+                        Expr(1, 4, [
+                            Number(1, 4)
+                        ]),
+                    ])
+                ]
+            };
+        }
+    }
+
+    #[test]
+    fn parse_opcode_modifier() {
+        for test_input in [
+            "mov.a", "mov.b", "mov.ab", "mov.ba", "mov.f", "mov.x", "mov.i",
+        ]
+        .iter()
+        {
+            dbg!(test_input);
+            parses_to! {
+                parser: RedcodeParser,
+                input: test_input,
+                rule: Rule::Operation,
+                tokens: [
+                    Operation(0, test_input.len(), [
+                        Opcode(0, 3),
+                        Modifier(4, test_input.len()),
                     ]),
-                ])
-            ]
-        };
+                ]
+            }
+        }
     }
 
     #[allow(clippy::cyclomatic_complexity)]

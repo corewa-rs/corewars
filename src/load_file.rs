@@ -20,9 +20,6 @@ enum_string!(pub Opcode, {
     Slt => "SLT",
     Spl => "SPL",
     Nop => "NOP",
-    Org => "ORG",
-    Equ => "EQU",
-    End => "END",
 });
 
 impl Default for Opcode {
@@ -31,9 +28,21 @@ impl Default for Opcode {
     }
 }
 
+enum_string!(pub PseudoOpcode, {
+    Org => "ORG",
+    Equ => "EQU",
+    End => "END",
+});
+
 enum_string!(pub AddressMode, {
     Immediate => "#",
-    Direct => "",
+    Direct => "$",
+    IndirectA => "*",
+    IndirectB => "@",
+    PreDecIndirectA => "{",
+    PreDecIndirectB => "<",
+    PostIncIndirectA => "}",
+    PostIncIndirectB => ">",
 });
 
 impl Default for AddressMode {
