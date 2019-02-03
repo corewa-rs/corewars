@@ -10,7 +10,7 @@ Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
 
 Operation = ${ Opcode }
 
-Field = ${ Mode? ~ Expr }
+Field = ${ AddressMode? ~ Expr }
 
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
@@ -20,7 +20,7 @@ Opcode = {
 
 Modifier = { ^"A" | ^"B" | ^"AB" | ^"BA" | ^"F" | ^"X" | ^"I" }
 
-Mode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
+AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
 Expr = !{ Number }
 

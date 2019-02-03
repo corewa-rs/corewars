@@ -53,26 +53,34 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         .next()
         .ok_or_else(Error::no_input)?;
 
-    for (i, instruction_inner) in parse_result
+    for (i, line_pairs) in parse_result
         .into_inner()
-        .filter_map(|instruction_inner| {
-            let inner_pair = instruction_inner.into_inner();
-            inner_pair.peek().map(|_| inner_pair)
-        })
+        .map(Pair::into_inner)
+        .filter(|line_pair| line_pair.peek().is_some())
         .enumerate()
     {
-        core.set(i, parse_instruction(instruction_inner));
+        core.set(i, parse_instruction(line_pairs));
     }
 
     Ok(core)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
-    let opcode = parse_opcode(&instruction_pairs.next().unwrap());
+    let opcode = parse_opcode(
+        &instruction_pairs
+            .next()
+            .expect("Opcode must be first pair in Instruction"),
+    );
 
-    let field_a = parse_field(instruction_pairs.next().unwrap());
+    let field_a = parse_field(
+        instruction_pairs
+            .next()
+            .expect("Field must appear after Opcode"),
+    );
+
     let field_b = instruction_pairs
         .next()
+        .filter(|pair| pair.as_rule() == Rule::Field)
         .map_or_else(Field::default, parse_field);
 
     Instruction {
@@ -87,34 +95,38 @@ fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
 }
 
 fn parse_field(field_pair: Pair<Rule>) -> Field {
-    let mut inner_pairs = field_pair.into_inner();
-    let mut next_pair = inner_pairs
-        .next()
-        .expect("Attempt to parse Field with no inner pairs");
+    dbg!(&field_pair);
 
-    let address_mode = if next_pair.as_rule() == Rule::Mode {
-        let mode = AddressMode::from_str(next_pair.as_str()).unwrap();
-        next_pair = inner_pairs
+    let field_pairs = field_pair.into_inner();
+
+    let address_mode = field_pairs
+        .peek()
+        .filter(|pair| pair.as_rule() == Rule::AddressMode)
+        .map_or(AddressMode::default(), |pair| {
+            AddressMode::from_str(pair.as_str()).expect("Invalid AddressMode")
+        });
+
+    let value = parse_value(
+        field_pairs
+            .skip_while(|pair| pair.as_rule() != Rule::Expr)
             .next()
-            .expect("Attempt to parse Field with Mode pair but nothing else");
-        mode
-    } else {
-        AddressMode::default()
-    };
+            .expect("No Expr in Field"),
+    );
 
     Field {
         address_mode,
-        value: parse_value(&next_pair),
+        value,
     }
 }
 
-fn parse_value(value_pair: &Pair<Rule>) -> i32 {
+fn parse_value(value_pair: Pair<Rule>) -> i32 {
     i32::from_str_radix(value_pair.as_str(), 10).unwrap()
 }
 
+#[cfg(test)]
 mod tests {
-    // seems to be a case of https://github.com/rust-lang/rust/issues/45268
-    #[allow(unused_imports)]
+    use pest::{consumes_to, parses_to};
+
     use super::*;
 
     #[test]
@@ -149,7 +161,7 @@ mod tests {
             rule: Rule::Field,
             tokens: [
                 Field(0, 4, [
-                    Mode(0, 1),
+                    AddressMode(0, 1),
                     Expr(1, 4, [
                         Number(1, 4)
                     ]),
@@ -170,7 +182,7 @@ mod tests {
                     Opcode(0, 3)
                 ]),
                 Field(4, 6, [
-                    Mode(4, 5),
+                    AddressMode(4, 5),
                     Expr(5, 6, [
                         Number(5, 6)
                     ])
