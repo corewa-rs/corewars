@@ -49,7 +49,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 
     let mut core = Core::default();
 
-    let parse_result = RedcodeParser::parse(Rule::assembly_file, file_contents)?
+    let parse_result = RedcodeParser::parse(Rule::AssemblyFile, file_contents)?
         .next()
         .ok_or_else(Error::no_input)?;
 
@@ -86,13 +86,13 @@ fn parse_field(field_pair: Pair<Rule>) -> Field {
     let mut inner_pairs = field_pair.into_inner();
     let mut next_pair = inner_pairs
         .next()
-        .expect("Attempt to parse 'field' with no inner pairs");
+        .expect("Attempt to parse Field with no inner pairs");
 
-    let address_mode = if next_pair.as_rule() == Rule::mode {
+    let address_mode = if next_pair.as_rule() == Rule::Mode {
         let mode = AddressMode::from_str(next_pair.as_str()).unwrap();
         next_pair = inner_pairs
             .next()
-            .expect("Attempt to parse 'field' with 'mode' pair but nothing else");
+            .expect("Attempt to parse Field with Mode pair but nothing else");
         mode
     } else {
         AddressMode::default()
@@ -121,40 +121,39 @@ mod tests {
         assert_eq!(result.unwrap_err().details, "No input found");
     }
 
+    // TODO break out smaller test cases, e.g. "Field", ""
+
     #[test]
-    fn parse_comment() {
-        let result = parse("mov 0, 0; nothing after semicolon should matter");
-
-        let mut expected_core = Core::default();
-        expected_core.set(
-            0,
-            Instruction {
-                opcode: Opcode::Mov,
-                ..Default::default()
-            },
-        );
-
-        assert_eq!(result.unwrap(), expected_core);
+    fn parse_line_with_comment() {
+        let line = "mov #1, 3; foo\n";
+        parses_to! {
+            parser: RedcodeParser,
+            input: line,
+            rule: Rule::Line,
+            tokens: [
+                Line(0, line.len(), [
+                    Operation(0, 3, [
+                        Opcode(0, 3)
+                    ]),
+                    Field(4, 6, [
+                        Mode(4, 5),
+                        Expr(5, 6, [
+                            Number(5, 6)
+                        ]),
+                    ]),
+                    Field(8, 9, [
+                        Expr(8, 9, [
+                            Number(8, 9)
+                        ])
+                    ]),
+                    COMMENT(9, line.len() - 1)
+                ])
+            ]
+        };
     }
 
     #[test]
     fn parse_simple_file() {
-        let mut expected_core = Core::default();
-
-        expected_core.set(
-            0,
-            Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
-        );
-        expected_core.set(
-            1,
-            Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
-        );
-        // expected_core.set(2, Instruction::default());
-        expected_core.set(
-            3,
-            Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
-        );
-
         let simple_input = "
             mov 1, 3
             mov 100, #12
@@ -162,8 +161,6 @@ mod tests {
             jmp 123, 45
         ";
 
-        eprintln!("Simple file: '{}'", simple_input);
-
-        assert_eq!(parse(simple_input).unwrap(), expected_core);
+        unimplemented!("Need to test parse of short file");
     }
 }

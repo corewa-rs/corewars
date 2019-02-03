@@ -1,27 +1,27 @@
 WHITESPACE = _{ " " | "\t" }
 
-comment = @{ ";" ~ (!NEWLINE ~ ANY)* }
+COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
 
-assembly_file = { SOI ~ line+ ~ EOI }
+AssemblyFile = { SOI ~ Line+ ~ EOI }
 
-line = { instruction? ~ comment? ~ NEWLINE }
+Line = { Instruction? ~ NEWLINE }
 
-instruction = _{ operation ~ field ~ ("," ~ field)? }
+Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
 
-operation = ${ opcode }
+Operation = ${ Opcode }
 
-field = ${ mode? ~ expr }
+Field = ${ Mode? ~ Expr }
 
-opcode = {
+Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
     ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"EQU" | ^"END"
 }
 
-modifier = { ^"A" | ^"B" | ^"AB" | ^"BA" | ^"F" | ^"X" | ^"I" }
+Modifier = { ^"A" | ^"B" | ^"AB" | ^"BA" | ^"F" | ^"X" | ^"I" }
 
-mode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
+Mode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-expr = !{ number }
+Expr = !{ Number }
 
-number = @{ ASCII_DIGIT+ }
+Number = @{ ASCII_DIGIT+ }
