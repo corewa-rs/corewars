@@ -6,7 +6,7 @@ use pest::{
     Parser,
 };
 
-use crate::load_file::{AddressMode, Core, Field, Instruction, Opcode};
+use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode};
 
 pub struct Error {
     details: String,
@@ -72,6 +72,11 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
             .expect("Opcode must be first pair in Instruction"),
     );
 
+    let maybe_modifier = instruction_pairs
+        .peek()
+        .filter(|pair| pair.as_rule() == Rule::Modifier)
+        .map(|pair| Modifier::from_str(pair.as_str()).expect("Invalid Modifier"));
+
     let field_a = parse_field(
         instruction_pairs
             .next()
@@ -83,8 +88,13 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
         .filter(|pair| pair.as_rule() == Rule::Field)
         .map_or_else(Field::default, parse_field);
 
+    let modifier = maybe_modifier.unwrap_or_else(|| {
+        Modifier::from_context(opcode, field_a.address_mode, field_b.address_mode)
+    });
+
     Instruction {
         opcode,
+        modifier,
         field_a,
         field_b,
     }
@@ -95,8 +105,6 @@ fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
 }
 
 fn parse_field(field_pair: Pair<Rule>) -> Field {
-    dbg!(&field_pair);
-
     let field_pairs = field_pair.into_inner();
 
     let address_mode = field_pairs
@@ -183,7 +191,6 @@ mod tests {
         ]
         .iter()
         {
-            dbg!(test_input);
             parses_to! {
                 parser: RedcodeParser,
                 input: test_input,

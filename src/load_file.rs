@@ -34,6 +34,46 @@ enum_string!(pub PseudoOpcode, {
     End => "END",
 });
 
+enum_string!(pub Modifier, {
+    A => "A",
+    B => "B",
+    AB => "AB",
+    BA => "BA",
+    F => "F",
+    X => "X",
+    I => "I",
+});
+
+impl Default for Modifier {
+    fn default() -> Modifier {
+        Modifier::F
+    }
+}
+
+impl Modifier {
+    pub fn from_context(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Modifier {
+        use Opcode::*;
+
+        match opcode {
+            Dat => Modifier::F,
+            Jmp | Jmz | Jmn | Djn | Spl | Nop => Modifier::B,
+            opcode => {
+                if a_mode == AddressMode::Immediate {
+                    Modifier::AB
+                } else if b_mode == AddressMode::Immediate {
+                    Modifier::B
+                } else {
+                    match opcode {
+                        Mov | Cmp | Seq | Sne => Modifier::I,
+                        Slt => Modifier::B,
+                        Add | Sub | Mul | Div | Mod => Modifier::F,
+                    }
+                }
+            }
+        }
+    }
+}
+
 enum_string!(pub AddressMode, {
     Immediate => "#",
     Direct => "$",
@@ -82,14 +122,17 @@ impl ToString for Field {
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
+    pub modifier: Modifier,
     pub field_a: Field,
     pub field_b: Field,
 }
 
 impl Instruction {
     pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Instruction {
+        let modifier = Modifier::from_context(opcode, field_a.address_mode, field_b.address_mode);
         Instruction {
             opcode,
+            modifier,
             field_a,
             field_b,
         }
@@ -177,6 +220,7 @@ mod tests {
     fn default_instruction() {
         let expected_instruction = Instruction {
             opcode: Opcode::Dat,
+            modifier: Modifier::F,
             field_a: Field {
                 address_mode: AddressMode::Direct,
                 value: 0,

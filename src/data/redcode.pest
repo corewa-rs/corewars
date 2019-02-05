@@ -8,7 +8,7 @@ Line = { Instruction? ~ NEWLINE }
 
 Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
 
-Operation = ${ Opcode }
+Operation = ${ Opcode ~ ("." ~ Modifier)? }
 
 Field = !{ AddressMode? ~ Expr }
 
@@ -18,7 +18,7 @@ Opcode = {
     ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"EQU" | ^"END"
 }
 
-Modifier = { ^"A" | ^"B" | ^"AB" | ^"BA" | ^"F" | ^"X" | ^"I" }
+Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 

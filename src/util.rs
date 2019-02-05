@@ -20,7 +20,7 @@ macro_rules! enum_string {
 
         impl std::string::ToString for $name {
             fn to_string(&self) -> String {
-                use self::$name::*;
+                use $name::*;
                 match *self {
                     $($variant => $value,)*
                 }.to_owned()
@@ -30,7 +30,7 @@ macro_rules! enum_string {
         impl std::str::FromStr for $name {
             type Err = String;
             fn from_str(input_str: &str) -> Result<Self, Self::Err> {
-                use self::$name::*;
+                use $name::*;
                 match input_str {
                     $($value => Ok($variant),)*
                     _ => Err(format!(
