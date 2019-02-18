@@ -89,7 +89,7 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
         .map_or_else(Field::default, parse_field);
 
     let modifier = maybe_modifier.unwrap_or_else(|| {
-        Modifier::from_context(opcode, field_a.address_mode, field_b.address_mode)
+        Modifier::default_88_to_94(opcode, field_a.address_mode, field_b.address_mode)
     });
 
     Instruction {

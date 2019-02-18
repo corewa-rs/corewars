@@ -41,6 +41,16 @@ macro_rules! enum_string {
                 }
             }
         }
+
+        impl $name {
+            #[allow(dead_code)]
+            pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
+                use $name::*;
+                #[allow(unused_variable)]
+                const VALUES: &[$name] = &[$($variant,)*];
+                VALUES.iter()
+            }
+        }
     };
 }
 
