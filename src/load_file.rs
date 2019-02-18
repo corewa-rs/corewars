@@ -146,8 +146,9 @@ impl Instruction {
 impl ToString for Instruction {
     fn to_string(&self) -> String {
         format!(
-            "{} {}, {}",
+            "{}.{} {}, {}",
             self.opcode.to_string(),
+            self.modifier.to_string(),
             self.field_a.to_string(),
             self.field_b.to_string(),
         )

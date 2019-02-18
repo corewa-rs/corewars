@@ -24,3 +24,11 @@ nop  0
 ; org  0
 ; equ  0
 ; end  0
+
+mov.a 1, 2
+mov.b 1, 2
+mov.ab 1, 2
+mov.ba 1, 2
+mov.f 1, 2
+mov.x 1, 2
+mov.i 1, 2

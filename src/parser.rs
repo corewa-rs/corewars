@@ -66,16 +66,21 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
+    let mut operation_pairs = instruction_pairs
+        .next()
+        .expect("Operation must be first pair in Instruction")
+        .into_inner();
+
     let opcode = parse_opcode(
-        &instruction_pairs
+        &operation_pairs
             .next()
-            .expect("Opcode must be first pair in Instruction"),
+            .expect("Opcode must be first pair in Operation"),
     );
 
-    let maybe_modifier = instruction_pairs
+    let maybe_modifier = operation_pairs
         .peek()
         .filter(|pair| pair.as_rule() == Rule::Modifier)
-        .map(|pair| Modifier::from_str(pair.as_str()).expect("Invalid Modifier"));
+        .and_then(|pair| Some(parse_modifier(&pair)));
 
     let field_a = parse_field(
         instruction_pairs
@@ -98,6 +103,10 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
         field_a,
         field_b,
     }
+}
+
+fn parse_modifier(modifier_pair: &Pair<Rule>) -> Modifier {
+    Modifier::from_str(modifier_pair.as_str().to_uppercase().as_ref()).unwrap()
 }
 
 fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
