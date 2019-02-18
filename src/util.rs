@@ -93,4 +93,13 @@ mod tests {
             Err("No variant 'Should fail' found for enum 'Foo'".to_owned())
         );
     }
+
+    #[test]
+    fn iter_values() {
+        let values_from_iter: Vec<Foo> = Foo::iter_values().cloned().collect();
+        assert_eq!(
+            values_from_iter,
+            vec![Foo::Bar, Foo::Baz, Foo::SomethingElse]
+        );
+    }
 }

@@ -68,7 +68,7 @@ impl Modifier {
                     match opcode {
                         Mov | Cmp | Seq | Sne => Modifier::I,
                         Slt => Modifier::B,
-                        Add | Sub | Mul | Div | Mod => Modifier::B,
+                        Add | Sub | Mul | Div | Mod => Modifier::F,
                         _ => unreachable!(),
                     }
                 }
@@ -221,6 +221,7 @@ mod tests {
     use itertools::iproduct;
 
     use super::*;
+    use Opcode::*;
 
     #[test]
     fn default_instruction() {
@@ -241,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn dat_default_88_to_94() {
+    fn dat_default() {
         for (&a_mode, &b_mode) in iproduct!(AddressMode::iter_values(), AddressMode::iter_values())
         {
             assert_eq!(
@@ -252,10 +253,9 @@ mod tests {
     }
 
     #[test]
-    fn modifier_b_default_88_to_94() {
-        use Opcode::*;
-
+    fn modifier_b_default() {
         let opcodes = [Mov, Cmp, Seq, Sne];
+
         for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
             if a_mode != AddressMode::Immediate {
                 assert_eq!(
@@ -266,14 +266,11 @@ mod tests {
         }
 
         let opcodes = [Add, Sub, Mul, Div, Mod];
-        for (&opcode, &a_mode, &b_mode) in iproduct!(
-            opcodes.iter(),
-            AddressMode::iter_values(),
-            AddressMode::iter_values()
-        ) {
+
+        for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
             if a_mode != AddressMode::Immediate {
                 assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, b_mode),
+                    Modifier::default_88_to_94(opcode, a_mode, AddressMode::Immediate),
                     Modifier::B
                 );
             }
@@ -290,6 +287,7 @@ mod tests {
         }
 
         let opcodes = [Jmp, Jmz, Jmn, Djn, Spl, Nop];
+
         for (&opcode, &a_mode, &b_mode) in iproduct!(
             opcodes.iter(),
             AddressMode::iter_values(),
@@ -303,9 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn modifier_ab_default_88_to_94() {
-        use Opcode::*;
-
+    fn modifier_ab_default() {
         let opcodes = [Mov, Cmp, Seq, Sne, Add, Sub, Mul, Div, Mod, Slt];
 
         for (&opcode, &b_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
@@ -316,5 +312,39 @@ mod tests {
         }
     }
 
-    // TODO Mode I
+    #[test]
+    fn modifier_i_default() {
+        let opcodes = [Mov, Cmp, Seq, Sne];
+
+        for (&opcode, &a_mode, &b_mode) in iproduct!(
+            opcodes.iter(),
+            AddressMode::iter_values(),
+            AddressMode::iter_values()
+        ) {
+            if a_mode != AddressMode::Immediate && b_mode != AddressMode::Immediate {
+                assert_eq!(
+                    Modifier::default_88_to_94(opcode, a_mode, b_mode),
+                    Modifier::I
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn modifier_f_default() {
+        let opcodes = [Add, Sub, Mul, Div, Mod];
+
+        for (&opcode, &a_mode, &b_mode) in iproduct!(
+            opcodes.iter(),
+            AddressMode::iter_values(),
+            AddressMode::iter_values()
+        ) {
+            if a_mode != AddressMode::Immediate && b_mode != AddressMode::Immediate {
+                assert_eq!(
+                    Modifier::default_88_to_94(opcode, a_mode, b_mode),
+                    Modifier::F
+                );
+            }
+        }
+    }
 }
