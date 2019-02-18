@@ -1,14 +1,12 @@
 extern crate corewa_rs;
 
-use corewa_rs::parser;
-
 #[test]
 fn test_parse() {
     let test_warrior = include_str!("test_file.red");
 
     println!("Parsing warrior:\n{}", test_warrior);
 
-    let core = parser::parse(test_warrior).unwrap();
+    let core = corewa_rs::parse(test_warrior).unwrap();
 
     println!("Loaded core:\n{:?}", core);
 

@@ -5,6 +5,7 @@ authors = ["Ian Chamberlain <ian.h.chamberlain@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+itertools = "0.8.0"
 lazy_static = "1.2.0"
 pest_derive = "2.1.0"
 pest = "2.1.0"
