@@ -2,7 +2,7 @@ use std::{fmt, string::ToString, vec};
 
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
-enum_string!(pub Opcode, {
+enum_string!(pub Opcode {
     Dat => "DAT",
     Mov => "MOV",
     Add => "ADD",
@@ -28,13 +28,13 @@ impl Default for Opcode {
     }
 }
 
-enum_string!(pub PseudoOpcode, {
+enum_string!(pub PseudoOpcode {
     Org => "ORG",
     Equ => "EQU",
     End => "END",
 });
 
-enum_string!(pub Modifier, {
+enum_string!(pub Modifier {
     A   => "A",
     B   => "B",
     AB  => "AB",
@@ -77,7 +77,7 @@ impl Modifier {
     }
 }
 
-enum_string!(pub AddressMode, {
+enum_string!(pub AddressMode {
     Immediate           => "#",
     Direct              => "$",
     IndirectA           => "*",

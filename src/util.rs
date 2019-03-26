@@ -1,7 +1,7 @@
 /// # Syntax
 ///
 /// ```
-/// enum_string!(pub Foo, {
+/// enum_string!(pub Foo {
 ///     Bar => "Bar",
 ///     Baz => "BAZ"
 /// })
@@ -10,7 +10,7 @@
 /// implements `std::str::FromStr` and `std::string::ToString` for the string
 /// values specified.
 macro_rules! enum_string {
-    ($vis:vis $name:ident, {
+    ($vis:vis $name:ident {
         $($variant:ident => $value:expr,)*
     }) => {
         #[derive(Copy, Clone, Debug, PartialEq)]
@@ -59,12 +59,12 @@ mod tests {
     use std::{str::FromStr, string::ToString};
 
     mod submod {
-        enum_string!(pub Foo, {
+        enum_string!(pub Foo {
             Bar => "Bar",
         });
     }
 
-    enum_string!(Foo, {
+    enum_string!(Foo {
         Bar => "Bar",
         Baz => "Baz",
         SomethingElse => "blahblah",
