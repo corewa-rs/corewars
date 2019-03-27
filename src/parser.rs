@@ -1,4 +1,4 @@
-use std::{convert::From, fmt, str::FromStr};
+use std::{error, fmt, str::FromStr};
 
 use pest::{
     error::Error as PestError,
@@ -8,11 +8,14 @@ use pest::{
 
 use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode};
 
+#[derive(Debug)]
 pub struct Error {
     details: String,
 }
 
-impl fmt::Debug for Error {
+impl error::Error for Error {}
+
+impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.details)
     }
