@@ -20,9 +20,8 @@ macro_rules! enum_string {
 
         impl ::std::string::ToString for $name {
             fn to_string(&self) -> String {
-                use $name::*;
                 match *self {
-                    $($variant => $value,)*
+                    $(Self::$variant => $value,)*
                 }.to_owned()
             }
         }
@@ -30,9 +29,8 @@ macro_rules! enum_string {
         impl ::std::str::FromStr for $name {
             type Err = String;
             fn from_str(input_str: &str) -> Result<Self, Self::Err> {
-                use $name::*;
                 match input_str {
-                    $($value => Ok($variant),)*
+                    $($value => Ok(Self::$variant),)*
                     _ => Err(format!(
                         "No variant '{}' found for enum '{}'",
                         input_str,
@@ -45,9 +43,8 @@ macro_rules! enum_string {
         impl $name {
             #[allow(dead_code)]
             pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
-                use $name::*;
                 #[allow(unused_variable)]
-                const VALUES: &[$name] = &[$($variant,)*];
+                const VALUES: &[$name] = &[$($name::$variant,)*];
                 VALUES.iter()
             }
         }
