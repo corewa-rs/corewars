@@ -217,7 +217,7 @@ mod tests {
         }
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     #[test]
     fn parse_instruction() {
         parses_to! {
