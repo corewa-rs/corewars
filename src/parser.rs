@@ -1,5 +1,6 @@
 use std::{error, fmt, str::FromStr};
 
+use itertools::Itertools;
 use pest::{
     error::Error as PestError,
     iterators::{Pair, Pairs},
@@ -41,6 +42,12 @@ impl<Rule> From<PestError<Rule>> for Error {
     }
 }
 
+impl From<String> for Error {
+    fn from(details: String) -> Error {
+        Error { details }
+    }
+}
+
 #[derive(Parser)]
 #[grammar = "data/redcode.pest"]
 struct RedcodeParser;
@@ -56,12 +63,18 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         .next()
         .ok_or_else(Error::no_input)?;
 
-    for (i, line_pairs) in parse_result
+    for (i, mut line_pairs) in parse_result
         .into_inner()
         .map(Pair::into_inner)
         .filter(|line_pair| line_pair.peek().is_some())
         .enumerate()
     {
+        let label_pairs = line_pairs
+            .take_while_ref(|pair| pair.as_rule() == Rule::Label)
+            .map(|pair| pair.as_str().to_owned());
+
+        core.add_labels(i, label_pairs)?;
+
         core.set(i, parse_instruction(line_pairs));
     }
 
@@ -71,7 +84,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
     let mut operation_pairs = instruction_pairs
         .next()
-        .expect("Operation must be first pair in Instruction")
+        .expect("Operation must be first pair after Label in Instruction")
         .into_inner();
 
     let opcode = parse_opcode(
@@ -83,7 +96,7 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
     let maybe_modifier = operation_pairs
         .peek()
         .filter(|pair| pair.as_rule() == Rule::Modifier)
-        .and_then(|pair| Some(parse_modifier(&pair)));
+        .map(|pair| parse_modifier(&pair));
 
     let field_a = parse_field(
         instruction_pairs
@@ -144,6 +157,7 @@ fn parse_value(value_pair: Pair<Rule>) -> i32 {
 }
 
 #[cfg(test)]
+#[allow(clippy::cognitive_complexity)]
 mod tests {
     use pest::{consumes_to, parses_to};
 
@@ -217,7 +231,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[test]
     fn parse_instruction() {
         parses_to! {
@@ -256,12 +269,40 @@ mod tests {
     }
 
     #[test]
+    fn parse_label() {
+        parses_to! {
+            parser: RedcodeParser,
+            input: "some_label\nsome_label2 dat 0, 0",
+            rule: Rule::Instruction,
+            tokens: [
+                Label(0, 10),
+                Label(11, 22),
+                Operation(23, 26, [
+                    Opcode(23, 26)
+                ]),
+                Field(27, 28, [
+                    Expr(27, 28, [
+                        Number(27, 28)
+                    ])
+                ]),
+                Field(30, 31, [
+                    Expr(30, 31, [
+                       Number(30, 31)
+                    ])
+                ]),
+            ]
+        }
+    }
+
+    #[test]
     fn parse_simple_file() {
         let simple_input = "
-            mov 1, 3 ; make sure comments parse out
-            mov 100, #12
-            dat 0, 0
-            jmp 123, 45
+            begin
+                    mov 1, 3 ; make sure comments parse out
+                    mov 100, #12
+            loop
+            main    dat 0, 0
+                    jmp 123, 45
         ";
 
         let mut expected_core = Core::default();
@@ -282,6 +323,9 @@ mod tests {
             3,
             Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
         );
+
+        expected_core.add_labels(0, vec!["begin"]).unwrap();
+        expected_core.add_labels(2, vec!["main", "loop"]).unwrap();
 
         assert_eq!(parse(simple_input).unwrap(), expected_core);
     }

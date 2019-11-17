@@ -6,7 +6,11 @@ AssemblyFile = { SOI ~ Line+ ~ EOI }
 
 Line = { Instruction? ~ NEWLINE }
 
-Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
+Instruction = _{ LabelList ~ Operation ~ Field ~ ("," ~ Field)? }
+
+LabelList = _{ (!Operation ~ Label ~ NEWLINE*)* }
+
+Label = @{ Alpha ~ Alphanumeral* }
 
 Operation = ${ Opcode ~ ("." ~ Modifier)? }
 
@@ -25,3 +29,7 @@ AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 Expr = { Number }
 
 Number = @{ ASCII_DIGIT+ }
+
+Alpha = _{ ASCII_ALPHA | "_" }
+
+Alphanumeral = _{ ASCII_ALPHANUMERIC | "_" }

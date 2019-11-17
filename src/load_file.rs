@@ -1,4 +1,8 @@
-use std::{fmt, string::ToString, vec};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt,
+    string::ToString,
+};
 
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
@@ -155,14 +159,17 @@ impl ToString for Instruction {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Core {
-    instructions: vec::Vec<Instruction>,
+    instructions: Vec<Instruction>,
+    labels: HashMap<String, usize>,
 }
 
 impl Core {
     pub fn new(core_size: usize) -> Core {
         Core {
             instructions: vec![Instruction::default(); core_size],
+            labels: HashMap::new(),
         }
     }
 
@@ -172,6 +179,35 @@ impl Core {
 
     pub fn set(&mut self, index: usize, value: Instruction) {
         self.instructions[index] = value;
+    }
+
+    pub fn add_labels<L>(&mut self, index: usize, labels: L) -> Result<(), String>
+    where
+        L: IntoIterator,
+        L::Item: Into<String>,
+    {
+        if index > self.instructions.len() {
+            return Err(format!(
+                "Address {} is not valid for core of size {}",
+                index,
+                self.instructions.len()
+            ));
+        }
+
+        labels
+            .into_iter()
+            .map(|label| match self.labels.entry(label.into()) {
+                Entry::Occupied(entry) => Err(format!("Duplicate label '{}'", entry.key())),
+                Entry::Vacant(entry) => {
+                    entry.insert(index);
+                    Ok(())
+                }
+            })
+            .collect()
+    }
+
+    pub fn label_address(&self, label: &str) -> Option<usize> {
+        self.labels.get(label).copied()
     }
 
     pub fn dump_all(&self) -> String {
@@ -200,20 +236,12 @@ impl Default for Core {
 
 impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.dump_all())
-    }
-}
-
-impl PartialEq for Core {
-    fn eq(&self, rhs: &Self) -> bool {
-        for (self_instruction, other_instruction) in
-            self.instructions.iter().zip(rhs.instructions.iter())
-        {
-            if self_instruction != other_instruction {
-                return false;
-            }
-        }
-        true
+        write!(
+            formatter,
+            "Labels:\n{:?}\n Core:\n{}",
+            self.labels,
+            self.dump()
+        )
     }
 }
 
@@ -347,5 +375,24 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn labels() {
+        let mut core = Core::new(200);
+
+        core.add_labels(0, vec!["foo", "bar"]).unwrap();
+
+        core.add_labels(123, vec!["baz", "boo"]).unwrap();
+
+        core.add_labels(256, vec!["goblin"])
+            .expect_err("Should have failed to add labels for 256, but didn't");
+
+        assert_eq!(core.label_address("foo").unwrap(), 0);
+        assert_eq!(core.label_address("bar").unwrap(), 0);
+        assert_eq!(core.label_address("baz").unwrap(), 123);
+        assert_eq!(core.label_address("boo").unwrap(), 123);
+        assert!(core.label_address("goblin").is_none());
+        assert!(core.label_address("never_mentioned").is_none());
     }
 }
