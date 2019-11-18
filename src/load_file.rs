@@ -93,40 +93,65 @@ enum_string!(pub AddressMode {
 });
 
 impl Default for AddressMode {
-    fn default() -> AddressMode {
-        AddressMode::Direct
+    fn default() -> Self {
+        Self::Immediate
     }
 }
 
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum Value {
+    Label(String),
+    Literal(i32),
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Self::Literal(0)
+    }
+}
+
+impl ToString for Value {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Label(value) => value.clone(),
+            Self::Literal(value) => value.to_string(),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Field {
     pub address_mode: AddressMode,
-    pub value: i32,
+    pub value: Value,
 }
 
 impl Field {
-    pub fn direct(value: i32) -> Field {
-        Field {
+    pub fn direct(value: i32) -> Self {
+        Self {
             address_mode: AddressMode::Direct,
-            value,
+            value: Value::Literal(value),
         }
     }
 
     pub fn immediate(value: i32) -> Field {
-        Field {
+        Self {
             address_mode: AddressMode::Immediate,
-            value,
+            value: Value::Literal(value),
         }
     }
 }
 
 impl ToString for Field {
     fn to_string(&self) -> String {
-        format!("{}{}", self.address_mode.to_string(), self.value)
+        format!(
+            "{}{}",
+            self.address_mode.to_string(),
+            self.value.to_string()
+        )
     }
 }
 
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
@@ -194,6 +219,7 @@ impl Core {
             ));
         }
 
+        // TODO: make this nice with some kind of try_insert
         labels
             .into_iter()
             .map(|label| match self.labels.entry(label.into()) {
@@ -238,7 +264,7 @@ impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "Labels:\n{:?}\n Core:\n{}",
+            "Labels:{:?}\nCore:\n{}",
             self.labels,
             self.dump()
         )
@@ -259,11 +285,11 @@ mod tests {
             modifier: Modifier::F,
             field_a: Field {
                 address_mode: AddressMode::Direct,
-                value: 0,
+                value: Value::Literal(0),
             },
             field_b: Field {
                 address_mode: AddressMode::Direct,
-                value: 0,
+                value: Value::Literal(0),
             },
         };
 
@@ -279,6 +305,16 @@ mod tests {
                 Modifier::F
             );
         }
+    }
+
+    #[test]
+    fn value_to_string() {
+        assert_eq!(
+            String::from("some_label"),
+            Value::Label(String::from("some_label")).to_string()
+        );
+
+        assert_eq!(String::from("123"), Value::Literal(123).to_string());
     }
 
     #[test]
@@ -387,6 +423,9 @@ mod tests {
 
         core.add_labels(256, vec!["goblin"])
             .expect_err("Should have failed to add labels for 256, but didn't");
+
+        core.add_labels(5, vec!["baz"])
+            .expect_err("Should have failed to add duplicate label");
 
         assert_eq!(core.label_address("foo").unwrap(), 0);
         assert_eq!(core.label_address("bar").unwrap(), 0);
