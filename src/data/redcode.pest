@@ -2,13 +2,13 @@ WHITESPACE = _{ " " | "\t" }
 
 COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
 
-AssemblyFile = { SOI ~ Line+ ~ EOI }
+RedcodeFile = { SOI ~ (Line ~ NEWLINE)+ ~ EOI }
 
-Line = { Instruction? ~ NEWLINE }
+Line = { LabelDeclaration* ~ Instruction? }
 
-Instruction = _{ LabelList ~ Operation ~ Field ~ ("," ~ Field)? }
+Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
 
-LabelList = _{ (!Operation ~ Label ~ NEWLINE*)* }
+LabelDeclaration = _{ !Operation ~ Label ~ (":")? }
 
 Label = @{ Alpha ~ Alphanumeral* }
 
@@ -26,7 +26,7 @@ Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-Expr = { Number }
+Expr = { Number | Label }
 
 Number = @{ ASCII_DIGIT+ }
 

@@ -2,12 +2,12 @@ use std::{error, fmt, str::FromStr};
 
 use itertools::Itertools;
 use pest::{
-    error::Error as PestError,
+    error::{Error as PestError, ErrorVariant, LineColLocation},
     iterators::{Pair, Pairs},
     Parser,
 };
 
-use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode};
+use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode, Value};
 
 #[derive(Debug)]
 pub struct Error {
@@ -30,13 +30,25 @@ impl Error {
     }
 }
 
-impl<Rule> From<PestError<Rule>> for Error {
+impl From<PestError<Rule>> for Error {
     fn from(pest_error: PestError<Rule>) -> Error {
         Error {
             details: format!(
-                "Error parsing rule '{}' at location '{:?}",
-                stringify!(Rule),
-                pest_error.line_col
+                "Parse error: {} {}",
+                match pest_error.variant {
+                    ErrorVariant::ParsingError {
+                        positives,
+                        negatives,
+                    } => format!("expected one of {:?}, none of {:?}", positives, negatives),
+                    ErrorVariant::CustomError { message } => message,
+                },
+                match pest_error.line_col {
+                    LineColLocation::Pos((line, col)) => format!("at line {} column {}", line, col),
+                    LineColLocation::Span((start_line, start_col), (end_line, end_col)) => format!(
+                        "from line {} column {} to line {} column {}",
+                        start_line, start_col, end_line, end_col
+                    ),
+                }
             ),
         }
     }
@@ -59,7 +71,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 
     let mut core = Core::default();
 
-    let parse_result = RedcodeParser::parse(Rule::AssemblyFile, file_contents)?
+    let parse_result = RedcodeParser::parse(Rule::RedcodeFile, file_contents)?
         .next()
         .ok_or_else(Error::no_input)?;
 
@@ -152,8 +164,12 @@ fn parse_field(field_pair: Pair<Rule>) -> Field {
     }
 }
 
-fn parse_value(value_pair: Pair<Rule>) -> i32 {
-    i32::from_str_radix(value_pair.as_str(), 10).unwrap()
+fn parse_value(value_pair: Pair<Rule>) -> Value {
+    if value_pair.as_rule() == Rule::Number {
+        Value::Literal(i32::from_str_radix(value_pair.as_str(), 10).unwrap())
+    } else {
+        Value::Label(value_pair.as_str().to_owned())
+    }
 }
 
 #[cfg(test)]
@@ -270,37 +286,31 @@ mod tests {
 
     #[test]
     fn parse_label() {
-        parses_to! {
-            parser: RedcodeParser,
-            input: "some_label\nsome_label2 dat 0, 0",
-            rule: Rule::Instruction,
-            tokens: [
-                Label(0, 10),
-                Label(11, 22),
-                Operation(23, 26, [
-                    Opcode(23, 26)
-                ]),
-                Field(27, 28, [
-                    Expr(27, 28, [
-                        Number(27, 28)
-                    ])
-                ]),
-                Field(30, 31, [
-                    Expr(30, 31, [
-                       Number(30, 31)
-                    ])
-                ]),
-            ]
+        for &(label_input, start, end) in [
+            ("some_label", 0, 10),
+            ("some_label2", 0, 11),
+            ("a: ", 0, 1),
+            (" a ", 1, 2),
+            ("a :", 0, 1),
+        ]
+        .iter()
+        {
+            parses_to! {
+                parser: RedcodeParser,
+                input: label_input,
+                rule: Rule::LabelDeclaration,
+                tokens: [Label(start, end)]
+            }
         }
     }
 
     #[test]
     fn parse_simple_file() {
         let simple_input = "
-            begin
-                    mov 1, 3 ; make sure comments parse out
+            preload
+            begin:  mov 1, 3 ; make sure comments parse out
                     mov 100, #12
-            loop
+            loop:
             main    dat 0, 0
                     jmp 123, 45
         ";
@@ -317,15 +327,15 @@ mod tests {
         );
         expected_core.set(
             2,
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
+            Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(0)),
         );
         expected_core.set(
             3,
             Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
         );
 
-        expected_core.add_labels(0, vec!["begin"]).unwrap();
-        expected_core.add_labels(2, vec!["main", "loop"]).unwrap();
+        expected_core.add_labels(0, &["preload", "begin"]).unwrap();
+        expected_core.add_labels(2, &["loop", "main"]).unwrap();
 
         assert_eq!(parse(simple_input).unwrap(), expected_core);
     }

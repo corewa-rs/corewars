@@ -1,11 +1,13 @@
 extern crate corewa_rs;
 
 fn run_test(input: &str, expected_output: &str) {
-    eprintln!("Parsing warrior:\n{}", input);
+    eprintln!("Parsing warrior:");
+    eprintln!("{}", input);
 
-    let core = corewa_rs::parse(input).expect("Failed to parse test_file.red");
+    let core = corewa_rs::parse(input).expect("Failed to parse input");
 
-    eprintln!("Loaded core:\n{:?}", core);
+    eprintln!("Loaded core:");
+    eprintln!("{:?}", core);
 
     assert_eq!(core.dump(), expected_output);
 }
