@@ -94,11 +94,13 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
+    dbg!(&instruction_pairs.peek());
     let mut operation_pairs = instruction_pairs
         .next()
         .expect("Operation must be first pair after Label in Instruction")
         .into_inner();
 
+    dbg!(&operation_pairs.peek());
     let opcode = parse_opcode(
         &operation_pairs
             .next()
@@ -334,8 +336,10 @@ mod tests {
             Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
         );
 
-        expected_core.add_labels(0, &["preload", "begin"]).unwrap();
-        expected_core.add_labels(2, &["loop", "main"]).unwrap();
+        expected_core
+            .add_labels(0, vec!["preload", "begin"])
+            .unwrap();
+        expected_core.add_labels(2, vec!["loop", "main"]).unwrap();
 
         assert_eq!(parse(simple_input).unwrap(), expected_core);
     }

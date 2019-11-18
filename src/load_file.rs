@@ -27,7 +27,7 @@ enum_string!(pub Opcode {
 });
 
 impl Default for Opcode {
-    fn default() -> Opcode {
+    fn default() -> Self {
         Opcode::Dat
     }
 }
@@ -49,13 +49,13 @@ enum_string!(pub Modifier {
 });
 
 impl Default for Modifier {
-    fn default() -> Modifier {
+    fn default() -> Self {
         Modifier::F
     }
 }
 
 impl Modifier {
-    pub fn default_88_to_94(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Modifier {
+    pub fn default_88_to_94(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Self {
         /// Implemented based on the ICWS '94 document,
         /// section A.2.1.2: ICWS'88 to ICWS'94 Conversion
         use Opcode::*;
@@ -151,7 +151,7 @@ impl ToString for Field {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
@@ -159,10 +159,22 @@ pub struct Instruction {
     pub field_b: Field,
 }
 
+impl Default for Instruction {
+    fn default() -> Self {
+        Instruction {
+            opcode: Opcode::default(),
+            modifier: Modifier::default(),
+            field_a: Field::direct(0),
+            field_b: Field::direct(0),
+        }
+    }
+}
+
 impl Instruction {
-    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Instruction {
+    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Self {
         let modifier =
             Modifier::default_88_to_94(opcode, field_a.address_mode, field_b.address_mode);
+
         Instruction {
             opcode,
             modifier,
@@ -191,7 +203,7 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new(core_size: usize) -> Core {
+    pub fn new(core_size: usize) -> Self {
         Core {
             instructions: vec![Instruction::default(); core_size],
             labels: HashMap::new(),
@@ -219,17 +231,18 @@ impl Core {
             ));
         }
 
-        // TODO: make this nice with some kind of try_insert
-        labels
-            .into_iter()
-            .map(|label| match self.labels.entry(label.into()) {
-                Entry::Occupied(entry) => Err(format!("Duplicate label '{}'", entry.key())),
+        for label in labels {
+            match self.labels.entry(label.into()) {
+                Entry::Occupied(entry) => {
+                    return Err(format!("Label '{}' already exists", entry.key()));
+                }
                 Entry::Vacant(entry) => {
                     entry.insert(index);
-                    Ok(())
                 }
-            })
-            .collect()
+            }
+        }
+
+        Ok(())
     }
 
     pub fn label_address(&self, label: &str) -> Option<usize> {
@@ -255,7 +268,7 @@ impl Core {
 }
 
 impl Default for Core {
-    fn default() -> Core {
+    fn default() -> Self {
         Core::new(DEFAULT_CORE_SIZE)
     }
 }
@@ -431,6 +444,7 @@ mod tests {
         assert_eq!(core.label_address("bar").unwrap(), 0);
         assert_eq!(core.label_address("baz").unwrap(), 123);
         assert_eq!(core.label_address("boo").unwrap(), 123);
+
         assert!(core.label_address("goblin").is_none());
         assert!(core.label_address("never_mentioned").is_none());
     }
