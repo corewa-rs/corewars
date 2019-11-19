@@ -2,7 +2,7 @@ WHITESPACE = _{ " " | "\t" }
 
 COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
 
-RedcodeFile = { SOI ~ (Line ~ NEWLINE)+ ~ EOI }
+RedcodeFile = { SOI ~ (Line ~ NEWLINE)+ ~ Line? ~ EOI }
 
 Line = { LabelDeclaration* ~ Instruction? }
 
@@ -28,7 +28,7 @@ AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
 Expr = { Number | Label }
 
-Number = @{ ASCII_DIGIT+ }
+Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
 
 Alpha = _{ ASCII_ALPHA | "_" }
 

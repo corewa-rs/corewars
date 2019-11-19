@@ -94,7 +94,7 @@ enum_string!(pub AddressMode {
 
 impl Default for AddressMode {
     fn default() -> Self {
-        Self::Immediate
+        Self::Direct
     }
 }
 
@@ -119,10 +119,19 @@ impl ToString for Value {
     }
 }
 
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Field {
     pub address_mode: AddressMode,
     pub value: Value,
+}
+
+impl Default for Field {
+    fn default() -> Self {
+        Self {
+            address_mode: AddressMode::Immediate,
+            value: Value::default(),
+        }
+    }
 }
 
 impl Field {
@@ -151,23 +160,12 @@ impl ToString for Field {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
     pub field_a: Field,
     pub field_b: Field,
-}
-
-impl Default for Instruction {
-    fn default() -> Self {
-        Instruction {
-            opcode: Opcode::default(),
-            modifier: Modifier::default(),
-            field_a: Field::direct(0),
-            field_b: Field::direct(0),
-        }
-    }
 }
 
 impl Instruction {
@@ -218,10 +216,9 @@ impl Core {
         self.instructions[index] = value;
     }
 
-    pub fn add_labels<L>(&mut self, index: usize, labels: L) -> Result<(), String>
+    pub fn add_labels<T>(&mut self, index: usize, labels: Vec<T>) -> Result<(), String>
     where
-        L: IntoIterator,
-        L::Item: Into<String>,
+        T: Into<String>,
     {
         if index > self.instructions.len() {
             return Err(format!(
@@ -277,7 +274,7 @@ impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "Labels:{:?}\nCore:\n{}",
+            "Labels: {:?}\nCore:\n{}",
             self.labels,
             self.dump()
         )
@@ -297,11 +294,11 @@ mod tests {
             opcode: Opcode::Dat,
             modifier: Modifier::F,
             field_a: Field {
-                address_mode: AddressMode::Direct,
+                address_mode: AddressMode::Immediate,
                 value: Value::Literal(0),
             },
             field_b: Field {
-                address_mode: AddressMode::Direct,
+                address_mode: AddressMode::Immediate,
                 value: Value::Literal(0),
             },
         };
@@ -430,20 +427,18 @@ mod tests {
     fn labels() {
         let mut core = Core::new(200);
 
-        core.add_labels(0, vec!["foo", "bar"]).unwrap();
-
-        core.add_labels(123, vec!["baz", "boo"]).unwrap();
+        core.add_labels(123, vec!["baz"]).expect("Should add label");
+        core.add_labels(0, vec!["foo", "bar"])
+            .expect("Should add two labels");
 
         core.add_labels(256, vec!["goblin"])
-            .expect_err("Should have failed to add labels for 256, but didn't");
-
+            .expect_err("Should fail to add labels > 200");
         core.add_labels(5, vec!["baz"])
-            .expect_err("Should have failed to add duplicate label");
+            .expect_err("Should fail to add duplicate label");
 
         assert_eq!(core.label_address("foo").unwrap(), 0);
         assert_eq!(core.label_address("bar").unwrap(), 0);
         assert_eq!(core.label_address("baz").unwrap(), 123);
-        assert_eq!(core.label_address("boo").unwrap(), 123);
 
         assert!(core.label_address("goblin").is_none());
         assert!(core.label_address("never_mentioned").is_none());

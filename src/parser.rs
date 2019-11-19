@@ -75,32 +75,33 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         .next()
         .ok_or_else(Error::no_input)?;
 
-    for (i, mut line_pairs) in parse_result
+    let mut i = 0;
+    for mut line_pair in parse_result
         .into_inner()
         .map(Pair::into_inner)
         .filter(|line_pair| line_pair.peek().is_some())
-        .enumerate()
     {
-        let label_pairs = line_pairs
+        let label_pairs = line_pair
             .take_while_ref(|pair| pair.as_rule() == Rule::Label)
             .map(|pair| pair.as_str().to_owned());
 
-        core.add_labels(i, label_pairs)?;
+        core.add_labels(i, label_pairs.collect())?;
 
-        core.set(i, parse_instruction(line_pairs));
+        if line_pair.peek().is_some() {
+            core.set(i, parse_instruction(line_pair));
+            i += 1;
+        }
     }
 
     Ok(core)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
-    dbg!(&instruction_pairs.peek());
     let mut operation_pairs = instruction_pairs
         .next()
         .expect("Operation must be first pair after Label in Instruction")
         .into_inner();
 
-    dbg!(&operation_pairs.peek());
     let opcode = parse_opcode(
         &operation_pairs
             .next()
@@ -167,10 +168,18 @@ fn parse_field(field_pair: Pair<Rule>) -> Field {
 }
 
 fn parse_value(value_pair: Pair<Rule>) -> Value {
-    if value_pair.as_rule() == Rule::Number {
-        Value::Literal(i32::from_str_radix(value_pair.as_str(), 10).unwrap())
-    } else {
-        Value::Label(value_pair.as_str().to_owned())
+    let expr_inner = value_pair
+        .into_inner()
+        .next()
+        .expect("Expr must have inner value");
+
+    match expr_inner.as_rule() {
+        Rule::Number => Value::Literal(
+            i32::from_str_radix(expr_inner.as_str(), 10)
+                .expect("Number type must be decimal integer"),
+        ),
+        Rule::Label => Value::Label(expr_inner.as_str().to_owned()),
+        _ => unreachable!(),
     }
 }
 
@@ -307,14 +316,26 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_labels() {
+        let simple_input = "
+            label1  dat 0,0
+            label1  dat 0,0
+        ";
+
+        parse(simple_input).expect_err("Should fail for duplicate label");
+    }
+
+    #[test]
     fn parse_simple_file() {
         let simple_input = "
             preload
             begin:  mov 1, 3 ; make sure comments parse out
                     mov 100, #12
             loop:
-            main    dat 0, 0
-                    jmp 123, 45
+            main    dat #0, #0
+                    jmp +123, #45
+                    jmp begin
+                    jmp -1
         ";
 
         let mut expected_core = Core::default();
@@ -333,7 +354,22 @@ mod tests {
         );
         expected_core.set(
             3,
-            Instruction::new(Opcode::Jmp, Field::direct(123), Field::direct(45)),
+            Instruction::new(Opcode::Jmp, Field::direct(123), Field::immediate(45)),
+        );
+        expected_core.set(
+            4,
+            Instruction::new(
+                Opcode::Jmp,
+                Field {
+                    address_mode: AddressMode::Direct,
+                    value: Value::Label(String::from("begin")),
+                },
+                Field::immediate(0),
+            ),
+        );
+        expected_core.set(
+            5,
+            Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
         );
 
         expected_core
@@ -341,6 +377,8 @@ mod tests {
             .unwrap();
         expected_core.add_labels(2, vec!["loop", "main"]).unwrap();
 
-        assert_eq!(parse(simple_input).unwrap(), expected_core);
+        let parsed = parse(simple_input).unwrap();
+
+        assert_eq!(parsed, expected_core);
     }
 }
