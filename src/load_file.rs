@@ -216,10 +216,7 @@ impl Core {
         self.instructions[index] = value;
     }
 
-    pub fn add_labels<T>(&mut self, index: usize, labels: Vec<T>) -> Result<(), String>
-    where
-        T: Into<String>,
-    {
+    pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
         if index > self.instructions.len() {
             return Err(format!(
                 "Address {} is not valid for core of size {}",
@@ -228,18 +225,13 @@ impl Core {
             ));
         }
 
-        for label in labels {
-            match self.labels.entry(label.into()) {
-                Entry::Occupied(entry) => {
-                    return Err(format!("Label '{}' already exists", entry.key()));
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(index);
-                }
+        match self.labels.entry(label) {
+            Entry::Occupied(entry) => Err(format!("Label '{}' already exists", entry.key())),
+            Entry::Vacant(entry) => {
+                entry.insert(index);
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     pub fn label_address(&self, label: &str) -> Option<usize> {
@@ -427,13 +419,13 @@ mod tests {
     fn labels() {
         let mut core = Core::new(200);
 
-        core.add_labels(123, vec!["baz"]).expect("Should add label");
-        core.add_labels(0, vec!["foo", "bar"])
-            .expect("Should add two labels");
+        core.add_label(123, "baz".into()).expect("Should add baz");
+        core.add_label(0, "foo".into()).expect("Should add foo");
+        core.add_label(0, "bar".into()).expect("Should add bar");
 
-        core.add_labels(256, vec!["goblin"])
+        core.add_label(256, "goblin".into())
             .expect_err("Should fail to add labels > 200");
-        core.add_labels(5, vec!["baz"])
+        core.add_label(5, "baz".into())
             .expect_err("Should fail to add duplicate label");
 
         assert_eq!(core.label_address("foo").unwrap(), 0);

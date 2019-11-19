@@ -85,7 +85,9 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
             .take_while_ref(|pair| pair.as_rule() == Rule::Label)
             .map(|pair| pair.as_str().to_owned());
 
-        core.add_labels(i, label_pairs.collect())?;
+        for label in label_pairs {
+            core.add_label(i, label.to_string())?;
+        }
 
         if line_pair.peek().is_some() {
             core.set(i, parse_instruction(line_pair));
@@ -372,10 +374,10 @@ mod tests {
             Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
         );
 
-        expected_core
-            .add_labels(0, vec!["preload", "begin"])
-            .unwrap();
-        expected_core.add_labels(2, vec!["loop", "main"]).unwrap();
+        expected_core.add_label(0, "preload".into()).unwrap();
+        expected_core.add_label(0, "begin".into()).unwrap();
+        expected_core.add_label(2, "loop".into()).unwrap();
+        expected_core.add_label(2, "main".into()).unwrap();
 
         let parsed = parse(simple_input).unwrap();
 
