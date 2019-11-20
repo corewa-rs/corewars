@@ -1,0 +1,282 @@
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt,
+};
+
+mod types;
+pub use types::{AddressMode, Modifier, Opcode, Value};
+
+pub const DEFAULT_CORE_SIZE: usize = 8000;
+
+type LabelMap = HashMap<String, usize>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Field {
+    pub address_mode: AddressMode,
+    pub value: Value,
+}
+
+impl Default for Field {
+    fn default() -> Self {
+        Self {
+            address_mode: AddressMode::Immediate,
+            value: Default::default(),
+        }
+    }
+}
+
+impl fmt::Display for Field {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.address_mode, self.value)
+    }
+}
+
+impl Field {
+    pub fn direct(value: i32) -> Self {
+        Self {
+            address_mode: AddressMode::Direct,
+            value: Value::Literal(value),
+        }
+    }
+
+    pub fn immediate(value: i32) -> Self {
+        Self {
+            address_mode: AddressMode::Immediate,
+            value: Value::Literal(value),
+        }
+    }
+
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        match &self.value {
+            Value::Literal(_) => Ok(self.clone()),
+            Value::Label(label) => {
+                let label_value = labels
+                    .get(label)
+                    .ok_or_else(|| format!("Label '{}' not found", &label))?;
+
+                let value = Value::Literal((*label_value as i32) - (from as i32));
+
+                Ok(Self {
+                    value,
+                    ..self.clone()
+                })
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Instruction {
+    pub opcode: Opcode,
+    pub modifier: Modifier,
+    pub field_a: Field,
+    pub field_b: Field,
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}.{} {}, {}",
+            self.opcode, self.modifier, self.field_a, self.field_b,
+        )
+    }
+}
+
+impl Instruction {
+    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Self {
+        let modifier =
+            Modifier::default_88_to_94(opcode, field_a.address_mode, field_b.address_mode);
+
+        Instruction {
+            opcode,
+            modifier,
+            field_a,
+            field_b,
+        }
+    }
+
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        let field_a = self.field_a.resolve(from, labels)?;
+        let field_b = self.field_b.resolve(from, labels)?;
+        Ok(Self {
+            field_a,
+            field_b,
+            ..self.clone()
+        })
+    }
+}
+
+#[derive(PartialEq)]
+pub struct Core {
+    instructions: Box<[Option<Instruction>]>,
+    labels: LabelMap,
+}
+
+impl Default for Core {
+    fn default() -> Self {
+        Core::new(DEFAULT_CORE_SIZE)
+    }
+}
+
+impl fmt::Debug for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "Labels: {:?}\nCore:\n{}",
+            self.labels,
+            self.dump()
+        )
+    }
+}
+
+impl Core {
+    pub fn new(core_size: usize) -> Self {
+        Core {
+            instructions: vec![None; core_size].into_boxed_slice(),
+            labels: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<Instruction> {
+        self.instructions.get(index)?.clone()
+    }
+
+    pub fn get_resolved(&self, index: usize) -> Result<Instruction, String> {
+        self.get(index)
+            .unwrap_or_default()
+            .resolve(index, &self.labels)
+    }
+
+    pub fn set(&mut self, index: usize, value: Instruction) {
+        self.instructions[index] = Some(value);
+    }
+
+    pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
+        if index > self.instructions.len() {
+            return Err(format!(
+                "Address {} is not valid for core of size {}",
+                index,
+                self.instructions.len()
+            ));
+        }
+
+        match self.labels.entry(label) {
+            Entry::Occupied(entry) => Err(format!("Label '{}' already exists", entry.key())),
+            Entry::Vacant(entry) => {
+                entry.insert(index);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn label_address(&self, label: &str) -> Option<usize> {
+        self.labels.get(label).copied()
+    }
+
+    pub fn dump(&self) -> String {
+        // TODO: convert to fmt::Display - this will require some upfront
+        // validation that all labels are valid, etc
+        // It may be desirable to have Debug be a dump() of the load file and
+        // Display show the original parsed document (or something like that)
+        let resolve_result: Result<Vec<_>, String> = self
+            .instructions
+            .iter()
+            .filter(|&maybe_instruction| maybe_instruction.is_some())
+            .map(|instruction| instruction.as_ref().unwrap())
+            .enumerate()
+            .map(|(i, instruction)| instruction.resolve(i, &self.labels))
+            .collect();
+
+        match resolve_result {
+            Err(msg) => msg,
+            Ok(resolved) => resolved.iter().fold(String::new(), |result, instruction| {
+                result + &instruction.to_string() + "\n"
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_instruction() {
+        let expected_instruction = Instruction {
+            opcode: Opcode::Dat,
+            modifier: Modifier::F,
+            field_a: Field {
+                address_mode: AddressMode::Immediate,
+                value: Value::Literal(0),
+            },
+            field_b: Field {
+                address_mode: AddressMode::Immediate,
+                value: Value::Literal(0),
+            },
+        };
+
+        assert_eq!(Instruction::default(), expected_instruction)
+    }
+
+    #[test]
+    fn labels() {
+        let mut core = Core::new(200);
+
+        core.add_label(123, "baz".into()).expect("Should add baz");
+        core.add_label(0, "foo".into()).expect("Should add foo");
+        core.add_label(0, "bar".into()).expect("Should add bar");
+
+        core.add_label(256, "goblin".into())
+            .expect_err("Should fail to add labels > 200");
+        core.add_label(5, "baz".into())
+            .expect_err("Should fail to add duplicate label");
+
+        assert_eq!(core.label_address("foo").unwrap(), 0);
+        assert_eq!(core.label_address("bar").unwrap(), 0);
+        assert_eq!(core.label_address("baz").unwrap(), 123);
+
+        assert!(core.label_address("goblin").is_none());
+        assert!(core.label_address("never_mentioned").is_none());
+    }
+
+    // TODO: add test for unresolvable label
+    #[test]
+    fn resolve_labels() {
+        let mut core = Core::new(200);
+
+        core.add_label(123, "baz".into()).expect("Should add baz");
+        core.add_label(0, "foo".into()).expect("Should add foo");
+
+        core.set(
+            5,
+            Instruction {
+                field_a: Field {
+                    value: Value::Label("baz".into()),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Label("foo".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+
+        let resolved = core.get_resolved(5).expect("Should resolve instruction");
+        assert_eq!(
+            resolved,
+            Instruction {
+                field_a: Field {
+                    value: Value::Literal(118),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Literal(-5),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        )
+    }
+}

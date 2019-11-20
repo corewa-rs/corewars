@@ -7,7 +7,7 @@
 /// })
 /// ```
 /// This will generate a `pub enum Foo` with variants `Bar` and `Baz`, which
-/// implements `std::str::FromStr` and `std::string::ToString` for the string
+/// implements `std::str::FromStr` and `std::fmt::Display` for the string
 /// values specified.
 macro_rules! enum_string {
     ($vis:vis $name:ident {
@@ -18,11 +18,11 @@ macro_rules! enum_string {
             $($variant,)*
         }
 
-        impl ::std::string::ToString for $name {
-            fn to_string(&self) -> String {
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match *self {
-                    $(Self::$variant => $value,)*
-                }.to_owned()
+                    $(Self::$variant => write!(f, "{}", $value),)*
+                }
             }
         }
 
@@ -52,7 +52,7 @@ macro_rules! enum_string {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, string::ToString};
+    use std::str::FromStr;
 
     mod submod {
         enum_string!(pub Foo {
