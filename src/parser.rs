@@ -383,4 +383,6 @@ mod tests {
 
         assert_eq!(parsed, expected_core);
     }
+
+    // TODO: parse error for unresolvable label
 }

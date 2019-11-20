@@ -4,6 +4,8 @@ use std::{
     string::ToString,
 };
 
+type LabelMap = HashMap<String, usize>;
+
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
 enum_string!(pub Opcode {
@@ -148,6 +150,24 @@ impl Field {
             value: Value::Literal(value),
         }
     }
+
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        match &self.value {
+            Value::Literal(_) => Ok(self.clone()),
+            Value::Label(label) => {
+                let label_value = labels
+                    .get(label)
+                    .ok_or_else(|| format!("Label '{}' not found", &label))?;
+
+                let value = Value::Literal((*label_value as i32) - (from as i32));
+
+                Ok(Self {
+                    address_mode: self.address_mode,
+                    value,
+                })
+            }
+        }
+    }
 }
 
 impl ToString for Field {
@@ -180,6 +200,17 @@ impl Instruction {
             field_b,
         }
     }
+
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        let field_a = self.field_a.resolve(from, labels)?;
+        let field_b = self.field_b.resolve(from, labels)?;
+        Ok(Self {
+            opcode: self.opcode,
+            modifier: self.modifier,
+            field_a,
+            field_b,
+        })
+    }
 }
 
 impl ToString for Instruction {
@@ -196,24 +227,30 @@ impl ToString for Instruction {
 
 #[derive(PartialEq)]
 pub struct Core {
-    instructions: Vec<Instruction>,
-    labels: HashMap<String, usize>,
+    instructions: Box<[Option<Instruction>]>,
+    labels: LabelMap,
 }
 
 impl Core {
     pub fn new(core_size: usize) -> Self {
         Core {
-            instructions: vec![Instruction::default(); core_size],
+            instructions: vec![None; core_size].into_boxed_slice(),
             labels: HashMap::new(),
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<&Instruction> {
-        self.instructions.get(index)
+    pub fn get(&self, index: usize) -> Option<Instruction> {
+        self.instructions.get(index)?.clone()
+    }
+
+    pub fn get_resolved(&self, index: usize) -> Result<Instruction, String> {
+        self.get(index)
+            .unwrap_or_default()
+            .resolve(index, &self.labels)
     }
 
     pub fn set(&mut self, index: usize, value: Instruction) {
-        self.instructions[index] = value;
+        self.instructions[index] = Some(value);
     }
 
     pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
@@ -238,21 +275,22 @@ impl Core {
         self.labels.get(label).copied()
     }
 
-    pub fn dump_all(&self) -> String {
-        self.instructions
-            .iter()
-            .fold(String::new(), |result, instruction| {
-                result + &instruction.to_string() + "\n"
-            })
-    }
-
     pub fn dump(&self) -> String {
-        self.instructions
+        let resolve_result: Result<Vec<_>, String> = self
+            .instructions
             .iter()
-            .filter(|&instruction| *instruction != Instruction::default())
-            .fold(String::new(), |result, instruction| {
+            .filter(|&maybe_instruction| maybe_instruction.is_some())
+            .map(|instruction| instruction.as_ref().unwrap())
+            .enumerate()
+            .map(|(i, instruction)| instruction.resolve(i, &self.labels))
+            .collect();
+
+        match resolve_result {
+            Err(msg) => msg,
+            Ok(resolved) => resolved.iter().fold(String::new(), |result, instruction| {
                 result + &instruction.to_string() + "\n"
-            })
+            }),
+        }
     }
 }
 
@@ -434,5 +472,45 @@ mod tests {
 
         assert!(core.label_address("goblin").is_none());
         assert!(core.label_address("never_mentioned").is_none());
+    }
+
+    // TODO: add test for unresolvable label
+    #[test]
+    fn resolve_labels() {
+        let mut core = Core::new(200);
+
+        core.add_label(123, "baz".into()).expect("Should add baz");
+        core.add_label(0, "foo".into()).expect("Should add foo");
+
+        core.set(
+            5,
+            Instruction {
+                field_a: Field {
+                    value: Value::Label("baz".into()),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Label("foo".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+
+        let resolved = core.get_resolved(5).expect("Should resolve instruction");
+        assert_eq!(
+            resolved,
+            Instruction {
+                field_a: Field {
+                    value: Value::Literal(118),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Literal(-5),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        )
     }
 }

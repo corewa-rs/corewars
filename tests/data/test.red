@@ -3,7 +3,8 @@ preload
 dat   1  ,  2
 mov 1, 0
 
-jmp 123
+jmp loop
+jmp begin
 
 begin:  add # 1, @ 2
         sub 3, 4

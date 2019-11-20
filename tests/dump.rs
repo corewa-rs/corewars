@@ -13,7 +13,6 @@ fn run_test(input: &str, expected_output: &str) {
 }
 
 #[test]
-#[ignore = "Fails because labels are not yet converted to offsets"]
 fn dump_all_opcodes() {
     run_test(
         include_str!("data/test.red"),
