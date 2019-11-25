@@ -24,9 +24,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let parsed_input = parser::parse(input_program.as_str())?;
     let parse_output = parsed_input.dump();
 
-    match cli_options.output_file {
-        Some(output_path) => fs::write(output_path, parse_output)?,
-        None => println!("{}", parse_output),
+    if let Some(output_path) = cli_options.output_file {
+        fs::write(output_path, parse_output)?;
+    } else {
+        println!("{}", parse_output);
     };
 
     Ok(())
