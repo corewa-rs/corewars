@@ -33,9 +33,11 @@
         ]
     },
     "scripts": {
-        "build": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json"
+        "build": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json",
+        "package": "vcse package"
     },
     "devDependencies": {
-        "js-yaml": "^3.13.1"
+        "js-yaml": "^3.13.1",
+        "vsce": "^1.69.0"
     }
 }
