@@ -4,29 +4,20 @@
   "scopeName": "source.redcode",
   "patterns": [
     {
-      "include": "#keywords"
+      "include": "#directive"
     },
     {
-      "include": "#builtins"
+      "include": "#opcode"
     },
     {
-      "include": "#directives"
-    },
-    {
-      "include": "#comment"
-    },
-    {
-      "include": "#expression"
+      "include": "#field"
     },
     {
       "include": "#label"
-    },
-    {
-      "include": "#number"
     }
   ],
   "repository": {
-    "keywords": {
+    "opcode": {
       "patterns": [
         {
           "name": "keyword.operator.control.opcode.88.redcode",
@@ -54,7 +45,7 @@
         }
       ]
     },
-    "builtins": {
+    "builtin": {
       "patterns": [
         {
           "name": "constant.language.88.redcode",
@@ -70,50 +61,76 @@
         }
       ]
     },
-    "comment": {
-      "begin": ";",
+    "directive": {
+      "begin": "(;)",
+      "beginCaptures": {
+        "1": {
+          "name": "comment.line.semicolon.redcode"
+        }
+      },
       "end": "$",
       "patterns": [
         {
-          "include": "#builtins"
+          "include": "#directive_with_argument"
         },
-        {
-          "include": "#number"
-        },
-        {
-          "include": "#directives"
-        },
-        {
-          "match": ".*"
-        }
-      ],
-      "name": "comment.line.semicolon.redcode"
-    },
-    "directives": {
-      "patterns": [
         {
           "name": "keyword.operator.directive.main.redcode",
-          "match": "(?i)\\b(redcode([^-]|$))\\b"
-        },
-        {
-          "name": "keyword.operator.directive.redcode",
-          "match": "(?i)\\b(assert|author|break|name)\\b"
-        },
-        {
-          "name": "keyword.operator.directive.koth.redcode",
-          "match": "(?i)\\b(help|kill|status|strategy|test|password|newpasswd|newredcode|url|version)\\b"
+          "match": "(?i)(redcode)(?!-)"
         },
         {
           "name": "keyword.operator.directive.koth.main.redcode",
-          "match": "(?i)\\b(redcode-[a-zA-Z0-9]+)\\b"
+          "match": "(?i)(redcode-[a-zA-Z0-9]+)"
         },
         {
           "name": "keyword.operator.directive.debug.redcode",
-          "match": "(?i)\\b(debug[[:blank:]]+(off|static))\\b"
+          "match": "(?i)(debug)[[:blank:]]+(off|static)"
         },
         {
           "name": "keyword.operator.directive.trace.redcode",
-          "match": "(?i)\\b(trace[[:blank:]]+off)\\b"
+          "match": "(?i)(trace)[[:blank:]]+(off)"
+        },
+        {
+          "name": "comment.line.semicolon.redcode",
+          "match": ".*"
+        }
+      ]
+    },
+    "directive_with_argument": {
+      "patterns": [
+        {
+          "match": "(?i)(assert)\\b(.*)",
+          "captures": {
+            "1": {
+              "name": "keyword.operator.directive.redcode"
+            },
+            "2": {
+              "patterns": [
+                {
+                  "include": "#expression"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?i)(author|break|name)\\b(.*)",
+          "captures": {
+            "1": {
+              "name": "keyword.operator.directive.redcode"
+            },
+            "2": {
+              "name": "string.unquoted.directive.argument.redcode"
+            }
+          }
+        },
+        {
+          "match": "(?i)(help|kill|status|strategy|test|password|newpasswd|newredcode|url|version|date)\\b(.*)",
+          "name": "keyword.operator.directive.koth.redcode",
+          "captures": {
+            "2": {
+              "name": "string.unquoted.directive.koth.argument.redcode"
+            }
+          }
         }
       ]
     },
@@ -121,11 +138,11 @@
       "patterns": [
         {
           "name": "variable.redcode",
-          "match": "^\\b([a-zA-Z_][a-zA-Z0-9_]*[:]?)\\b"
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*[:]?)\\b"
         }
       ]
     },
-    "expression": {
+    "field": {
       "patterns": [
         {
           "name": "keyword.operator.address-mode.88.redcode",
@@ -140,15 +157,53 @@
           "match": "(?i)\\b(\\.([ABFXI]|AB|BA))\\b"
         },
         {
-          "include": "#builtins"
+          "include": "#expression"
         }
       ]
     },
-    "number": {
+    "expression": {
+      "name": "expression",
       "patterns": [
+        {
+          "name": "keyword.operator.math.redcode",
+          "match": "[+\\-*/%]"
+        },
+        {
+          "name": "keyword.operator.logical.redcode",
+          "match": "[=<>&|!]"
+        },
         {
           "name": "constant.numeric.redcode",
           "match": "\\b\\d+\\b"
+        },
+        {
+          "include": "#builtin"
+        },
+        {
+          "include": "#label"
+        },
+        {
+          "include": "#paren_expression"
+        }
+      ]
+    },
+    "paren_expression": {
+      "begin": "\\(",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.paren.open.redcode"
+        }
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.paren.open.redcode"
+        }
+      },
+      "name": "expression.group",
+      "patterns": [
+        {
+          "include": "#expression"
         }
       ]
     }
