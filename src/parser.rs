@@ -4,10 +4,11 @@ use itertools::Itertools;
 use pest::{
     error::{Error as PestError, ErrorVariant, LineColLocation},
     iterators::{Pair, Pairs},
-    Parser,
 };
 
 use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode, Value};
+
+mod grammar;
 
 #[derive(Debug)]
 pub struct Error {
@@ -30,8 +31,8 @@ impl Error {
     }
 }
 
-impl From<PestError<Rule>> for Error {
-    fn from(pest_error: PestError<Rule>) -> Error {
+impl From<PestError<grammar::Rule>> for Error {
+    fn from(pest_error: PestError<grammar::Rule>) -> Error {
         Error {
             details: format!(
                 "Parse error: {} {}",
@@ -60,10 +61,6 @@ impl From<String> for Error {
     }
 }
 
-#[derive(Parser)]
-#[grammar = "data/redcode.pest"]
-struct RedcodeParser;
-
 pub fn parse(file_contents: &str) -> Result<Core, Error> {
     if file_contents.is_empty() {
         return Err(Error::no_input());
@@ -71,7 +68,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
 
     let mut core = Core::default();
 
-    let parse_result = RedcodeParser::parse(Rule::RedcodeFile, file_contents)?
+    let parse_result = grammar::parse(grammar::Rule::File, file_contents)?
         .next()
         .ok_or_else(Error::no_input)?;
 
@@ -82,7 +79,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         .filter(|line_pair| line_pair.peek().is_some())
     {
         let label_pairs = line_pair
-            .take_while_ref(|pair| pair.as_rule() == Rule::Label)
+            .take_while_ref(|pair| pair.as_rule() == grammar::Rule::Label)
             .map(|pair| pair.as_str().to_owned());
 
         for label in label_pairs {
@@ -100,7 +97,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
     Ok(core.resolve()?)
 }
 
-fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
+fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> Instruction {
     let mut operation_pairs = instruction_pairs
         .next()
         .expect("Operation must be first pair after Label in Instruction")
@@ -114,7 +111,7 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
 
     let maybe_modifier = operation_pairs
         .peek()
-        .filter(|pair| pair.as_rule() == Rule::Modifier)
+        .filter(|pair| pair.as_rule() == grammar::Rule::Modifier)
         .map(|pair| parse_modifier(&pair));
 
     let field_a = parse_field(
@@ -125,7 +122,7 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
 
     let field_b = instruction_pairs
         .next()
-        .filter(|pair| pair.as_rule() == Rule::Field)
+        .filter(|pair| pair.as_rule() == grammar::Rule::Field)
         .map_or_else(Field::default, parse_field);
 
     let modifier = maybe_modifier.unwrap_or_else(|| {
@@ -140,27 +137,27 @@ fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
     }
 }
 
-fn parse_modifier(modifier_pair: &Pair<Rule>) -> Modifier {
+fn parse_modifier(modifier_pair: &Pair<grammar::Rule>) -> Modifier {
     Modifier::from_str(modifier_pair.as_str().to_uppercase().as_ref()).unwrap()
 }
 
-fn parse_opcode(opcode_pair: &Pair<Rule>) -> Opcode {
+fn parse_opcode(opcode_pair: &Pair<grammar::Rule>) -> Opcode {
     Opcode::from_str(opcode_pair.as_str().to_uppercase().as_ref()).unwrap()
 }
 
-fn parse_field(field_pair: Pair<Rule>) -> Field {
+fn parse_field(field_pair: Pair<grammar::Rule>) -> Field {
     let field_pairs = field_pair.into_inner();
 
     let address_mode = field_pairs
         .peek()
-        .filter(|pair| pair.as_rule() == Rule::AddressMode)
+        .filter(|pair| pair.as_rule() == grammar::Rule::AddressMode)
         .map_or(AddressMode::default(), |pair| {
             AddressMode::from_str(pair.as_str()).expect("Invalid AddressMode")
         });
 
     let value = parse_value(
         field_pairs
-            .skip_while(|pair| pair.as_rule() != Rule::Expr)
+            .skip_while(|pair| pair.as_rule() != grammar::Rule::Expr)
             .next()
             .expect("No Expr in Field"),
     );
@@ -171,27 +168,24 @@ fn parse_field(field_pair: Pair<Rule>) -> Field {
     }
 }
 
-fn parse_value(value_pair: Pair<Rule>) -> Value {
+fn parse_value(value_pair: Pair<grammar::Rule>) -> Value {
     let expr_inner = value_pair
         .into_inner()
         .next()
         .expect("Expr must have inner value");
 
     match expr_inner.as_rule() {
-        Rule::Number => Value::Literal(
+        grammar::Rule::Number => Value::Literal(
             i32::from_str_radix(expr_inner.as_str(), 10)
                 .expect("Number type must be decimal integer"),
         ),
-        Rule::Label => Value::Label(expr_inner.as_str().to_owned()),
+        grammar::Rule::Label => Value::Label(expr_inner.as_str().to_owned()),
         _ => unreachable!(),
     }
 }
 
 #[cfg(test)]
-#[allow(clippy::cognitive_complexity)]
 mod tests {
-    use pest::{consumes_to, parses_to};
-
     use super::*;
 
     #[test]
@@ -200,155 +194,6 @@ mod tests {
         assert!(result.is_err());
 
         assert_eq!(result.unwrap_err().details, "No input found");
-    }
-
-    #[test]
-    fn parse_field() {
-        parses_to! {
-            parser: RedcodeParser,
-            input: "123",
-            rule: Rule::Field,
-            tokens: [
-                Field(0, 3, [
-                    Expr(0, 3, [
-                        Number(0, 3)
-                    ]),
-                ])
-            ]
-        };
-    }
-
-    #[test]
-    fn parse_field_with_mode() {
-        for test_input in [
-            "#123", "$123", "*123", "@123", "{123", "<123", "}123", ">123",
-        ]
-        .iter()
-        {
-            parses_to! {
-                parser: RedcodeParser,
-                input: test_input,
-                rule: Rule::Field,
-                tokens: [
-                    Field(0, 4, [
-                        AddressMode(0, 1),
-                        Expr(1, 4, [
-                            Number(1, 4)
-                        ]),
-                    ])
-                ]
-            };
-        }
-    }
-
-    #[test]
-    fn parse_expr() {
-        // TODO: expand grammar for math operations, parens, etc.
-        // Then test it here. Possibly worth breaking into its own module
-        parses_to! {
-            parser: RedcodeParser,
-            input: "123",
-            rule: Rule::Expr,
-            tokens: [
-                Expr(0, 3, [
-                    Number(0, 3)
-                ]),
-            ]
-        };
-    }
-
-    #[test]
-    fn parse_label_expr() {
-        for test_input in ["foo", "fo2", "f_2"].iter() {
-            parses_to! {
-                parser: RedcodeParser,
-                input: test_input,
-                rule: Rule::Expr,
-                tokens: [
-                    Expr(0, 3, [
-                        Label(0, 3)
-                    ]),
-                ]
-            };
-        }
-    }
-
-    #[test]
-    fn parse_opcode_modifier() {
-        for test_input in [
-            "mov.a", "mov.b", "mov.ab", "mov.ba", "mov.f", "mov.x", "mov.i",
-        ]
-        .iter()
-        {
-            parses_to! {
-                parser: RedcodeParser,
-                input: test_input,
-                rule: Rule::Operation,
-                tokens: [
-                    Operation(0, test_input.len(), [
-                        Opcode(0, 3),
-                        Modifier(4, test_input.len()),
-                    ]),
-                ]
-            }
-        }
-    }
-
-    #[test]
-    fn parse_instruction() {
-        parses_to! {
-            parser: RedcodeParser,
-            input: "mov #1, 3",
-            rule: Rule::Instruction,
-            tokens: [
-                Operation(0, 3, [
-                    Opcode(0, 3)
-                ]),
-                Field(4, 6, [
-                    AddressMode(4, 5),
-                    Expr(5, 6, [
-                        Number(5, 6)
-                    ])
-                ]),
-                Field(8, 9, [
-                    Expr(8, 9, [
-                       Number(8, 9)
-                    ])
-                ]),
-            ]
-        };
-    }
-
-    #[test]
-    fn parse_comment() {
-        parses_to! {
-            parser: RedcodeParser,
-            input: "; foo bar\n",
-            rule: Rule::COMMENT,
-            tokens: [
-                COMMENT(0, 9)
-            ]
-        }
-    }
-
-    #[test]
-    fn parse_label() {
-        for &(label_input, start, end) in [
-            ("some_label", 0, 10),
-            ("some_label2", 0, 11),
-            ("a: ", 0, 1),
-            (" a ", 1, 2),
-            ("a :", 0, 1),
-        ]
-        .iter()
-        {
-            parses_to! {
-                parser: RedcodeParser,
-                input: label_input,
-                rule: Rule::LabelDeclaration,
-                tokens: [Label(start, end)]
-            }
-        }
     }
 
     #[test]
@@ -405,6 +250,4 @@ mod tests {
 
         assert_eq!(parsed, expected_core);
     }
-
-    // TODO: parse error for unresolvable label
 }

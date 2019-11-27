@@ -2,7 +2,7 @@ WHITESPACE = _{ " " | "\t" }
 
 COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
 
-RedcodeFile = { SOI ~ (Line ~ NEWLINE)+ ~ Line? ~ EOI }
+File = { SOI ~ (Line ~ NEWLINE)+ ~ Line? ~ EOI }
 
 Line = { LabelDeclaration* ~ Instruction? }
 
