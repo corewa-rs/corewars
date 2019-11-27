@@ -8,6 +8,7 @@ pub use types::{AddressMode, Modifier, Opcode, Value};
 
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
+type InstructionSet = Box<[Option<Instruction>]>;
 type LabelMap = HashMap<String, usize>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -107,10 +108,16 @@ impl Instruction {
     }
 }
 
-#[derive(PartialEq)]
 pub struct Core {
-    instructions: Box<[Option<Instruction>]>,
+    instructions: InstructionSet,
     labels: LabelMap,
+}
+
+impl PartialEq for Core {
+    // TODO: should this impl resolve the instructions? Depends on the use case
+    fn eq(&self, other: &Self) -> bool {
+        self.instructions == other.instructions
+    }
 }
 
 impl Default for Core {
@@ -174,25 +181,39 @@ impl Core {
         self.labels.get(label).copied()
     }
 
+    pub fn resolve(&self) -> Result<Self, String> {
+        let instructions = self
+            .instructions
+            .iter()
+            .enumerate()
+            .map(|(i, maybe_instruction)| {
+                maybe_instruction
+                    .as_ref()
+                    .map(|instruction| instruction.resolve(i, &self.labels))
+                    .transpose()
+            })
+            .collect::<Result<InstructionSet, String>>()?;
+
+        Ok(Self {
+            instructions,
+            ..Default::default()
+        })
+    }
+
     pub fn dump(&self) -> String {
         // TODO: convert to fmt::Display - this will require some upfront
         // validation that all labels are valid, etc
         // It may be desirable to have Debug be a dump() of the load file and
         // Display show the original parsed document (or something like that)
-        let resolve_result: Result<Vec<_>, String> = self
-            .instructions
-            .iter()
-            .filter(|&maybe_instruction| maybe_instruction.is_some())
-            .map(|instruction| instruction.as_ref().unwrap())
-            .enumerate()
-            .map(|(i, instruction)| instruction.resolve(i, &self.labels))
-            .collect();
-
-        match resolve_result {
+        match self.resolve() {
             Err(msg) => msg,
-            Ok(resolved) => resolved.iter().fold(String::new(), |result, instruction| {
-                result + &instruction.to_string() + "\n"
-            }),
+            Ok(core) => core
+                .instructions
+                .iter()
+                .filter_map(Option::as_ref)
+                .fold(String::new(), |result, instruction| {
+                    result + &instruction.to_string() + "\n"
+                }),
         }
     }
 }
@@ -240,16 +261,35 @@ mod tests {
         assert!(core.label_address("never_mentioned").is_none());
     }
 
-    // TODO: add test for unresolvable label
     #[test]
-    fn resolve_labels() {
-        let mut core = Core::new(200);
+    fn resolve_failure() {
+        let mut core = Core::new(10);
 
-        core.add_label(123, "baz".into()).expect("Should add baz");
         core.add_label(0, "foo".into()).expect("Should add foo");
 
         core.set(
             5,
+            Instruction {
+                field_a: Field {
+                    value: Value::Label("not_real".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+
+        core.resolve().expect_err("Should fail to resolve");
+    }
+
+    #[test]
+    fn resolve_labels() {
+        let mut core = Core::new(10);
+
+        core.add_label(0, "foo".into()).expect("Should add foo");
+        core.add_label(7, "baz".into()).expect("Should add baz");
+
+        core.set(
+            3,
             Instruction {
                 field_a: Field {
                     value: Value::Label("baz".into()),
@@ -263,16 +303,19 @@ mod tests {
             },
         );
 
-        let resolved = core.get_resolved(5).expect("Should resolve instruction");
+        let resolved_core = core.resolve().expect("Should resolve all labels in core");
+
         assert_eq!(
-            resolved,
+            resolved_core
+                .get(3)
+                .expect("Should have instruction at pos 5"),
             Instruction {
                 field_a: Field {
-                    value: Value::Literal(118),
+                    value: Value::Literal(4),
                     ..Default::default()
                 },
                 field_b: Field {
-                    value: Value::Literal(-5),
+                    value: Value::Literal(-3),
                     ..Default::default()
                 },
                 ..Default::default()

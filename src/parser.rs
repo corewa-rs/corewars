@@ -95,7 +95,9 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         }
     }
 
-    Ok(core)
+    // TODO: keep the original core or use the resolved one?
+    // Probably it should keep a resolved copy in itself
+    Ok(core.resolve()?)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<Rule>) -> Instruction {
@@ -240,6 +242,38 @@ mod tests {
     }
 
     #[test]
+    fn parse_expr() {
+        // TODO: expand grammar for math operations, parens, etc.
+        // Then test it here. Possibly worth breaking into its own module
+        parses_to! {
+            parser: RedcodeParser,
+            input: "123",
+            rule: Rule::Expr,
+            tokens: [
+                Expr(0, 3, [
+                    Number(0, 3)
+                ]),
+            ]
+        };
+    }
+
+    #[test]
+    fn parse_label_expr() {
+        for test_input in ["foo", "fo2", "f_2"].iter() {
+            parses_to! {
+                parser: RedcodeParser,
+                input: test_input,
+                rule: Rule::Expr,
+                tokens: [
+                    Expr(0, 3, [
+                        Label(0, 3)
+                    ]),
+                ]
+            };
+        }
+    }
+
+    #[test]
     fn parse_opcode_modifier() {
         for test_input in [
             "mov.a", "mov.b", "mov.ab", "mov.ba", "mov.f", "mov.x", "mov.i",
@@ -360,26 +394,14 @@ mod tests {
         );
         expected_core.set(
             4,
-            Instruction::new(
-                Opcode::Jmp,
-                Field {
-                    address_mode: AddressMode::Direct,
-                    value: Value::Label(String::from("begin")),
-                },
-                Field::immediate(0),
-            ),
+            Instruction::new(Opcode::Jmp, Field::direct(-4), Field::immediate(0)),
         );
         expected_core.set(
             5,
             Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
         );
 
-        expected_core.add_label(0, "preload".into()).unwrap();
-        expected_core.add_label(0, "begin".into()).unwrap();
-        expected_core.add_label(2, "loop".into()).unwrap();
-        expected_core.add_label(2, "main".into()).unwrap();
-
-        let parsed = parse(simple_input).unwrap();
+        let parsed = parse(simple_input).expect("Should parse simple file");
 
         assert_eq!(parsed, expected_core);
     }
