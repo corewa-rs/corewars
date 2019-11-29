@@ -14,6 +14,10 @@ struct CliOptions {
     /// Output file; defaults to stdout
     #[structopt(long, short, parse(from_os_str))]
     output_file: Option<PathBuf>,
+
+    /// Whether or not labels, expressions, etc. should be resolved in the output
+    #[structopt(long, short)]
+    resolve: bool,
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
@@ -21,13 +25,16 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     let input_program = fs::read_to_string(cli_options.input_file)?;
 
-    let parsed_input = parser::parse(input_program.as_str())?;
-    let parse_output = parsed_input.dump();
+    let mut parsed_core = parser::parse(input_program.as_str())?;
+
+    if cli_options.resolve {
+        parsed_core.resolve()?;
+    }
 
     if let Some(output_path) = cli_options.output_file {
-        fs::write(output_path, parse_output)?;
+        fs::write(output_path, format!("{}", parsed_core))?;
     } else {
-        println!("{}", parse_output);
+        println!("{}", parsed_core);
     };
 
     Ok(())

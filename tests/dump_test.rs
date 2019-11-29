@@ -4,12 +4,15 @@ fn run_test(input: &str, expected_output: &str) {
     eprintln!("Parsing warrior:");
     eprintln!("{}", input);
 
-    let core = corewa_rs::parse(input).expect("Failed to parse input");
+    let mut core = corewa_rs::parse(input).expect("Failed to parse input");
+    core.resolve().expect("Failed to resolve parsed input");
+
+    // TODO: dump and check output of pre-resolved core
 
     eprintln!("Loaded core:");
     eprintln!("{:?}", core);
 
-    assert_eq!(core.dump(), expected_output);
+    assert_eq!(format!("{}", core), expected_output);
 }
 
 #[test]

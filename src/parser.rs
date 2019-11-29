@@ -92,9 +92,7 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         }
     }
 
-    // TODO: keep the original core or use the resolved one?
-    // Probably it should keep a resolved copy in itself
-    Ok(core.resolve()?)
+    Ok(core)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> Instruction {
@@ -246,7 +244,12 @@ mod tests {
             Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
         );
 
-        let parsed = parse(simple_input).expect("Should parse simple file");
+        expected_core
+            .resolve()
+            .expect("Should resolve a core with no labels");
+
+        let mut parsed = parse(simple_input).expect("Should parse simple file");
+        parsed.resolve().expect("Parsed file should resolve");
 
         assert_eq!(parsed, expected_core);
     }
