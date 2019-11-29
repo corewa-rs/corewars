@@ -2,11 +2,15 @@ WHITESPACE = _{ " " | "\t" }
 
 COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
 
-AssemblyFile = { SOI ~ Line+ ~ EOI }
+File = { SOI ~ (Line ~ NEWLINE)+ ~ Line? ~ EOI }
 
-Line = { Instruction? ~ NEWLINE }
+Line = { LabelDeclaration* ~ Instruction? }
 
 Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
+
+LabelDeclaration = _{ !Operation ~ Label ~ (":")? }
+
+Label = @{ Alpha ~ Alphanumeral* }
 
 Operation = ${ Opcode ~ ("." ~ Modifier)? }
 
@@ -22,6 +26,10 @@ Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-Expr = { Number }
+Expr = { Number | Label }
 
-Number = @{ ASCII_DIGIT+ }
+Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
+
+Alpha = _{ ASCII_ALPHA | "_" }
+
+Alphanumeral = _{ ASCII_ALPHANUMERIC | "_" }

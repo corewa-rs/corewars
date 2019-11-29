@@ -1,128 +1,72 @@
-use std::{fmt, string::ToString, vec};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt,
+};
+
+mod types;
+pub use types::{AddressMode, Modifier, Opcode, Value};
 
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
-enum_string!(pub Opcode, {
-    Dat => "DAT",
-    Mov => "MOV",
-    Add => "ADD",
-    Sub => "SUB",
-    Mul => "MUL",
-    Div => "DIV",
-    Mod => "MOD",
-    Jmp => "JMP",
-    Jmz => "JMZ",
-    Jmn => "JMN",
-    Djn => "DJN",
-    Cmp => "CMP",
-    Seq => "SEQ",
-    Sne => "SNE",
-    Slt => "SLT",
-    Spl => "SPL",
-    Nop => "NOP",
-});
+type InstructionSet = Box<[Option<Instruction>]>;
+type LabelMap = HashMap<String, usize>;
 
-impl Default for Opcode {
-    fn default() -> Opcode {
-        Opcode::Dat
+#[derive(Clone, Debug, PartialEq)]
+pub struct Field {
+    pub address_mode: AddressMode,
+    pub value: Value,
+}
+
+impl Default for Field {
+    fn default() -> Self {
+        Self {
+            address_mode: AddressMode::Immediate,
+            value: Default::default(),
+        }
     }
 }
 
-enum_string!(pub PseudoOpcode, {
-    Org => "ORG",
-    Equ => "EQU",
-    End => "END",
-});
-
-enum_string!(pub Modifier, {
-    A   => "A",
-    B   => "B",
-    AB  => "AB",
-    BA  => "BA",
-    F   => "F",
-    X   => "X",
-    I   => "I",
-});
-
-impl Default for Modifier {
-    fn default() -> Modifier {
-        Modifier::F
+impl fmt::Display for Field {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.address_mode, self.value)
     }
 }
 
-impl Modifier {
-    pub fn default_88_to_94(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Modifier {
-        /// Implemented based on the ICWS '94 document,
-        /// section A.2.1.2: ICWS'88 to ICWS'94 Conversion
-        use Opcode::*;
+impl Field {
+    pub fn direct(value: i32) -> Self {
+        Self {
+            address_mode: AddressMode::Direct,
+            value: Value::Literal(value),
+        }
+    }
 
-        match opcode {
-            Dat => Modifier::F,
-            Jmp | Jmz | Jmn | Djn | Spl | Nop => Modifier::B,
-            opcode => {
-                if a_mode == AddressMode::Immediate {
-                    Modifier::AB
-                } else if b_mode == AddressMode::Immediate {
-                    Modifier::B
-                } else {
-                    match opcode {
-                        Mov | Cmp | Seq | Sne => Modifier::I,
-                        Slt => Modifier::B,
-                        Add | Sub | Mul | Div | Mod => Modifier::F,
-                        _ => unreachable!(),
-                    }
-                }
+    pub fn immediate(value: i32) -> Self {
+        Self {
+            address_mode: AddressMode::Immediate,
+            value: Value::Literal(value),
+        }
+    }
+
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        match &self.value {
+            Value::Literal(_) => Ok(self.clone()),
+            Value::Label(label) => {
+                let label_value = labels
+                    .get(label)
+                    .ok_or_else(|| format!("Label '{}' not found", &label))?;
+
+                let value = Value::Literal((*label_value as i32) - (from as i32));
+
+                Ok(Self {
+                    value,
+                    ..self.clone()
+                })
             }
         }
     }
 }
 
-enum_string!(pub AddressMode, {
-    Immediate           => "#",
-    Direct              => "$",
-    IndirectA           => "*",
-    IndirectB           => "@",
-    PreDecIndirectA     => "{",
-    PreDecIndirectB     => "<",
-    PostIncIndirectA    => "}",
-    PostIncIndirectB    => ">",
-});
-
-impl Default for AddressMode {
-    fn default() -> AddressMode {
-        AddressMode::Direct
-    }
-}
-
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct Field {
-    pub address_mode: AddressMode,
-    pub value: i32,
-}
-
-impl Field {
-    pub fn direct(value: i32) -> Field {
-        Field {
-            address_mode: AddressMode::Direct,
-            value,
-        }
-    }
-
-    pub fn immediate(value: i32) -> Field {
-        Field {
-            address_mode: AddressMode::Immediate,
-            value,
-        }
-    }
-}
-
-impl ToString for Field {
-    fn to_string(&self) -> String {
-        format!("{}{}", self.address_mode.to_string(), self.value)
-    }
-}
-
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
@@ -130,10 +74,21 @@ pub struct Instruction {
     pub field_b: Field,
 }
 
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}.{} {}, {}",
+            self.opcode, self.modifier, self.field_a, self.field_b,
+        )
+    }
+}
+
 impl Instruction {
-    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Instruction {
+    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Self {
         let modifier =
             Modifier::default_88_to_94(opcode, field_a.address_mode, field_b.address_mode);
+
         Instruction {
             opcode,
             modifier,
@@ -141,88 +96,131 @@ impl Instruction {
             field_b,
         }
     }
-}
 
-impl ToString for Instruction {
-    fn to_string(&self) -> String {
-        format!(
-            "{}.{} {}, {}",
-            self.opcode.to_string(),
-            self.modifier.to_string(),
-            self.field_a.to_string(),
-            self.field_b.to_string(),
-        )
+    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
+        let field_a = self.field_a.resolve(from, labels)?;
+        let field_b = self.field_b.resolve(from, labels)?;
+        Ok(Self {
+            field_a,
+            field_b,
+            ..self.clone()
+        })
     }
 }
 
 pub struct Core {
-    instructions: vec::Vec<Instruction>,
+    instructions: InstructionSet,
+    labels: LabelMap,
 }
 
-impl Core {
-    pub fn new(core_size: usize) -> Core {
-        Core {
-            instructions: vec![Instruction::default(); core_size],
-        }
-    }
-
-    pub fn get(&self, index: usize) -> Option<&Instruction> {
-        self.instructions.get(index)
-    }
-
-    pub fn set(&mut self, index: usize, value: Instruction) {
-        self.instructions[index] = value;
-    }
-
-    pub fn dump_all(&self) -> String {
-        self.instructions
-            .iter()
-            .fold(String::new(), |result, instruction| {
-                result + &instruction.to_string() + "\n"
-            })
-    }
-
-    pub fn dump(&self) -> String {
-        self.instructions
-            .iter()
-            .filter(|&instruction| *instruction != Instruction::default())
-            .fold(String::new(), |result, instruction| {
-                result + &instruction.to_string() + "\n"
-            })
+impl PartialEq for Core {
+    // TODO: should this impl resolve the instructions? Depends on the use case
+    fn eq(&self, other: &Self) -> bool {
+        self.instructions == other.instructions
     }
 }
 
 impl Default for Core {
-    fn default() -> Core {
+    fn default() -> Self {
         Core::new(DEFAULT_CORE_SIZE)
     }
 }
 
 impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.dump_all())
+        write!(
+            formatter,
+            "Labels: {:?}\nCore:\n{}",
+            self.labels,
+            self.dump()
+        )
     }
 }
 
-impl PartialEq for Core {
-    fn eq(&self, rhs: &Self) -> bool {
-        for (self_instruction, other_instruction) in
-            self.instructions.iter().zip(rhs.instructions.iter())
-        {
-            if self_instruction != other_instruction {
-                return false;
+impl Core {
+    pub fn new(core_size: usize) -> Self {
+        Core {
+            instructions: vec![None; core_size].into_boxed_slice(),
+            labels: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<Instruction> {
+        self.instructions.get(index)?.clone()
+    }
+
+    pub fn get_resolved(&self, index: usize) -> Result<Instruction, String> {
+        self.get(index)
+            .unwrap_or_default()
+            .resolve(index, &self.labels)
+    }
+
+    pub fn set(&mut self, index: usize, value: Instruction) {
+        self.instructions[index] = Some(value);
+    }
+
+    pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
+        if index > self.instructions.len() {
+            return Err(format!(
+                "Address {} is not valid for core of size {}",
+                index,
+                self.instructions.len()
+            ));
+        }
+
+        match self.labels.entry(label) {
+            Entry::Occupied(entry) => Err(format!("Label '{}' already exists", entry.key())),
+            Entry::Vacant(entry) => {
+                entry.insert(index);
+                Ok(())
             }
         }
-        true
+    }
+
+    pub fn label_address(&self, label: &str) -> Option<usize> {
+        self.labels.get(label).copied()
+    }
+
+    pub fn resolve(&self) -> Result<Self, String> {
+        let instructions = self
+            .instructions
+            .iter()
+            .enumerate()
+            .map(|(i, maybe_instruction)| {
+                maybe_instruction
+                    .as_ref()
+                    .map(|instruction| instruction.resolve(i, &self.labels))
+                    .transpose()
+            })
+            .collect::<Result<InstructionSet, String>>()?;
+
+        Ok(Self {
+            instructions,
+            ..Default::default()
+        })
+    }
+
+    pub fn dump(&self) -> String {
+        // TODO: convert to fmt::Display - this will require some upfront
+        // validation that all labels are valid, etc
+        // It may be desirable to have Debug be a dump() of the load file and
+        // Display show the original parsed document (or something like that)
+        match self.resolve() {
+            Err(msg) => msg,
+            Ok(core) => core
+                .instructions
+                .iter()
+                .filter_map(Option::as_ref)
+                .fold(String::new(), |result, instruction| {
+                    result + &instruction.to_string() + "\n"
+                }),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use itertools::iproduct;
-
     use super::*;
-    use Opcode::*;
 
     #[test]
     fn default_instruction() {
@@ -230,12 +228,12 @@ mod tests {
             opcode: Opcode::Dat,
             modifier: Modifier::F,
             field_a: Field {
-                address_mode: AddressMode::Direct,
-                value: 0,
+                address_mode: AddressMode::Immediate,
+                value: Value::Literal(0),
             },
             field_b: Field {
-                address_mode: AddressMode::Direct,
-                value: 0,
+                address_mode: AddressMode::Immediate,
+                value: Value::Literal(0),
             },
         };
 
@@ -243,109 +241,85 @@ mod tests {
     }
 
     #[test]
-    fn dat_default() {
-        for (&a_mode, &b_mode) in iproduct!(AddressMode::iter_values(), AddressMode::iter_values())
-        {
-            assert_eq!(
-                Modifier::default_88_to_94(Opcode::Dat, a_mode, b_mode),
-                Modifier::F
-            );
-        }
+    fn labels() {
+        let mut core = Core::new(200);
+
+        core.add_label(123, "baz".into()).expect("Should add baz");
+        core.add_label(0, "foo".into()).expect("Should add foo");
+        core.add_label(0, "bar".into()).expect("Should add bar");
+
+        core.add_label(256, "goblin".into())
+            .expect_err("Should fail to add labels > 200");
+        core.add_label(5, "baz".into())
+            .expect_err("Should fail to add duplicate label");
+
+        assert_eq!(core.label_address("foo").unwrap(), 0);
+        assert_eq!(core.label_address("bar").unwrap(), 0);
+        assert_eq!(core.label_address("baz").unwrap(), 123);
+
+        assert!(core.label_address("goblin").is_none());
+        assert!(core.label_address("never_mentioned").is_none());
     }
 
     #[test]
-    fn modifier_b_default() {
-        let opcodes = [Mov, Cmp, Seq, Sne];
+    fn resolve_failure() {
+        let mut core = Core::new(10);
 
-        for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
-            if a_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, AddressMode::Immediate),
-                    Modifier::B
-                );
-            }
-        }
+        core.add_label(0, "foo".into()).expect("Should add foo");
 
-        let opcodes = [Add, Sub, Mul, Div, Mod];
+        core.set(
+            5,
+            Instruction {
+                field_a: Field {
+                    value: Value::Label("not_real".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
 
-        for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
-            if a_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, AddressMode::Immediate),
-                    Modifier::B
-                );
-            }
-        }
-
-        for (&a_mode, &b_mode) in iproduct!(AddressMode::iter_values(), AddressMode::iter_values())
-        {
-            if a_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(Opcode::Slt, a_mode, b_mode),
-                    Modifier::B
-                )
-            }
-        }
-
-        let opcodes = [Jmp, Jmz, Jmn, Djn, Spl, Nop];
-
-        for (&opcode, &a_mode, &b_mode) in iproduct!(
-            opcodes.iter(),
-            AddressMode::iter_values(),
-            AddressMode::iter_values()
-        ) {
-            assert_eq!(
-                Modifier::default_88_to_94(opcode, a_mode, b_mode),
-                Modifier::B
-            );
-        }
+        core.resolve().expect_err("Should fail to resolve");
     }
 
     #[test]
-    fn modifier_ab_default() {
-        let opcodes = [Mov, Cmp, Seq, Sne, Add, Sub, Mul, Div, Mod, Slt];
+    fn resolve_labels() {
+        let mut core = Core::new(10);
 
-        for (&opcode, &b_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
-            assert_eq!(
-                Modifier::default_88_to_94(opcode, AddressMode::Immediate, b_mode),
-                Modifier::AB
-            );
-        }
-    }
+        core.add_label(0, "foo".into()).expect("Should add foo");
+        core.add_label(7, "baz".into()).expect("Should add baz");
 
-    #[test]
-    fn modifier_i_default() {
-        let opcodes = [Mov, Cmp, Seq, Sne];
+        core.set(
+            3,
+            Instruction {
+                field_a: Field {
+                    value: Value::Label("baz".into()),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Label("foo".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
 
-        for (&opcode, &a_mode, &b_mode) in iproduct!(
-            opcodes.iter(),
-            AddressMode::iter_values(),
-            AddressMode::iter_values()
-        ) {
-            if a_mode != AddressMode::Immediate && b_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, b_mode),
-                    Modifier::I
-                );
+        let resolved_core = core.resolve().expect("Should resolve all labels in core");
+
+        assert_eq!(
+            resolved_core
+                .get(3)
+                .expect("Should have instruction at pos 5"),
+            Instruction {
+                field_a: Field {
+                    value: Value::Literal(4),
+                    ..Default::default()
+                },
+                field_b: Field {
+                    value: Value::Literal(-3),
+                    ..Default::default()
+                },
+                ..Default::default()
             }
-        }
-    }
-
-    #[test]
-    fn modifier_f_default() {
-        let opcodes = [Add, Sub, Mul, Div, Mod];
-
-        for (&opcode, &a_mode, &b_mode) in iproduct!(
-            opcodes.iter(),
-            AddressMode::iter_values(),
-            AddressMode::iter_values()
-        ) {
-            if a_mode != AddressMode::Immediate && b_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, b_mode),
-                    Modifier::F
-                );
-            }
-        }
+        )
     }
 }
