@@ -7,7 +7,16 @@ rust:
 
 cache: cargo
 
-matrix:
+jobs:
+  include:
+    - name: Lint and format check
+      before_install:
+        - rustup component add clippy rustfmt
+      rust: stable
+      script:
+        - cargo fmt --verbose -- --check
+        - cargo clippy --verbose --all-targets
+
   allow_failures:
     - rust: nightly
     - rust: beta
