@@ -1,23 +1,40 @@
 use std::{error::Error, fs, path::PathBuf};
 
+use lazy_static::lazy_static;
 use structopt::StructOpt;
 
 use crate::parser;
 
+lazy_static! {
+    static ref STDOUT: PathBuf = PathBuf::from("-");
+}
+
 #[derive(Debug, StructOpt)]
-/// Parse and save Redcode files
+#[structopt(rename_all = "kebab")]
+/// Parse, assemble, and save Redcode files
 struct CliOptions {
     /// Input file
     #[structopt(parse(from_os_str))]
     input_file: PathBuf,
 
-    /// Output file; defaults to stdout
-    #[structopt(long, short, parse(from_os_str))]
-    output_file: Option<PathBuf>,
+    #[structopt(subcommand)]
+    command: Command,
+}
 
-    /// Whether or not labels, expressions, etc. should be resolved in the output
-    #[structopt(long, short)]
-    resolve: bool,
+#[derive(Debug, StructOpt)]
+enum Command {
+    /// Save/print a program in 'load file' format
+    #[structopt(name = "dump")]
+    Dump {
+        /// Output file - defaults to stdout ('-')
+        #[structopt(long, short, parse(from_os_str), default_value = STDOUT.to_str().unwrap())]
+        output_file: PathBuf,
+
+        /// Whether labels, expressions, macros, etc. should be resolved and
+        /// expanded in the output
+        #[structopt(long, short = "E")]
+        no_expand: bool,
+    },
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
@@ -27,14 +44,21 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     let mut parsed_core = parser::parse(input_program.as_str())?;
 
-    if cli_options.resolve {
-        parsed_core.resolve()?;
-    }
+    match cli_options.command {
+        Command::Dump {
+            output_file,
+            no_expand,
+        } => {
+            if !no_expand {
+                parsed_core.resolve()?;
+            }
 
-    if let Some(output_path) = cli_options.output_file {
-        fs::write(output_path, format!("{}", parsed_core))?;
-    } else {
-        println!("{}", parsed_core);
+            if output_file == *STDOUT {
+                println!("{}", parsed_core);
+            } else {
+                fs::write(output_file, format!("{}", parsed_core))?;
+            };
+        }
     };
 
     Ok(())

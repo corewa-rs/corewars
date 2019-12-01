@@ -9,4 +9,10 @@ itertools = "0.8.0"
 lazy_static = "1.2.0"
 pest_derive = "2.1.0"
 pest = "2.1.0"
-structopt = "0.2.15"
+structopt = "0.3.5"
+
+[dev-dependencies]
+assert_cmd = "0.11.1"
+predicates = "1.0.2"
+assert_fs = "0.13.1"
+indoc = "*"
