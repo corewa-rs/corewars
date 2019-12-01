@@ -15,8 +15,7 @@ pub struct Field {
 }
 
 impl Default for Field {
-    fn default() -> Self {
-        Self {
+    fn default() -> Self { Self {
             address_mode: AddressMode::Immediate,
             value: Default::default(),
         }

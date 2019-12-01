@@ -9,7 +9,7 @@ pub fn parse(rule: Rule, input: &str) -> Result<Pairs<Rule>, Error<Rule>> {
 }
 
 #[cfg(test)]
-#[allow(clippy::cognitive_complexity)]
+// #[allow(clippy::cognitive_complexity)]
 mod tests {
     use pest::{consumes_to, parses_to};
 
