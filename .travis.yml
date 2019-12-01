@@ -1,7 +1,7 @@
 language: rust
 
 before_install:
-  - rustup component clippy rustfmt
+  - rustup component add clippy rustfmt
 
 rust:
   - stable
