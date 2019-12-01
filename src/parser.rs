@@ -3,7 +3,7 @@ use std::{error, fmt, str::FromStr};
 use itertools::Itertools;
 use pest::iterators::{Pair, Pairs};
 
-use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode, Value};
+use crate::load_file::{AddressMode, Field, Instruction, Modifier, Opcode, Program, Value};
 
 mod grammar;
 
@@ -43,25 +43,25 @@ impl<T: IntoError> From<T> for Error {
 }
 
 #[derive(Debug)]
-pub struct ParsedCore {
-    pub result: Core,
+pub struct ParsedProgram {
+    pub result: Program,
     pub warnings: Vec<Error>,
 }
 
-impl fmt::Display for ParsedCore {
+impl fmt::Display for ParsedProgram {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.result)
     }
 }
 
-pub fn parse(file_contents: &str) -> Result<ParsedCore, Error> {
+pub fn parse(file_contents: &str) -> Result<ParsedProgram, Error> {
     if file_contents.is_empty() {
         return Err(Error::no_input());
     }
 
     let mut warnings = Vec::new();
 
-    let mut core = Core::default();
+    let mut program = Program::new();
 
     let parse_result = grammar::parse(grammar::Rule::File, file_contents)?
         .next()
@@ -78,19 +78,19 @@ pub fn parse(file_contents: &str) -> Result<ParsedCore, Error> {
             .map(|pair| pair.as_str().to_owned());
 
         for label in label_pairs {
-            if let Err(failed_add) = core.add_label(i, label.to_string()) {
+            if let Err(failed_add) = program.add_label(i, label.to_string()) {
                 warnings.push(failed_add.into())
             }
         }
 
         if line_pair.peek().is_some() {
-            core.set(i, parse_instruction(line_pair));
+            program.set(i, parse_instruction(line_pair));
             i += 1;
         }
     }
 
-    Ok(ParsedCore {
-        result: core,
+    Ok(ParsedProgram {
+        result: program,
         warnings,
     })
 }
@@ -224,7 +224,7 @@ mod tests {
                     jmp -1
         ";
 
-        let mut expected_core = Core::default();
+        let mut expected_core = Program::default();
 
         expected_core.set(
             0,
