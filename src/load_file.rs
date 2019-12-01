@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 mod types;
 pub use types::{AddressMode, Modifier, Opcode, Value};
@@ -169,12 +166,10 @@ impl Core {
             ));
         }
 
-        match self.labels.entry(label) {
-            Entry::Occupied(entry) => Err(format!("Label '{}' already exists", entry.key())),
-            Entry::Vacant(entry) => {
-                entry.insert(index);
-                Ok(())
-            }
+        if self.labels.insert(label.clone(), index).is_some() {
+            Err(format!("Label '{}' already exists", label))
+        } else {
+            Ok(())
         }
     }
 
@@ -252,11 +247,13 @@ mod tests {
         core.add_label(256, "goblin".into())
             .expect_err("Should fail to add labels > 200");
         core.add_label(5, "baz".into())
-            .expect_err("Should fail to add duplicate label");
+            .expect_err("Should error duplicate label");
 
         assert_eq!(core.label_address("foo").unwrap(), 0);
         assert_eq!(core.label_address("bar").unwrap(), 0);
-        assert_eq!(core.label_address("baz").unwrap(), 123);
+
+        // The _last_ version of a label will be the one we use
+        assert_eq!(core.label_address("baz").unwrap(), 5);
 
         assert!(core.label_address("goblin").is_none());
         assert!(core.label_address("never_mentioned").is_none());

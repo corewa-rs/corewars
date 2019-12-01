@@ -1,16 +1,13 @@
 use std::{error, fmt, str::FromStr};
 
 use itertools::Itertools;
-use pest::{
-    error::{Error as PestError, ErrorVariant, LineColLocation},
-    iterators::{Pair, Pairs},
-};
+use pest::iterators::{Pair, Pairs};
 
 use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode, Value};
 
 mod grammar;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Error {
     details: String,
 }
@@ -31,40 +28,38 @@ impl Error {
     }
 }
 
-impl From<PestError<grammar::Rule>> for Error {
-    fn from(pest_error: PestError<grammar::Rule>) -> Error {
+pub trait IntoError: fmt::Display {}
+
+impl<T: pest::RuleType> IntoError for pest::error::Error<T> {}
+impl IntoError for String {}
+impl IntoError for &str {}
+
+impl<T: IntoError> From<T> for Error {
+    fn from(displayable_error: T) -> Self {
         Error {
-            details: format!(
-                "Parse error: {} {}",
-                match pest_error.variant {
-                    ErrorVariant::ParsingError {
-                        positives,
-                        negatives,
-                    } => format!("expected one of {:?}, none of {:?}", positives, negatives),
-                    ErrorVariant::CustomError { message } => message,
-                },
-                match pest_error.line_col {
-                    LineColLocation::Pos((line, col)) => format!("at line {} column {}", line, col),
-                    LineColLocation::Span((start_line, start_col), (end_line, end_col)) => format!(
-                        "from line {} column {} to line {} column {}",
-                        start_line, start_col, end_line, end_col
-                    ),
-                }
-            ),
+            details: format!("{}", displayable_error),
         }
     }
 }
 
-impl From<String> for Error {
-    fn from(details: String) -> Error {
-        Error { details }
+#[derive(Debug)]
+pub struct ParsedCore {
+    pub result: Core,
+    pub warnings: Vec<Error>,
+}
+
+impl fmt::Display for ParsedCore {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.result)
     }
 }
 
-pub fn parse(file_contents: &str) -> Result<Core, Error> {
+pub fn parse(file_contents: &str) -> Result<ParsedCore, Error> {
     if file_contents.is_empty() {
         return Err(Error::no_input());
     }
+
+    let mut warnings = Vec::new();
 
     let mut core = Core::default();
 
@@ -83,7 +78,9 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
             .map(|pair| pair.as_str().to_owned());
 
         for label in label_pairs {
-            core.add_label(i, label.to_string())?;
+            if let Err(failed_add) = core.add_label(i, label.to_string()) {
+                warnings.push(failed_add.into())
+            }
         }
 
         if line_pair.peek().is_some() {
@@ -92,7 +89,10 @@ pub fn parse(file_contents: &str) -> Result<Core, Error> {
         }
     }
 
-    Ok(core)
+    Ok(ParsedCore {
+        result: core,
+        warnings,
+    })
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> Instruction {
@@ -188,10 +188,10 @@ mod tests {
 
     #[test]
     fn parse_empty() {
-        let result = parse("");
-        assert!(result.is_err());
+        let parsed = parse("");
+        assert!(parsed.is_err());
 
-        assert_eq!(result.unwrap_err().details, "No input found");
+        assert_eq!(parsed.unwrap_err().details, "No input found");
     }
 
     #[test]
@@ -201,7 +201,14 @@ mod tests {
             label1  dat 0,0
         ";
 
-        parse(simple_input).expect_err("Should fail for duplicate label");
+        let parsed = parse(simple_input).expect("Failed to parse");
+
+        assert_eq!(
+            parsed.warnings,
+            vec![Error::from("Label 'label1' already exists")]
+        );
+
+        assert_eq!(parsed.result.label_address("label1"), Some(1));
     }
 
     #[test]
@@ -249,8 +256,10 @@ mod tests {
             .expect("Should resolve a core with no labels");
 
         let mut parsed = parse(simple_input).expect("Should parse simple file");
-        parsed.resolve().expect("Parsed file should resolve");
+        parsed.result.resolve().expect("Parsed file should resolve");
 
-        assert_eq!(parsed, expected_core);
+        assert!(parsed.warnings.is_empty());
+
+        assert_eq!(parsed.result, expected_core);
     }
 }
