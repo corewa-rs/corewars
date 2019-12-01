@@ -15,7 +15,8 @@ jobs:
       rust: stable
       script:
         - cargo fmt --verbose -- --check
-        - cargo clippy --verbose
+        - cargo clippy --verbose --all-targets
+
   allow_failures:
     - rust: nightly
     - rust: beta
