@@ -1,33 +1,80 @@
-use std::{error::Error, fs, path::PathBuf};
+use std::{
+    error::Error,
+    fs,
+    io::{self, Read},
+    path::PathBuf,
+};
 
+use lazy_static::lazy_static;
 use structopt::StructOpt;
 
 use crate::parser;
 
+lazy_static! {
+    static ref IO_SENTINEL: PathBuf = PathBuf::from("-");
+}
+
 #[derive(Debug, StructOpt)]
-/// Parse and save Redcode files
+#[structopt(rename_all = "kebab")]
+/// Parse, assemble, and save Redcode files
 struct CliOptions {
-    /// Input file
+    /// Input file; use '-' to read from stdin
     #[structopt(parse(from_os_str))]
     input_file: PathBuf,
 
-    /// Output file; defaults to stdout
-    #[structopt(long, short, parse(from_os_str))]
-    output_file: Option<PathBuf>,
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, StructOpt)]
+enum Command {
+    /// Save/print a program in 'load file' format
+    #[structopt(name = "dump")]
+    Dump {
+        /// Output file; defaults to stdout ('-')
+        #[structopt(long, short, parse(from_os_str), default_value = IO_SENTINEL.to_str().unwrap())]
+        output_file: PathBuf,
+
+        /// Whether labels, expressions, macros, etc. should be resolved and
+        /// expanded in the output
+        #[structopt(long, short = "E")]
+        no_expand: bool,
+    },
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
     let cli_options = CliOptions::from_args();
 
-    let input_program = fs::read_to_string(cli_options.input_file)?;
+    let mut input = String::new();
 
-    let parsed_input = parser::parse(input_program.as_str())?;
-    let parse_output = parsed_input.dump();
-
-    if let Some(output_path) = cli_options.output_file {
-        fs::write(output_path, parse_output)?;
+    if cli_options.input_file == *IO_SENTINEL {
+        io::stdin().read_to_string(&mut input)?;
     } else {
-        println!("{}", parse_output);
+        input = fs::read_to_string(cli_options.input_file)?;
+    }
+
+    let mut parsed_core = parser::parse(input.as_str())?;
+
+    // TODO colored output?
+    for warning in parsed_core.warnings.iter() {
+        eprintln!("Warning:\n  {}", warning);
+    }
+
+    match cli_options.command {
+        Command::Dump {
+            output_file,
+            no_expand,
+        } => {
+            if !no_expand {
+                parsed_core.result.resolve()?;
+            }
+
+            if output_file == *IO_SENTINEL {
+                print!("{}", parsed_core);
+            } else {
+                fs::write(output_file, format!("{}", parsed_core))?;
+            };
+        }
     };
 
     Ok(())

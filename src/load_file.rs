@@ -1,14 +1,11 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 mod types;
 pub use types::{AddressMode, Modifier, Opcode, Value};
 
 pub const DEFAULT_CORE_SIZE: usize = 8000;
 
-type InstructionSet = Box<[Option<Instruction>]>;
+type Instructions = Box<[Option<Instruction>]>;
 type LabelMap = HashMap<String, usize>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,14 +106,15 @@ impl Instruction {
 }
 
 pub struct Core {
-    instructions: InstructionSet,
+    instructions: Instructions,
+    resolved: Option<Instructions>,
     labels: LabelMap,
 }
 
 impl PartialEq for Core {
-    // TODO: should this impl resolve the instructions? Depends on the use case
     fn eq(&self, other: &Self) -> bool {
-        self.instructions == other.instructions
+        (self.resolved.is_some() && self.resolved == other.resolved)
+            || self.instructions == other.instructions
     }
 }
 
@@ -128,12 +126,11 @@ impl Default for Core {
 
 impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "Labels: {:?}\nCore:\n{}",
-            self.labels,
-            self.dump()
-        )
+        if self.resolved.is_some() {
+            write!(formatter, "{}", self)
+        } else {
+            write!(formatter, "<unresolved core>")
+        }
     }
 }
 
@@ -141,22 +138,23 @@ impl Core {
     pub fn new(core_size: usize) -> Self {
         Core {
             instructions: vec![None; core_size].into_boxed_slice(),
-            labels: HashMap::new(),
+            resolved: None,
+            labels: LabelMap::new(),
         }
     }
 
     pub fn get(&self, index: usize) -> Option<Instruction> {
-        self.instructions.get(index)?.clone()
-    }
-
-    pub fn get_resolved(&self, index: usize) -> Result<Instruction, String> {
-        self.get(index)
-            .unwrap_or_default()
-            .resolve(index, &self.labels)
+        match &self.resolved {
+            Some(instructions) => instructions,
+            None => &self.instructions,
+        }
+        .get(index)?
+        .clone()
     }
 
     pub fn set(&mut self, index: usize, value: Instruction) {
         self.instructions[index] = Some(value);
+        // TODO need to re-resolve here? Or make caller do it
     }
 
     pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
@@ -168,12 +166,10 @@ impl Core {
             ));
         }
 
-        match self.labels.entry(label) {
-            Entry::Occupied(entry) => Err(format!("Label '{}' already exists", entry.key())),
-            Entry::Vacant(entry) => {
-                entry.insert(index);
-                Ok(())
-            }
+        if self.labels.insert(label.clone(), index).is_some() {
+            Err(format!("Label '{}' already exists", label))
+        } else {
+            Ok(())
         }
     }
 
@@ -181,8 +177,8 @@ impl Core {
         self.labels.get(label).copied()
     }
 
-    pub fn resolve(&self) -> Result<Self, String> {
-        let instructions = self
+    pub fn resolve(&mut self) -> Result<&mut Self, String> {
+        let resolved = self
             .instructions
             .iter()
             .enumerate()
@@ -192,29 +188,29 @@ impl Core {
                     .map(|instruction| instruction.resolve(i, &self.labels))
                     .transpose()
             })
-            .collect::<Result<InstructionSet, String>>()?;
+            .collect::<Result<_, String>>()?;
 
-        Ok(Self {
-            instructions,
-            ..Default::default()
-        })
+        self.resolved = Some(resolved);
+
+        Ok(self)
     }
+}
 
-    pub fn dump(&self) -> String {
-        // TODO: convert to fmt::Display - this will require some upfront
-        // validation that all labels are valid, etc
-        // It may be desirable to have Debug be a dump() of the load file and
-        // Display show the original parsed document (or something like that)
-        match self.resolve() {
-            Err(msg) => msg,
-            Ok(core) => core
-                .instructions
-                .iter()
-                .filter_map(Option::as_ref)
-                .fold(String::new(), |result, instruction| {
-                    result + &instruction.to_string() + "\n"
-                }),
-        }
+impl fmt::Display for Core {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match &self.resolved {
+                None => &self.instructions,
+                Some(instructions) => instructions,
+            }
+            .iter()
+            .filter_map(Option::as_ref)
+            .fold(String::new(), |result, instruction| {
+                result + &instruction.to_string() + "\n"
+            })
+        )
     }
 }
 
@@ -251,11 +247,13 @@ mod tests {
         core.add_label(256, "goblin".into())
             .expect_err("Should fail to add labels > 200");
         core.add_label(5, "baz".into())
-            .expect_err("Should fail to add duplicate label");
+            .expect_err("Should error duplicate label");
 
         assert_eq!(core.label_address("foo").unwrap(), 0);
         assert_eq!(core.label_address("bar").unwrap(), 0);
-        assert_eq!(core.label_address("baz").unwrap(), 123);
+
+        // The _last_ version of a label will be the one we use
+        assert_eq!(core.label_address("baz").unwrap(), 5);
 
         assert!(core.label_address("goblin").is_none());
         assert!(core.label_address("never_mentioned").is_none());
@@ -303,12 +301,10 @@ mod tests {
             },
         );
 
-        let resolved_core = core.resolve().expect("Should resolve all labels in core");
+        core.resolve().expect("Should resolve all labels in core");
 
         assert_eq!(
-            resolved_core
-                .get(3)
-                .expect("Should have instruction at pos 5"),
+            core.get(3).expect("Should have instruction at pos 5"),
             Instruction {
                 field_a: Field {
                     value: Value::Literal(4),
