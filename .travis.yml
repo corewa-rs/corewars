@@ -1,5 +1,8 @@
 language: rust
 
+before_install:
+  - rustup component clippy rustfmt
+
 rust:
   - stable
   - beta
@@ -7,7 +10,13 @@ rust:
 
 cache: cargo
 
-matrix:
+jobs:
+  include:
+    - name: Lint and format check
+      rust: stable
+      script:
+        - cargo fmt --verbose -- --check
+        - cargo clippy
   allow_failures:
     - rust: nightly
     - rust: beta
