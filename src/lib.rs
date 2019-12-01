@@ -4,6 +4,7 @@ extern crate pest_derive;
 
 // Extern crates
 extern crate itertools;
+extern crate lazy_static;
 extern crate pest;
 extern crate structopt;
 
