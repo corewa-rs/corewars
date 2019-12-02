@@ -1,14 +1,16 @@
 WHITESPACE = _{ " " | "\t" }
 
-COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* ~ &NEWLINE }
+COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* }
 
-File = { SOI ~ (Line ~ NEWLINE)+ ~ Line? ~ EOI }
+Program = { SOI ~ (Line ~ NEWLINE+)+ ~ Line? ~ (EndProgram | EOI) }
 
-Line = { LabelDeclaration* ~ Instruction? }
+EndProgram = { ^"END" ~ Expr? }
 
-Instruction = _{ Operation ~ Field ~ ("," ~ Field)? }
+Line = _{ LabelDeclaration* ~ Instruction? }
 
-LabelDeclaration = _{ !Operation ~ Label ~ (":")? }
+Instruction = { Operation ~ Field ~ ("," ~ Field)? }
+
+LabelDeclaration = _{ !(Operation | EndProgram) ~ Label ~ (":")? }
 
 Label = @{ Alpha ~ Alphanumeral* }
 
@@ -19,7 +21,7 @@ Field = !{ AddressMode? ~ Expr }
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
-    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"EQU" | ^"END"
+    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"EQU"
 }
 
 Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }

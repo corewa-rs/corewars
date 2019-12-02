@@ -1,6 +1,5 @@
 use std::{error, fmt, str::FromStr};
 
-use itertools::Itertools;
 use pest::iterators::{Pair, Pairs};
 
 use crate::load_file::{AddressMode, Field, Instruction, Modifier, Opcode, Program, Value};
@@ -63,29 +62,26 @@ pub fn parse(file_contents: &str) -> Result<ParsedProgram, Error> {
 
     let mut program = Program::new();
 
-    let parse_result = grammar::parse(grammar::Rule::File, file_contents)?
+    let parse_result = grammar::parse(grammar::Rule::Program, file_contents)?
         .next()
         .ok_or_else(Error::no_input)?;
 
     let mut i = 0;
-    for mut line_pair in parse_result
+    for pair in parse_result
         .into_inner()
-        .map(Pair::into_inner)
-        .filter(|line_pair| line_pair.peek().is_some())
+        .take_while(|pair| pair.as_rule() != grammar::Rule::EndProgram)
     {
-        let label_pairs = line_pair
-            .take_while_ref(|pair| pair.as_rule() == grammar::Rule::Label)
-            .map(|pair| pair.as_str().to_owned());
-
-        for label in label_pairs {
-            if let Err(failed_add) = program.add_label(i, label.to_string()) {
-                warnings.push(failed_add.into())
+        match &pair.as_rule() {
+            grammar::Rule::Label => {
+                if let Err(failed_add) = program.add_label(i, pair.as_str().to_string()) {
+                    warnings.push(failed_add.into());
+                }
             }
-        }
-
-        if line_pair.peek().is_some() {
-            program.set(i, parse_instruction(line_pair));
-            i += 1;
+            grammar::Rule::Instruction => {
+                program.set(i, parse_instruction(pair.into_inner()));
+                i += 1;
+            }
+            _ => (),
         }
     }
 
@@ -255,7 +251,9 @@ mod tests {
             .resolve()
             .expect("Should resolve a core with no labels");
 
-        let mut parsed = parse(simple_input).expect("Should parse simple file");
+        let mut parsed = parse(simple_input)
+            .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));
+
         parsed.result.resolve().expect("Parsed file should resolve");
 
         assert!(parsed.warnings.is_empty());
