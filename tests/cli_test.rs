@@ -58,8 +58,10 @@ fn dump_file() {
         .assert()
         .success();
 
-    assert!(predicate::str::similar(EXPECTED_OUT)
-        .from_utf8()
-        .from_file_path()
-        .eval(out_file.path()));
+    testutils::assert_that!(
+        out_file.path(),
+        predicate::str::similar(EXPECTED_OUT)
+            .from_utf8()
+            .from_file_path(),
+    );
 }
