@@ -15,7 +15,7 @@ fn run_test(input: &str, expected_output: &str) {
     eprintln!("Loaded core:");
     dbg!(&parsed_core);
 
-    assert_eq!(format!("{}", parsed_core), expected_output);
+    assert_eq!(parsed_core.to_string(), expected_output);
 }
 
 #[test]
