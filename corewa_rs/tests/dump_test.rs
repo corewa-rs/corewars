@@ -1,21 +1,22 @@
 extern crate corewa_rs;
+extern crate predicates;
+extern crate testutils;
 
-fn run_test(input: &str, expected_output: &str) {
-    eprintln!("Parsing warrior:");
-    eprintln!("{}", input);
+use testutils::assert_that;
 
+fn run_test(input: &str, expected_output: &'static str) {
     let mut parsed_core = corewa_rs::parse(input).unwrap_or_else(|e| panic!("Parse error:\n{}", e));
+
+    // TODO: dump and check output of pre-resolved core
     parsed_core
         .result
         .resolve()
         .unwrap_or_else(|e| panic!("{}", e));
 
-    // TODO: dump and check output of pre-resolved core
-
-    eprintln!("Loaded core:");
-    dbg!(&parsed_core);
-
-    assert_eq!(format!("{}", parsed_core), expected_output);
+    assert_that!(
+        &parsed_core.to_string(),
+        predicate::str::similar(expected_output),
+    );
 }
 
 #[test]

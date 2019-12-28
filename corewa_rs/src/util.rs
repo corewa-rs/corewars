@@ -11,7 +11,7 @@
 /// values specified.
 macro_rules! enum_string {
     ($vis:vis $name:ident {
-        $($variant:ident => $value:expr,)*
+        $($variant:ident => $value:expr),* $(,)?
     }) => {
         #[derive(Copy, Clone, Debug, PartialEq)]
         $vis enum $name {
@@ -21,7 +21,7 @@ macro_rules! enum_string {
         impl ::std::fmt::Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match *self {
-                    $(Self::$variant => write!(f, "{}", $value),)*
+                    $(Self::$variant => f.pad($value),)*
                 }
             }
         }
@@ -58,6 +58,10 @@ mod tests {
         enum_string!(pub Foo {
             Bar => "Bar",
         });
+
+        enum_string!(pub Comma {
+            NoTrailing => "still works"
+        });
     }
 
     enum_string!(Foo {
@@ -69,6 +73,7 @@ mod tests {
     #[test]
     fn pub_visible() {
         let _ = submod::Foo::Bar;
+        let _ = submod::Comma::NoTrailing;
     }
 
     #[test]
