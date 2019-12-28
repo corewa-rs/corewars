@@ -21,7 +21,7 @@ Field = !{ AddressMode? ~ Expr }
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
-    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"EQU"
+    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG"
 }
 
 Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
