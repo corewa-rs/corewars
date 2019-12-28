@@ -41,7 +41,7 @@ impl Default for Field {
 
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.address_mode, self.value)
+        f.pad(&format!("{}{}", self.address_mode, self.value))
     }
 }
 
@@ -50,6 +50,13 @@ impl Field {
         Self {
             address_mode: AddressMode::Direct,
             value: Value::Literal(value),
+        }
+    }
+
+    pub fn direct_label<S: ToString>(label: S) -> Self {
+        Self {
+            address_mode: AddressMode::Direct,
+            value: Value::Label(label.to_string()),
         }
     }
 
@@ -89,11 +96,10 @@ pub struct Instruction {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}.{} {}, {}",
+        f.pad(&format!(
+            "{}.{:<2} {}, {}",
             self.opcode, self.modifier, self.field_a, self.field_b,
-        )
+        ))
     }
 }
 

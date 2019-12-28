@@ -36,7 +36,7 @@ impl IntoError for &str {}
 impl<T: IntoError> From<T> for Error {
     fn from(displayable_error: T) -> Self {
         Error {
-            details: format!("{}", displayable_error),
+            details: displayable_error.to_string(),
         }
     }
 }
@@ -78,8 +78,14 @@ pub fn parse(file_contents: &str) -> Result<ParsedProgram, Error> {
                 }
             }
             grammar::Rule::Instruction => {
-                program.set(i, parse_instruction(pair.into_inner()));
-                i += 1;
+                let instruction = parse_instruction(pair.into_inner());
+
+                if instruction.opcode == Opcode::Org {
+                    program.set_origin(instruction.field_a);
+                } else {
+                    program.set(i, instruction);
+                    i += 1;
+                }
             }
             _ => (),
         }

@@ -21,7 +21,7 @@ macro_rules! enum_string {
         impl ::std::fmt::Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match *self {
-                    $(Self::$variant => write!(f, "{}", $value),)*
+                    $(Self::$variant => f.pad($value),)*
                 }
             }
         }

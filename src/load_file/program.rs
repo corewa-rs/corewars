@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use super::{Instruction, DEFAULT_CONSTANTS};
+use super::{Field, Instruction, Opcode, DEFAULT_CONSTANTS};
 
 type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
@@ -9,6 +9,7 @@ pub struct Program {
     instructions: Instructions,
     resolved: Option<Instructions>,
     labels: LabelMap,
+    origin: Option<Field>,
 }
 
 impl PartialEq for Program {
@@ -36,6 +37,9 @@ impl fmt::Debug for Program {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(origin) = self.get_origin() {
+            writeln!(f, "{:<6} {}", Opcode::Org, origin.value)?;
+        }
         write!(
             f,
             "{}",
@@ -57,6 +61,7 @@ impl Program {
             instructions: Instructions::new(),
             resolved: None,
             labels: DEFAULT_CONSTANTS.clone(),
+            origin: None,
         }
     }
 
@@ -65,6 +70,7 @@ impl Program {
             instructions: vec![Default::default(); size],
             resolved: None,
             labels: DEFAULT_CONSTANTS.clone(),
+            origin: None,
         }
     }
 
@@ -83,6 +89,16 @@ impl Program {
         }
 
         self.instructions[index] = value;
+    }
+
+    pub fn set_origin(&mut self, field: Field) {
+        self.origin = Some(field);
+    }
+
+    pub fn get_origin(&self) -> Option<Field> {
+        self.origin
+            .as_ref()
+            .and_then(|field| field.resolve(0, &self.labels).ok())
     }
 
     pub fn add_label(&mut self, index: usize, label: String) -> Result<(), String> {
@@ -149,6 +165,34 @@ mod tests {
 
         assert!(program.label_address("goblin").is_none());
         assert!(program.label_address("never_mentioned").is_none());
+    }
+
+    #[test]
+    fn literal_origin() {
+        let mut program = Program::with_capacity(200);
+
+        program.set_origin(Field::direct(12));
+
+        assert_eq!(program.get_origin().unwrap(), Field::direct(12))
+    }
+
+    #[test]
+    fn labeled_origin() {
+        let mut program = Program::with_capacity(200);
+
+        program
+            .add_label(123, "baz".into())
+            .expect("Should add baz");
+        program.add_label(0, "foo".into()).expect("Should add foo");
+
+        program.set_origin(Field::direct_label("baz"));
+        assert_eq!(program.get_origin().unwrap(), Field::direct(123));
+
+        program.set_origin(Field::direct_label("foo"));
+        assert_eq!(program.get_origin().unwrap(), Field::direct(0));
+
+        program.set_origin(Field::direct_label("nonexistent"));
+        assert!(program.get_origin().is_none());
     }
 
     #[test]
