@@ -1,5 +1,10 @@
+pub use predicates;
+pub use predicates_tree;
+
 /// Simple macro to panic with a prettier error message
+///
 /// # Examples
+///
 /// ```
 /// use predicates::prelude::*;
 /// use testutils::assert_that;
@@ -9,15 +14,15 @@
 ///     predicates::str::similar("Hello World"),
 /// );
 /// assert_that!(
-///     "Hello world",
-///     predicates::str::diff("Goodbye world"),
+///     "Hello World",
+///     predicates::str::diff("Goodbye World"),
 /// );
 /// ```
 #[macro_export]
 macro_rules! assert_that {
     ($item:expr, $pred:expr $(,)?) => {{
-        use ::predicates::prelude::*;
-        use ::predicates_tree::CaseTreeExt;
+        use $crate::predicates::prelude::*;
+        use $crate::predicates_tree::CaseTreeExt;
 
         if let Some(case) = $pred.find_case(false, $item) {
             panic!("{}", case.tree());

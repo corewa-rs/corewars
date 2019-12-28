@@ -1,7 +1,12 @@
+extern crate assert_cmd;
+extern crate predicates;
+extern crate testutils;
+
 use std::process::Command;
 
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use testutils::assert_that;
 
 static EXPECTED_OUT: &str = include_str!("data/test_loadfile.red");
 
@@ -58,7 +63,7 @@ fn dump_file() {
         .assert()
         .success();
 
-    testutils::assert_that!(
+    assert_that!(
         out_file.path(),
         predicate::str::similar(EXPECTED_OUT)
             .from_utf8()
