@@ -1,7 +1,7 @@
 use pest::{error::Error, iterators::Pairs, Parser};
 
 #[derive(Parser)]
-#[grammar = "data/redcode.pest"]
+#[grammar = "parser/grammar/redcode.pest"]
 struct Grammar;
 
 pub fn parse(rule: Rule, input: &str) -> Result<Pairs<Rule>, Error<Rule>> {
@@ -15,6 +15,28 @@ mod tests {
 
     use super::*;
 
+    // NOTE: these "doctests" are not actually compiled or run
+    // since they are in a #[cfg(test)] module
+
+    /// A macro to assert on the way a certain input string parses
+    /// Two forms are allowed. One has no identifier:
+    /// ```
+    /// match_parse!(Field {
+    ///     "123" | "4567" => [
+    ///         // This should look like the `tokens` field of `parses_to!`
+    ///     ],
+    /// });
+    /// ```
+    ///
+    /// The other allows you to bind the input string so you can use it in your
+    /// ```
+    /// match_parse!(input, Field {
+    ///     "123" | "4567" => [
+    ///         // You can do something with e.g. `input.len()` here, which
+    ///         // will be either 3 or 4 depending on the test case
+    ///     ],
+    /// });
+    /// ```
     macro_rules! match_parse {
         ($rule:ident $args:tt) => {
             match_parse!(_input, $rule $args)
@@ -78,11 +100,21 @@ mod tests {
     #[test]
     fn parse_label_expr() {
         match_parse!(Expr {
-            "foo"| "fo2"| "f_2" => [
+            "foo" | "fo2" | "f_2" => [
                 Expr(0, 3, [
                     Label(0, 3),
                 ]),
             ]
+        });
+    }
+
+    #[test]
+    fn parse_label() {
+        match_parse!(label_input, LabelDeclaration {
+            "some_label" | "some_label2" => [Label(0, label_input.len())],
+            "a: " => [Label(0, 1)],
+            " a " => [Label(1, 2)],
+            "a :" => [Label(0, 1)],
         });
     }
 
@@ -227,25 +259,5 @@ mod tests {
                 ]),
             ],
         });
-    }
-
-    #[test]
-    fn parse_label() {
-        for &(label_input, start, end) in [
-            ("some_label", 0, 10),
-            ("some_label2", 0, 11),
-            ("a: ", 0, 1),
-            (" a ", 1, 2),
-            ("a :", 0, 1),
-        ]
-        .iter()
-        {
-            parses_to! {
-                parser: Grammar,
-                input: label_input,
-                rule: Rule::LabelDeclaration,
-                tokens: [Label(start, end)]
-            }
-        }
     }
 }

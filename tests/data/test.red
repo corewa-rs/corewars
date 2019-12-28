@@ -36,3 +36,7 @@ loop
         mov.i 1, 2
 
         jmp loop
+
+        end foo bar baz
+
+Some Junk Here mov.ba 1,2
