@@ -6,6 +6,8 @@ mov 1, 0
 jmp loop
 jmp begin
 
+org begin
+
 begin:  add # 1, @ 2
         sub 3, 4
         mul 5, 6
@@ -36,3 +38,7 @@ loop
         mov.i 1, 2
 
         jmp loop
+
+        end foo bar baz
+
+Some Junk Here mov.ba 1,2

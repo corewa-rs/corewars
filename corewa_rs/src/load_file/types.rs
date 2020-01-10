@@ -18,19 +18,14 @@ enum_string!(pub Opcode {
     Slt => "SLT",
     Spl => "SPL",
     Nop => "NOP",
+    Org => "ORG",
 });
 
 impl Default for Opcode {
     fn default() -> Self {
-        Opcode::Dat
+        Self::Dat
     }
 }
-
-enum_string!(pub PseudoOpcode {
-    Org => "ORG",
-    Equ => "EQU",
-    End => "END",
-});
 
 enum_string!(pub Modifier {
     A   => "A",
@@ -44,7 +39,7 @@ enum_string!(pub Modifier {
 
 impl Default for Modifier {
     fn default() -> Self {
-        Modifier::F
+        Self::F
     }
 }
 
@@ -106,10 +101,11 @@ impl Default for Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Label(value) => write!(f, "{}", value),
-            Self::Literal(value) => write!(f, "{}", value),
-        }
+        let value_string = match self {
+            Self::Label(value) => value.to_string(),
+            Self::Literal(value) => value.to_string(),
+        };
+        f.pad(&value_string)
     }
 }
 

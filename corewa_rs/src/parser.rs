@@ -1,16 +1,12 @@
 use std::{error, fmt, str::FromStr};
 
-use itertools::Itertools;
-use pest::{
-    error::{Error as PestError, ErrorVariant, LineColLocation},
-    iterators::{Pair, Pairs},
-};
+use pest::iterators::{Pair, Pairs};
 
-use crate::load_file::{AddressMode, Core, Field, Instruction, Modifier, Opcode, Value};
+use crate::load_file::{AddressMode, Field, Instruction, Modifier, Opcode, Program, Value};
 
 mod grammar;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Error {
     details: String,
 }
@@ -31,70 +27,74 @@ impl Error {
     }
 }
 
-impl From<PestError<grammar::Rule>> for Error {
-    fn from(pest_error: PestError<grammar::Rule>) -> Error {
+pub trait IntoError: fmt::Display {}
+
+impl<T: pest::RuleType> IntoError for pest::error::Error<T> {}
+impl IntoError for String {}
+impl IntoError for &str {}
+
+impl<T: IntoError> From<T> for Error {
+    fn from(displayable_error: T) -> Self {
         Error {
-            details: format!(
-                "Parse error: {} {}",
-                match pest_error.variant {
-                    ErrorVariant::ParsingError {
-                        positives,
-                        negatives,
-                    } => format!("expected one of {:?}, none of {:?}", positives, negatives),
-                    ErrorVariant::CustomError { message } => message,
-                },
-                match pest_error.line_col {
-                    LineColLocation::Pos((line, col)) => format!("at line {} column {}", line, col),
-                    LineColLocation::Span((start_line, start_col), (end_line, end_col)) => format!(
-                        "from line {} column {} to line {} column {}",
-                        start_line, start_col, end_line, end_col
-                    ),
-                }
-            ),
+            details: displayable_error.to_string(),
         }
     }
 }
 
-impl From<String> for Error {
-    fn from(details: String) -> Error {
-        Error { details }
+#[derive(Debug)]
+pub struct ParsedProgram {
+    pub result: Program,
+    pub warnings: Vec<Error>,
+}
+
+impl fmt::Display for ParsedProgram {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.result)
     }
 }
 
-pub fn parse(file_contents: &str) -> Result<Core, Error> {
+pub fn parse(file_contents: &str) -> Result<ParsedProgram, Error> {
     if file_contents.is_empty() {
         return Err(Error::no_input());
     }
 
-    let mut core = Core::default();
+    let mut warnings = Vec::new();
 
-    let parse_result = grammar::parse(grammar::Rule::File, file_contents)?
+    let mut program = Program::new();
+
+    let parse_result = grammar::parse(grammar::Rule::Program, file_contents)?
         .next()
         .ok_or_else(Error::no_input)?;
 
     let mut i = 0;
-    for mut line_pair in parse_result
+    for pair in parse_result
         .into_inner()
-        .map(Pair::into_inner)
-        .filter(|line_pair| line_pair.peek().is_some())
+        .take_while(|pair| pair.as_rule() != grammar::Rule::EndProgram)
     {
-        let label_pairs = line_pair
-            .take_while_ref(|pair| pair.as_rule() == grammar::Rule::Label)
-            .map(|pair| pair.as_str().to_owned());
+        match &pair.as_rule() {
+            grammar::Rule::Label => {
+                if let Err(failed_add) = program.add_label(i, pair.as_str().to_string()) {
+                    warnings.push(failed_add.into());
+                }
+            }
+            grammar::Rule::Instruction => {
+                let instruction = parse_instruction(pair.into_inner());
 
-        for label in label_pairs {
-            core.add_label(i, label.to_string())?;
-        }
-
-        if line_pair.peek().is_some() {
-            core.set(i, parse_instruction(line_pair));
-            i += 1;
+                if instruction.opcode == Opcode::Org {
+                    program.set_origin(instruction.field_a);
+                } else {
+                    program.set(i, instruction);
+                    i += 1;
+                }
+            }
+            _ => (),
         }
     }
 
-    // TODO: keep the original core or use the resolved one?
-    // Probably it should keep a resolved copy in itself
-    Ok(core.resolve()?)
+    Ok(ParsedProgram {
+        result: program,
+        warnings,
+    })
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> Instruction {
@@ -190,10 +190,10 @@ mod tests {
 
     #[test]
     fn parse_empty() {
-        let result = parse("");
-        assert!(result.is_err());
+        let parsed = parse("");
+        assert!(parsed.is_err());
 
-        assert_eq!(result.unwrap_err().details, "No input found");
+        assert_eq!(parsed.unwrap_err().details, "No input found");
     }
 
     #[test]
@@ -203,7 +203,14 @@ mod tests {
             label1  dat 0,0
         ";
 
-        parse(simple_input).expect_err("Should fail for duplicate label");
+        let parsed = parse(simple_input).expect("Failed to parse");
+
+        assert_eq!(
+            parsed.warnings,
+            vec![Error::from("Label 'label1' already exists")]
+        );
+
+        assert_eq!(parsed.result.label_address("label1"), Some(1));
     }
 
     #[test]
@@ -219,7 +226,7 @@ mod tests {
                     jmp -1
         ";
 
-        let mut expected_core = Core::default();
+        let mut expected_core = Program::default();
 
         expected_core.set(
             0,
@@ -246,8 +253,17 @@ mod tests {
             Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
         );
 
-        let parsed = parse(simple_input).expect("Should parse simple file");
+        expected_core
+            .resolve()
+            .expect("Should resolve a core with no labels");
 
-        assert_eq!(parsed, expected_core);
+        let mut parsed = parse(simple_input)
+            .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));
+
+        parsed.result.resolve().expect("Parsed file should resolve");
+
+        assert!(parsed.warnings.is_empty());
+
+        assert_eq!(parsed.result, expected_core);
     }
 }

@@ -1,12 +1,6 @@
-[package]
-name = "corewa_rs"
-version = "0.1.0"
-authors = ["Ian Chamberlain <ian.h.chamberlain@gmail.com>"]
-edition = "2018"
+[workspace]
 
-[dependencies]
-itertools = "0.8.0"
-lazy_static = "1.2.0"
-pest_derive = "2.1.0"
-pest = "2.1.0"
-structopt = "0.2.15"
+members = [
+    "corewa_rs",
+    "testutils",
+]
