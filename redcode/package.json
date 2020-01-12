@@ -2,13 +2,27 @@
     "name": "redcode",
     "displayName": "redcode",
     "description": "Language per REDCODE Reference Standard: ICWS'94 draft (extended)",
-    "version": "0.0.1",
+    "version": "0.0.2",
+    "license": "MIT",
     "publisher": "ian-h-chamberlain",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ian-h-chamberlain/corewa_rs.git",
+        "directory": "redcode"
+    },
     "engines": {
         "vscode": "^1.40.0"
     },
     "categories": [
         "Programming Languages"
+    ],
+    "keywords": [
+        "core",
+        "war",
+        "core war",
+        "wars",
+        "core wars",
+        "redcode"
     ],
     "contributes": {
         "languages": [
@@ -34,10 +48,10 @@
     },
     "scripts": {
         "build": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json",
-        "package": "vcse package"
+        "package": "vsce package"
     },
     "devDependencies": {
         "js-yaml": "^3.13.1",
-        "vsce": "^1.69.0"
+        "vsce": "^1.71.0"
     }
 }
