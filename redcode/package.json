@@ -1,0 +1,43 @@
+{
+    "name": "redcode",
+    "displayName": "redcode",
+    "description": "Language per REDCODE Reference Standard: ICWS'94 draft (extended)",
+    "version": "0.0.1",
+    "publisher": "ian-h-chamberlain",
+    "engines": {
+        "vscode": "^1.40.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "redcode",
+                "aliases": [
+                    "Redcode",
+                    "redcode"
+                ],
+                "extensions": [
+                    ".red"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "redcode",
+                "scopeName": "source.redcode",
+                "path": "./syntaxes/redcode.tmLanguage.json"
+            }
+        ]
+    },
+    "scripts": {
+        "build": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json",
+        "package": "vcse package"
+    },
+    "devDependencies": {
+        "js-yaml": "^3.13.1",
+        "vsce": "^1.69.0"
+    }
+}
