@@ -6,3 +6,7 @@ The implementation is based on [this introductory guide](http://vyznev.net/corew
 ## Crates
 * [corewa_rs](http://corewa.rs/crates/corewa_rs) - the main implementation
 * [testutils](http://corewa.rs/crates/testutils) - some utilities for working with load files and testing complex predicates
+
+## Syntax Highlighting
+
+* A syntax highlighting [plugin](http://github.com/ian-h-chamberlain/corewa_rs/redcode/README.md) for Redcode
