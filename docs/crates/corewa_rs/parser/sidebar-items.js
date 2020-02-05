@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["parse",""],["parse_field",""],["parse_instruction",""],["parse_modifier",""],["parse_opcode",""],["parse_value",""]],"mod":[["grammar",""]],"struct":[["Error",""],["ParsedProgram",""]],"trait":[["IntoError",""]]});
