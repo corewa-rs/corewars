@@ -28,4 +28,4 @@ jobs:
     - name: Build extension
       run: npm run build
     - name: Verify the build did not modify any files
-      run: git diff-index --quiet HEAD
+      run: git diff-index HEAD -- .
