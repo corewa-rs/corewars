@@ -1,0 +1,57 @@
+on:
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - corewa_rs/**
+      - testutils/**
+      - Cargo.*
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths:
+      - corewa_rs/**
+      - testutils/**
+      - Cargo.*
+
+jobs:
+  build_and_test:
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        toolchain:
+          - stable
+          - nightly
+          - beta
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Build and run tests
+        run: cargo test --workspace --all-targets --all-features
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+      - name: Setup default Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          components: clippy,rustfmt
+      - name: Check formatting
+        run: cargo fmt --all --verbose -- --check
+      - name: Run clippy linting
+        run: cargo clippy --workspace --verbose --all-targets --all-features
+        env:
+          RUSTFLAGS:
+            "-D warnings"
