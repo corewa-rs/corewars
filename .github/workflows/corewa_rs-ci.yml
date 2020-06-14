@@ -1,3 +1,5 @@
+name: corewa_rs
+
 on:
   push:
     branches:
