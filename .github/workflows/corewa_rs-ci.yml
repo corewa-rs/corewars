@@ -21,28 +21,6 @@ on:
       - Cargo.*
 
 jobs:
-  build_and_test:
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-        toolchain:
-          - stable
-          - nightly
-          - beta
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v2
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-      - name: Build and run tests
-        run: cargo test --color=always --workspace --all-targets --all-features
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -59,3 +37,26 @@ jobs:
         env:
           RUSTFLAGS:
             "-D warnings"
+
+  build_and_test:
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    continue-on-error: ${{ matrix.toolchain != 'stable' || matrix.os == 'windows-latest' }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Build and run tests
+        run: cargo test --color=always --workspace --all-targets --all-features

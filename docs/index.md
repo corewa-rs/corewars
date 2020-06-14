@@ -1,5 +1,7 @@
 # corewa_rs
 
+[![Build Status](https://img.shields.io/github/workflow/status/ian-h-chamberlain/corewa_rs/corewa_rs/develop)](https://github.com/ian-h-chamberlain/corewa_rs/actions)
+
 A Rust implementation of [Core Wars](http://www.koth.org/index.html).
 
 The implementation is based on [this introductory guide](https://vyznev.net/corewar/guide.html) to Redcode, as well as the [pMARS '94 reference](https://corewa.rs/pmars-redcode-94.txt) and an [annotated version](https://corewa.rs/icws94.txt) of the ICWS '94 draft.
