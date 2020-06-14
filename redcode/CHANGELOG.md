@@ -1,6 +1,6 @@
 <!-- markdownlint-disable-file no-duplicate-header -->
 
-# Change Log
+# Changelog
 
 All notable changes to the "redcode" extension will be documented in this file.
 Format based on [Keep a Changelog](http://keepachangelog.com/).
