@@ -1,0 +1,31 @@
+on:
+  push:
+    paths:
+      - "redcode/**"
+  pull_request:
+    paths:
+      - "redcode/**"
+
+defaults:
+  run:
+    working-directory: redcode
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout branch
+      uses: actions/checkout@v2
+    - name: Install Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 10.x
+    - name: Install dependencies
+      run: npm install
+    - name: Build extension
+      run: npm run build
+    - name: Verify the build did not modify any files
+      run: git diff-index --quiet HEAD

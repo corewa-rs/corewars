@@ -1,0 +1,40 @@
+on:
+  release:
+    types:
+      - created
+
+defaults:
+  run:
+    working-directory: redcode
+
+jobs:
+  publish:
+    if: startsWith(github.ref, "refs/tags/redcode-")
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set version string
+      id: get_name
+      run: echo "::set-output name=PACKAGE::$(echo '${{ github.ref }}' | awk -F '[/]' '{print $3}').vsix"
+    - name: Install Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 10.x
+    - name: Install dependencies
+      run: npm install
+    - name: Package extension
+      run: npm run package -- --out ${{ steps.get_name.outputs.PACKAGE }}
+    - name: Upload extension to Github
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.upload_url }}
+        asset_path: ./${{ steps.get_name.outputs.PACKAGE }}
+        asset_name: ${{ steps.get_name.outputs.PACKAGE }}
+        asset_content_type: application/vsix
+    - name: Publish extension to VSCode marketplace
+      run: npm run deploy
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
