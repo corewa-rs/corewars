@@ -4,7 +4,7 @@ Basic syntax highlighting for Redcode, the language used in [Core Wars](https://
 
 ## Features
 
-Syntax highlighting for redcode, based partially on [this vim syntax file](https://www.vim.org/scripts/script.php?script_id=1705), and on the [pMARS '94 reference](https://corewa.rs/pmars-redcode-94.txt) and an [annotated version](http://corewa.rs/icws94.txt) of the ICWS '94 draft.
+Syntax highlighting for redcode, based partially on [this vim syntax file](https://www.vim.org/scripts/script.php?script_id=1705), and on the [pMARS '94 reference](https://corewa.rs/pmars-redcode-94.txt) and an [annotated version](https://corewa.rs/icws94.txt) of the ICWS '94 draft.
 
 ## Contents
 
