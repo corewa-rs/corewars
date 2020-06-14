@@ -4,12 +4,14 @@ on:
       - master
       - develop
     paths:
+      - .github/**
       - redcode/**
   pull_request:
     branches:
       - master
       - develop
     paths:
+      - .github/**
       - redcode/**
 
 defaults:
