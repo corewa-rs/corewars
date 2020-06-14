@@ -2,7 +2,7 @@
     "name": "redcode",
     "displayName": "redcode",
     "description": "Language per REDCODE Reference Standard: ICWS'94 draft (extended)",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "license": "MIT",
     "publisher": "ian-h-chamberlain",
     "repository": {
@@ -11,7 +11,7 @@
         "directory": "redcode"
     },
     "engines": {
-        "vscode": "^1.40.0"
+        "vscode": "^1.46.0"
     },
     "categories": [
         "Programming Languages"
@@ -48,10 +48,11 @@
     },
     "scripts": {
         "build": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json",
-        "package": "vsce package"
+        "package": "vsce package",
+        "deploy": "vsce publish"
     },
     "devDependencies": {
-        "js-yaml": "^3.13.1",
-        "vsce": "^1.71.0"
+        "js-yaml": "^3.14.0",
+        "vsce": "^1.76.1"
     }
 }
