@@ -142,6 +142,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "predicates",
+ "regex",
  "structopt",
  "test-case",
  "testutils",
