@@ -1,0 +1,63 @@
+{
+    "tasks": [
+        {
+            "label": "rust: cargo doc",
+            "detail": "Build and open Cargo documentation for the workspace",
+            "command": "cargo",
+            "args": [
+                "doc",
+                "--document-private-items",
+                "--workspace",
+                "--open"
+            ],
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "clear": true,
+                "reveal": "silent"
+            },
+            "problemMatcher": [],
+            "type": "shell"
+        },
+        {
+            "label": "rust: cargo clippy",
+            "detail": "Check build and run linting on the workspace",
+            "command": "clippy",
+            "args": [
+                "--all-features",
+                "--all-targets",
+                "--workspace"
+            ],
+            "group": "test",
+            "presentation": {
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "type": "cargo"
+        },
+        {
+            "label": "rust: cargo test",
+            "detail": "Build and run unit and integration tests for the workspace",
+            "command": "test",
+            "args": [
+                "--all-features",
+                "--all-targets",
+                "--workspace"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "type": "cargo"
+        }
+    ],
+    "version": "2.0.0"
+}
