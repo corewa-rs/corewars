@@ -1,8 +1,7 @@
 extern crate corewa_rs;
 extern crate predicates;
-extern crate testutils;
 
-use testutils::assert_that;
+use corewa_rs::assert_that;
 
 fn run_test(input: &str, expected_output: &'static str) {
     let mut parsed_core = corewa_rs::parse(input).unwrap_or_else(|e| panic!("Parse error:\n{}", e));

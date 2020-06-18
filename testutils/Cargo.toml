@@ -1,9 +1,0 @@
-[package]
-name = "testutils"
-version = "0.1.0"
-authors = ["Ian Chamberlain <ian.h.chamberlain@gmail.com>"]
-edition = "2018"
-
-[dependencies]
-predicates = "1.0.2"
-predicates-tree = "1.0.0"

@@ -5,9 +5,9 @@ pub use predicates_tree;
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// use predicates::prelude::*;
-/// use testutils::assert_that;
+/// use testutil::assert_that;
 ///
 /// assert_that!(
 ///     "Hello World",

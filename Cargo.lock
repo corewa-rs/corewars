@@ -142,10 +142,10 @@ dependencies = [
  "pest",
  "pest_derive",
  "predicates",
+ "predicates-tree",
  "regex",
  "structopt",
  "test-case",
- "testutils",
  "textwrap",
  "textwrap-macros",
 ]
@@ -742,14 +742,6 @@ dependencies = [
  "quote",
  "syn",
  "version_check",
-]
-
-[[package]]
-name = "testutils"
-version = "0.1.0"
-dependencies = [
- "predicates",
- "predicates-tree",
 ]
 
 [[package]]

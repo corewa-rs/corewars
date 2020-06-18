@@ -1,6 +1,6 @@
 /// # Syntax
 ///
-/// ```
+/// ```rust
 /// enum_string!(pub Foo {
 ///     Bar => "Bar",
 ///     Baz => "BAZ"
