@@ -2,9 +2,15 @@
 //! Any comments like `;redcode` and `;author` will be parsed and stored in
 //! an Info struct.
 
-use itertools::Itertools;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 use super::Cleaned;
+
+lazy_static! {
+    // This kinda sucks compared to split_whitespace()...
+    static ref ORG_PATTERN: Regex = Regex::new(r"(?i)(?:ORG|(?P<end>END))\s+(?P<origin>\S+)").unwrap();
+}
 
 /// Metadata about a Redcode program that is stored in the comments.
 #[derive(Debug, Default, PartialEq)]
@@ -33,16 +39,40 @@ pub struct Info {
 
 impl Info {
     /// Parse a raw String input and return the output sans comments.
+    // TODO: Result output?
     pub fn extract_from_string(input: &str) -> Cleaned {
         let mut metadata = Self::default();
         let mut origin = None;
 
-        let lines: Vec<String> = input
-            .split_terminator('\n')
-            .filter_map(|line| metadata.parse_line(line))
-            // TODO: This leaves the last END off...
-            .take_while(|line| Self::set_origin_from_line(&mut origin, line))
-            .collect();
+        let lines = {
+            let mut lines = Vec::new();
+            for line in input
+                .split_terminator('\n')
+                .filter_map(|line| metadata.parse_line(line))
+            {
+                if let Some(captures) = ORG_PATTERN.captures(&line) {
+                    if let Some(new_origin) = captures.name("origin") {
+                        if let Some(old_origin) = origin.as_ref() {
+                            // TODO proper warnings
+                            eprintln!(
+                                "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
+                                new_origin.as_str(),
+                                old_origin
+                            );
+                        } else {
+                            origin = Some(new_origin.as_str().to_owned());
+                        }
+
+                        if captures.name("end").is_some() {
+                            lines.push(line);
+                            break;
+                        }
+                    }
+                }
+                lines.push(line);
+            }
+            lines
+        };
 
         metadata.origin = origin;
 
@@ -78,39 +108,10 @@ impl Info {
             Some(trimmed)
         }
     }
-
-    /// Set the value of the origin when ORG or END is encountered.
-    /// Returns whether or not parsing should continue (i.e. false if END was
-    /// read).
-    fn set_origin_from_line(origin: &mut Option<String>, line: &str) -> bool {
-        let split_trimmed: Vec<&str> = line.split_whitespace().collect();
-
-        let mut set_origin = || {
-            if let Some(&value) = split_trimmed.get(1) {
-                if origin.is_some() {
-                    // TODO warn user
-                }
-                *origin = Some(value.to_string());
-            }
-        };
-
-        match split_trimmed.get(0) {
-            Some(&"ORG") => {
-                set_origin();
-                true
-            }
-            Some(&"END") => {
-                set_origin();
-                false
-            }
-            _ => true,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use predicates::prelude::*;
     use test_case::test_case;
     use textwrap_macros::dedent;
 
@@ -163,7 +164,7 @@ mod tests {
                 ; name my-amazing-warrior
                 MOV 1, 1"
             ),
-            expected: vec!["ORG 5".to_string()],
+            expected: vec!["MOV 1, 1".to_string()],
             info: Info {
                 redcode: Some("".to_string()),
                 name: Some("my-amazing-warrior".to_string()),
@@ -179,38 +180,19 @@ mod tests {
                 "
                 ORG 5
                 MOV 0, 1
-                ; ORG 5 behind comment ignored
-                "
-            ),
-            expected: vec!["ORG 5".to_string()],
-            info: Info {
-                redcode: Some("".to_string()),
-                name: Some("my-amazing-warrior".to_string()),
-                author: Some("Ian Chamberlain".to_string()),
-                origin: Some("5".to_string()),
-                ..Default::default()
-            },
-        };
-        "parse origin"
-    )]
-    #[test_case(
-        Param {
-            input: dedent!(
-                "
-                ORG 5
-                END 2 ; should warn, but now ORG = 2
+                ; ORG 4 behind comment ignored
                 "
             ),
             expected: vec![
                 "ORG 5".to_string(),
-                "END 2".to_string(),
+                "MOV 0, 1".to_string()
             ],
             info: Info {
-                origin: Some("2".to_string()),
+                origin: Some("5".to_string()),
                 ..Default::default()
-            }
+            },
         };
-        "parse ORG and END"
+        "parse ORG"
     )]
     #[test_case(
         Param {
@@ -225,12 +207,31 @@ mod tests {
                 "ORG 2".to_string(),
             ],
             info: Info {
-                origin: Some("2".to_string()),
+                origin: Some("5".to_string()),
                 ..Default::default()
             }
 
         };
         "parse multiple ORG"
+    )]
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
+                org 5
+                END 2 ; should warn, but now ORG = 2
+                "
+            ),
+            expected: vec![
+                "org 5".to_string(),
+                "END 2".to_string(),
+            ],
+            info: Info {
+                origin: Some("5".to_string()),
+                ..Default::default()
+            }
+        };
+        "parse ORG and END"
     )]
     #[test_case(
         Param {
@@ -257,7 +258,7 @@ mod tests {
                 "
                 MOV 1, 1
                 END 2
-                END 3 ; this one is ignored
+                end 3 ; this one is ignored
                 "
             ),
             expected: vec![
@@ -287,7 +288,7 @@ mod tests {
         let result = Info::extract_from_string(param.input);
         let Cleaned { metadata, lines } = result;
 
+        assert_eq!(lines, param.expected);
         assert_eq!(metadata, param.info);
-        assert_eq!(&lines, predicate::eq(param.expected));
     }
 }
