@@ -12,10 +12,7 @@ fn run_test(input: &str, expected_output: &'static str) {
         .resolve()
         .unwrap_or_else(|e| panic!("{}", e));
 
-    assert_that!(
-        &parsed_core.to_string(),
-        predicate::str::similar(expected_output),
-    );
+    assert_that!(&parsed_core.to_string(), str::similar(expected_output),);
 }
 
 #[test]

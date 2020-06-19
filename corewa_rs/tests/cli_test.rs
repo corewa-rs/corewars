@@ -66,8 +66,6 @@ fn dump_file() {
 
     assert_that!(
         out_file.path(),
-        predicate::str::similar(EXPECTED_OUT)
-            .from_utf8()
-            .from_file_path(),
+        str::similar(EXPECTED_OUT).from_utf8().from_file_path(),
     );
 }
