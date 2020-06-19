@@ -43,7 +43,6 @@
             "command": "test",
             "args": [
                 "--all-features",
-                "--all-targets",
                 "--workspace"
             ],
             "group": {

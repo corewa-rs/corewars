@@ -1,37 +1,33 @@
 pub use predicates;
 pub use predicates_tree;
 
-/// Simple macro to panic with a prettier error message
+/// Simple macro to make assertions with a better error message.
 ///
 /// # Examples
 ///
 /// ```
-/// use predicates::prelude::*;
-/// use testutil::assert_that;
+/// extern crate corewa_rs;
+/// use corewa_rs::assert_that;
 ///
+/// assert_that!("Hello World", str::similar("Hello World"));
+///
+/// assert_that!("Hello World", str::diff("Goodbye World"));
+///
+/// // Can be used with more complex predicates
 /// assert_that!(
-///     "Hello World",
-///     str::similar("Hello World"),
+///     &1234,
+///     ge(-5).and(le(i16::MAX))
 /// );
-///
-/// assert_that!(
-///     "Hello World",
-///     str::diff("Goodbye World"),
-/// );
-///
-/// assert_that!("Hello World", eq("Goodbye World"));
 /// ```
 #[macro_export]
 macro_rules! assert_that {
-    (
-        $value:expr,
-        $($pred:tt)+ ( $args:tt ) $(,)?
-    ) => {{
-        use predicate::*;
+    ($value:expr, $pred:expr $(,)?) => {{
         use $crate::predicates::prelude::*;
         use $crate::predicates_tree::CaseTreeExt;
 
-        if let Some(case) = $($pred)+ rgo ($args).find_case(false, $value) {
+        use predicate::*;
+
+        if let Some(case) = $pred.find_case(false, $value) {
             panic!("{}", case.tree());
         };
     }};
