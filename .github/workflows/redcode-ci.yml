@@ -1,3 +1,5 @@
+name: redcode-ci
+
 on:
   push:
     branches:
