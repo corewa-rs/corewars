@@ -33,7 +33,7 @@ jobs:
       with:
         node-version: 10.x
     - name: Install dependencies
-      run: npm install
+      run: npm install --locked
     - name: Build extension
       run: npm run build
     - name: Verify the build did not modify any files

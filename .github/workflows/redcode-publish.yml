@@ -31,7 +31,7 @@ jobs:
       with:
         node-version: 10.x
     - name: Install dependencies
-      run: npm install
+      run: npm install --locked
     - name: Package extension
       run: npm run package -- --out ${{ steps.get_version.outputs.package }}.vsix
     - name: Upload extension to Github
