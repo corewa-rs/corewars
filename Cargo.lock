@@ -45,6 +45,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_that"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89c2aa95988fb71f08acc9a9f120c215156a82fa80e7fd296563987d25823139"
+dependencies = [
+ "predicates",
+ "predicates-tree",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -136,6 +146,7 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
+ "assert_that",
  "err-derive",
  "itertools",
  "lazy_static",
