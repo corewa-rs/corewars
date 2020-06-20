@@ -2,7 +2,7 @@
 //! Any comments like `;redcode` and `;author` will be parsed and stored in
 //! an Info struct.
 
-use super::Cleaned;
+use super::Clean;
 
 /// Metadata about a Redcode program that is stored in the comments.
 #[derive(Debug, Default, PartialEq)]
@@ -31,7 +31,7 @@ pub struct Info {
 
 impl Info {
     /// Parse a raw String input and return the output sans comments.
-    pub fn extract_from_string(input: &str) -> Cleaned {
+    pub fn extract_from_string(input: &str) -> Clean {
         let mut metadata = Self::default();
         let mut origin = None;
 
@@ -75,7 +75,7 @@ impl Info {
 
         metadata.origin = origin;
 
-        Cleaned { lines, metadata }
+        Clean { lines, metadata }
     }
 
     /// Find and return the origin defined in the given line.
@@ -326,7 +326,7 @@ mod tests {
     )]
     fn parse(param: Param) {
         let result = Info::extract_from_string(param.input);
-        let Cleaned { metadata, lines } = result;
+        let Clean { metadata, lines } = result;
 
         assert_eq!(lines, param.expected);
         assert_eq!(metadata, param.info);

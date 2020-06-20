@@ -42,7 +42,8 @@
             "command": "test",
             "args": [
                 "--all-features",
-                "--workspace"
+                "--workspace",
+                "--jobs=1",
             ],
             "group": {
                 "kind": "test",
