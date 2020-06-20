@@ -48,6 +48,9 @@
                 "kind": "test",
                 "isDefault": true
             },
+            "env": {
+                "RUST_BACKTRACE": "1"
+            },
             "presentation": {
                 "clear": true
             },
@@ -55,7 +58,7 @@
                 "$rustc"
             ],
             "type": "cargo"
-        }
+        },
     ],
     "version": "2.0.0"
 }

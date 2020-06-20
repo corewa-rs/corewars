@@ -2,15 +2,7 @@
 //! Any comments like `;redcode` and `;author` will be parsed and stored in
 //! an Info struct.
 
-use lazy_static::lazy_static;
-use regex::Regex;
-
 use super::Cleaned;
-
-lazy_static! {
-    // This kinda sucks compared to split_whitespace()...
-    static ref ORG_PATTERN: Regex = Regex::new(r"(?i)(?:ORG|(?P<end>END))\s+(?P<origin>\S+)").unwrap();
-}
 
 /// Metadata about a Redcode program that is stored in the comments.
 #[derive(Debug, Default, PartialEq)]
@@ -39,10 +31,21 @@ pub struct Info {
 
 impl Info {
     /// Parse a raw String input and return the output sans comments.
-    // TODO: Result output?
     pub fn extract_from_string(input: &str) -> Cleaned {
         let mut metadata = Self::default();
         let mut origin = None;
+
+        let mut set_origin = |new_origin: &str| {
+            if let Some(old_origin) = origin.as_ref() {
+                // TODO (#25) proper warnings instead of just eprintln
+                eprintln!(
+                    "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
+                    new_origin, old_origin
+                );
+            } else {
+                origin = Some(new_origin.to_owned());
+            }
+        };
 
         let lines = {
             let mut lines = Vec::new();
@@ -50,25 +53,30 @@ impl Info {
                 .split_terminator('\n')
                 .filter_map(|line| metadata.parse_line(line))
             {
-                if let Some(captures) = ORG_PATTERN.captures(&line) {
-                    if let Some(new_origin) = captures.name("origin") {
-                        if let Some(old_origin) = origin.as_ref() {
-                            // TODO proper warnings
-                            eprintln!(
-                                "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
-                                new_origin.as_str(),
-                                old_origin
-                            );
-                        } else {
-                            origin = Some(new_origin.as_str().to_owned());
-                        }
+                let split_line: Vec<String> =
+                    line.split_whitespace().map(|s| s.to_uppercase()).collect();
+                let split_line_str: Vec<&str> = split_line.iter().map(|s| s.as_str()).collect();
 
-                        if captures.name("end").is_some() {
+                if !split_line.is_empty() {
+                    match split_line_str[..] {
+                        ["ORG"] => {
+                            // TODO (#25) proper error handling, probably in the return type
+                            eprintln!("Error: ORG must be given an argument!")
+                        }
+                        ["ORG", new_origin] => set_origin(new_origin),
+                        ["END"] => {
                             lines.push(line);
                             break;
                         }
+                        ["END", new_origin] => {
+                            set_origin(new_origin);
+                            lines.push(line);
+                            break;
+                        }
+                        _ => (),
                     }
                 }
+
                 lines.push(line);
             }
             lines
