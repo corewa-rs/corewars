@@ -3,26 +3,12 @@ name: Redcode
 scopeName: source.redcode
 patterns:
   - include: '#directive'
+  - include: '#eof'
   - include: '#opcode'
   - include: '#field'
   - include: '#label'
 
 repository:
-  opcode:
-    patterns:
-      - name: keyword.operator.control.opcode.88.redcode
-        match: (?i)\b(DAT|MOV|ADD|SUB|JMP|JMZ|JMN|DJN|SLT|CMP|SPL)\b
-      - name: keyword.operator.control.opcode.94.redcode
-        match: (?i)\b(MUL|DIV|MOD|SEQ|SNE|NOP)\b
-      - name: keyword.operator.control.opcode.p-space.redcode
-        match: (?i)\b(LDP|STP)\b
-      - name: keyword.operator.control.psuedo-opcode.88.redcode
-        match: (?i)\b(EQU|END|FOR|ROF)\b
-      - name: keyword.operator.control.psuedo-opcode.94.redcode
-        match: (?i)\b(ORG)\b
-      - name: keyword.operator.control.psuedo-opcode.p-space.redcode
-        match: (?i)\b(PIN)\b
-
   builtin:
     patterns:
       - name: constant.language.88.redcode
@@ -74,20 +60,18 @@ repository:
           '2':
             name: string.unquoted.directive.koth.argument.redcode
 
-  label:
-    patterns:
-      - name: variable.redcode
-        match: '\b([a-zA-Z_][a-zA-Z0-9_]*[:]?)\b'
-
-  field:
-    patterns:
-      - name: keyword.operator.address-mode.88.redcode
-        match: '[#$@<]'
-      - name: keyword.operator.address-mode.94.redcode
-        match: '[>*{}]'
-      - name: keyword.operator.modifier.redcode
-        match: '(?i)\b(\.([ABFXI]|AB|BA))\b'
-      - include: '#expression'
+  eof:
+    name: comment.block.end.redcode
+    begin: '\b(END)\b(.*)'
+    # no end defined, the rest of the file should be treated as a comment
+    captures:
+      '1':
+        name: keyword.operator.control.psuedo-opcode.88.end.redcode
+      '2':
+        # Allow comments + expression on the same line
+        patterns:
+          - include: '#directive'
+          - include: '#field'
 
   expression:
     name: expression
@@ -102,7 +86,38 @@ repository:
       - include: '#label'
       - include: '#paren_expression'
 
+  field:
+    patterns:
+      - name: keyword.operator.address-mode.88.redcode
+        match: '[#$@<]'
+      - name: keyword.operator.address-mode.94.redcode
+        match: '[>*{}]'
+      - name: keyword.operator.modifier.redcode
+        match: '(?i)\b(\.([ABFXI]|AB|BA))\b'
+      - include: '#expression'
+
+  label:
+    patterns:
+      - name: variable.redcode
+        match: '\b([a-zA-Z_][a-zA-Z0-9_]*[:]?)\b'
+
+  opcode:
+    patterns:
+      - name: keyword.operator.control.opcode.88.redcode
+        match: (?i)\b(DAT|MOV|ADD|SUB|JMP|JMZ|JMN|DJN|SLT|CMP|SPL)\b
+      - name: keyword.operator.control.opcode.94.redcode
+        match: (?i)\b(MUL|DIV|MOD|SEQ|SNE|NOP)\b
+      - name: keyword.operator.control.opcode.p-space.redcode
+        match: (?i)\b(LDP|STP)\b
+      - name: keyword.operator.control.psuedo-opcode.88.redcode
+        match: (?i)\b(EQU|FOR|ROF)\b
+      - name: keyword.operator.control.psuedo-opcode.94.redcode
+        match: (?i)\b(ORG)\b
+      - name: keyword.operator.control.psuedo-opcode.p-space.redcode
+        match: (?i)\b(PIN)\b
+
   paren_expression:
+    name: expression.group
     begin: '\('
     beginCaptures:
       '0':
@@ -111,6 +126,5 @@ repository:
     endCaptures:
       '0':
         name: punctuation.paren.open.redcode
-    name: expression.group
     patterns:
       - include: '#expression'
