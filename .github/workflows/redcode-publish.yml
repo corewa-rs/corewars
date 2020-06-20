@@ -1,7 +1,4 @@
 on:
-  release:
-    types:
-      - created
   push:
     tags:
       - redcode-v*
