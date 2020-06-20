@@ -1,10 +1,10 @@
+name: redcode-ci
+
 on:
   release:
     types:
       - created
-  push:
-    tags:
-      - redcode-v*
+      - edited
 
 defaults:
   run:
