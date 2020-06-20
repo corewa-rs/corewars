@@ -2,7 +2,7 @@
     "name": "redcode",
     "displayName": "redcode",
     "description": "Language per REDCODE Reference Standard: ICWS'94 draft (extended)",
-    "version": "0.0.3",
+    "version": "0.1.0",
     "license": "MIT",
     "publisher": "ian-h-chamberlain",
     "repository": {
