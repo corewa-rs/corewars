@@ -35,7 +35,7 @@ impl Info {
         let mut metadata = Self::default();
         let mut origin = None;
 
-        let mut set_origin = |new_origin: &str| {
+        let mut set_origin = |new_origin: String| {
             if let Some(old_origin) = origin.as_ref() {
                 // TODO (#25) proper warnings instead of just eprintln
                 eprintln!(
@@ -43,51 +43,67 @@ impl Info {
                     new_origin, old_origin
                 );
             } else {
-                origin = Some(new_origin.to_owned());
+                origin = Some(new_origin);
             }
         };
 
-        let lines = {
-            let mut lines = Vec::new();
-            for line in input
-                .split_terminator('\n')
-                .filter_map(|line| metadata.parse_line(line))
-            {
-                let split_line: Vec<String> =
-                    line.split_whitespace().map(|s| s.to_uppercase()).collect();
-                let split_line_str: Vec<&str> = split_line.iter().map(|s| s.as_str()).collect();
+        let mut lines: Vec<String> = Vec::new();
 
-                if !split_line.is_empty() {
-                    match split_line_str[..] {
-                        ["ORG"] => {
-                            // TODO (#25) proper error handling, probably in the return type
-                            eprintln!("Error: ORG must be given an argument!")
-                        }
-                        ["ORG", new_origin] => set_origin(new_origin),
-                        ["END"] => {
-                            lines.push(line);
-                            break;
-                        }
-                        ["END", new_origin] => {
-                            set_origin(new_origin);
-                            lines.push(line);
-                            break;
-                        }
-                        _ => (),
+        for line in input.split_terminator('\n') {
+            let trimmed_line = metadata.parse_line(line);
+            if trimmed_line.is_empty() {
+                continue;
+            }
+
+            if let Ok(found_origin) = Self::find_origin_in_line(&trimmed_line) {
+                lines.push(trimmed_line);
+
+                use OriginInLine::*;
+                match found_origin {
+                    NewOrigin(new_origin) => set_origin(new_origin),
+                    EndWithNewOrigin(new_origin) => {
+                        set_origin(new_origin);
+                        break;
                     }
+                    End => break,
+                    NotFound => (),
                 }
-
-                lines.push(line);
+            } else {
+                // TODO (#25) return error
             }
-            lines
-        };
+        }
 
         metadata.origin = origin;
 
         Cleaned { lines, metadata }
     }
 
-    fn parse_line(&mut self, line: &str) -> Option<String> {
+    /// Find and return the origin defined in the given line.
+    fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
+        let tokenized_line = line
+            .split_whitespace()
+            .map(|s| s.to_uppercase())
+            .collect::<Vec<String>>();
+
+        let tokens: Vec<_> = tokenized_line.iter().map(String::as_str).collect();
+
+        use OriginInLine::*;
+        match tokens[..] {
+            ["ORG"] => {
+                // TODO (#25) proper error handling, probably in the return type
+                eprintln!("Error: ORG must be given an argument!");
+                Err(())
+            }
+            ["ORG", new_origin] => Ok(NewOrigin(new_origin.to_owned())),
+            ["END"] => Ok(End),
+            ["END", new_origin] => Ok(EndWithNewOrigin(new_origin.to_owned())),
+            _ => Ok(NotFound),
+        }
+    }
+
+    /// Parse warrior metadata out of a line. Any comments will be removed and
+    /// the resulting string returned, with whitespace trimmed.
+    fn parse_line(&mut self, line: &str) -> String {
         let split_line: Vec<&str> = line.splitn(2, ';').map(|p| p.trim()).collect();
 
         if split_line.len() > 1 {
@@ -109,13 +125,15 @@ impl Info {
             }
         }
 
-        let trimmed = split_line[0].trim().to_string();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed)
-        }
+        split_line[0].trim().to_string()
     }
+}
+
+enum OriginInLine {
+    NewOrigin(String),
+    EndWithNewOrigin(String),
+    End,
+    NotFound,
 }
 
 #[cfg(test)]
@@ -206,6 +224,18 @@ mod tests {
         Param {
             input: dedent!(
                 "
+                ORG
+                "
+            ),
+            expected: vec![],
+            info: Default::default(),
+        };
+        "parse ORG without arg"
+    )]
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
                 ORG 5
                 ORG 2 ; should warn, but now ORG = 2
                 "
@@ -246,6 +276,7 @@ mod tests {
             input: dedent!(
                 "
                 MOV 1, 1
+
                 END 2
                 "
             ),
