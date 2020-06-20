@@ -25,7 +25,6 @@
             "command": "clippy",
             "args": [
                 "--all-features",
-                "--all-targets",
                 "--workspace"
             ],
             "group": "test",

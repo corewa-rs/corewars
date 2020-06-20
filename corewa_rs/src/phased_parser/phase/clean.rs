@@ -259,6 +259,7 @@ mod tests {
                 MOV 1, 1
                 END 2
                 end 3 ; this one is ignored
+                stuff here should also be ignored
                 "
             ),
             expected: vec![
