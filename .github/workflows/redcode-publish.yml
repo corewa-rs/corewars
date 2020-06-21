@@ -3,8 +3,7 @@ name: redcode-publish
 on:
   release:
     types:
-      - created
-      - edited
+      - published
 
 defaults:
   run:

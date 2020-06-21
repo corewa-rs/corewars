@@ -27,7 +27,10 @@
                 "--all-features",
                 "--workspace"
             ],
-            "group": "test",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "presentation": {
                 "clear": true
             },
@@ -43,12 +46,8 @@
             "args": [
                 "--all-features",
                 "--workspace",
-                "--jobs=1",
             ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
+            "group": "test",
             "env": {
                 "RUST_BACKTRACE": "1"
             },

@@ -46,9 +46,9 @@ dependencies = [
 
 [[package]]
 name = "assert_that"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89c2aa95988fb71f08acc9a9f120c215156a82fa80e7fd296563987d25823139"
+checksum = "c82b40114c8a9f7f4910856c199475dd6ae805697148af5a4a46e2dfdb6ef75f"
 dependencies = [
  "predicates",
  "predicates-tree",
