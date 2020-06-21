@@ -26,6 +26,7 @@ enum_string!(pub PseudoOpcode {
     Org => "ORG",
     End => "END",
     Equ => "EQU",
+    For => "FOR",
 });
 
 impl Default for Opcode {
