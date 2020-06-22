@@ -137,7 +137,7 @@ enum OriginInLine {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use test_case::test_case;
     use textwrap_macros::dedent;
 

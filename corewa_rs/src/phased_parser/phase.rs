@@ -60,7 +60,7 @@ pub struct Expand {
 
 impl From<Phase<Clean>> for Phase<Expand> {
     fn from(prev: Phase<Clean>) -> Self {
-        let info = expand::Info::collect(prev.state.lines);
+        let info = expand::Info::collect_and_expand(prev.state.lines);
 
         Self {
             buffer: prev.buffer,
@@ -74,7 +74,7 @@ impl From<Phase<Clean>> for Phase<Expand> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use textwrap_macros::dedent;
 

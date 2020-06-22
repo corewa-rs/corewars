@@ -51,7 +51,7 @@ macro_rules! enum_string {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::str::FromStr;
 
     mod submod {

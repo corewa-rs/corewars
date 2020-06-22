@@ -118,7 +118,7 @@ impl fmt::Display for Value {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use itertools::iproduct;
 
     use super::*;

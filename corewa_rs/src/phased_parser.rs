@@ -2,11 +2,12 @@
 //! It operates in multiple phases, which are found in the [phase](phase/index.html)
 //! module. Each phase passes its result to the next phase.
 
-mod phase;
-
 use std::str::FromStr;
 
 use err_derive::Error;
+
+mod grammar;
+mod phase;
 
 use crate::load_file::*;
 use phase::{Clean, Phase, Raw};

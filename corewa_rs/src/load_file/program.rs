@@ -136,7 +136,7 @@ impl Program {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use crate::load_file::{Field, Value};
 

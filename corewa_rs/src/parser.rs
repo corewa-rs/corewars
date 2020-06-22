@@ -184,7 +184,7 @@ fn parse_value(value_pair: Pair<grammar::Rule>) -> Value {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]

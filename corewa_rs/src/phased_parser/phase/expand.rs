@@ -11,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::load_file::types::{Opcode, PseudoOpcode};
+use crate::{load_file::types::PseudoOpcode, phased_parser::grammar};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum LabelValue {
@@ -29,7 +29,7 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn collect(lines: Vec<String>) -> Self {
+    pub fn collect_and_expand(lines: Vec<String>) -> Self {
         let mut result = Self {
             labels: HashMap::new(),
             lines: Vec::new(),
@@ -49,58 +49,53 @@ impl Info {
         let mut collector = LabelCollector::new();
 
         for line in input_lines.into_iter() {
-            let tokenized_line: Vec<&str> = line.split_whitespace().collect();
-            let first_token = tokenized_line[0].to_uppercase();
+            let tokenized_line = grammar::tokenize(&line);
+            let first_token = &tokenized_line[0];
 
-            if Self::is_equ(&first_token) {
-                collector.process_equ_continuation(&tokenized_line);
+            if first_token.as_rule() == grammar::Rule::Substitution {
+                collector.process_equ_continuation(first_token.as_str());
                 continue;
             }
 
-            if Opcode::from_str(&first_token).is_ok() {
+            if first_token.as_rule() == grammar::Rule::Opcode {
                 self.labels
                     .extend(collector.resolve_pending_labels(self.lines.len()));
                 self.lines.push(line);
                 continue;
             }
 
+            assert!(first_token.as_rule() == grammar::Rule::Label);
+
+            let new_label = first_token.as_str();
+
             // At this point, treat first_token as a label since it was not a keyword
-            if self.labels.contains_key(&first_token)
-                || collector.pending_labels.contains(&first_token)
-            {
+            if self.labels.contains_key(new_label) || collector.pending_labels.contains(new_label) {
                 // TODO substitutions?
                 // Definitely want warnings for duplicate label decl
                 continue;
             }
 
             if let Some(second_token) = tokenized_line.get(1) {
-                if Self::is_equ(second_token) {
-                    collector.process_equ(&tokenized_line)
+                if second_token.as_rule() == grammar::Rule::Substitution {
+                    collector.process_equ(new_label, second_token.as_str())
                 } else {
-                    // label on top of normal line
-                    collector
-                        .pending_labels
-                        .insert(tokenized_line[0].to_string());
+                    // Offset label for a standard line
+                    collector.pending_labels.insert(new_label.to_owned());
                     self.labels
                         .extend(collector.resolve_pending_labels(self.lines.len()));
-                    self.lines.push(tokenized_line[1..].join(" "));
+
+                    let line_remainder = &line[second_token.as_span().start()..];
+                    self.lines.push(line_remainder.to_owned());
                 }
             } else {
                 // Label declaration by itself on a line
                 collector
                     .pending_labels
-                    .insert(tokenized_line[0].to_string());
+                    .insert(first_token.as_str().to_owned());
             }
         }
 
         self.labels.extend(collector.finish());
-    }
-
-    fn is_equ(token: &str) -> bool {
-        matches!(
-            PseudoOpcode::from_str(&token.to_uppercase()),
-            Ok(PseudoOpcode::Equ)
-        )
     }
 }
 
@@ -118,30 +113,24 @@ impl LabelCollector {
         }
     }
 
-    pub fn process_equ(&mut self, tokenized_line: &[&str]) {
-        assert!(
-            self.current_equ.is_none(),
-            "Already parsing EQU: {:?} but encountered more in line: {:?}",
-            &self.current_equ,
-            &tokenized_line,
-        );
-
-        if tokenized_line.len() <= 2 {
+    pub fn process_equ(&mut self, label: &str, substitution: &str) {
+        if substitution.is_empty() {
             // TODO: warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
         }
 
-        let substitution = tokenized_line
-            .get(2..)
-            .filter(|s| !s.is_empty())
-            .map(|tokens| vec![tokens.join(" ")])
-            .unwrap_or_default();
+        assert!(
+            self.current_equ.is_none(),
+            "Already parsing EQU: {:?} but encountered more substitution: {:?}",
+            &self.current_equ,
+            &substitution,
+        );
 
-        self.current_equ = Some((tokenized_line[0].to_owned(), substitution));
+        self.current_equ = Some((label.to_owned(), vec![substitution.to_owned()]));
     }
 
-    pub fn process_equ_continuation(&mut self, tokenized_line: &[&str]) {
+    pub fn process_equ_continuation(&mut self, substitution: &str) {
         if let Some((_, ref mut values)) = self.current_equ {
-            values.push(tokenized_line[1..].join(" "));
+            values.push(substitution.to_string());
         } else {
             // TODO (#25) Syntax error, first occurrence of EQU without label
         }
@@ -178,7 +167,7 @@ impl LabelCollector {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use maplit::hashmap;
 
     use super::LabelValue::*;
@@ -188,7 +177,7 @@ mod tests {
     fn collect_equ() {
         let lines = vec![String::from("foo equ 1")];
 
-        let info = Info::collect(lines);
+        let info = Info::collect_and_expand(lines);
 
         assert_eq!(
             info.labels,
@@ -207,7 +196,7 @@ mod tests {
             String::from("add 2, 3"),
         ];
 
-        let info = Info::collect(lines);
+        let info = Info::collect_and_expand(lines);
 
         assert_eq!(
             info.labels,
@@ -225,7 +214,7 @@ mod tests {
     fn collect_label_offset() {
         let lines = vec![String::from("foo mov 1, 1")];
 
-        let info = Info::collect(lines);
+        let info = Info::collect_and_expand(lines);
 
         assert_eq!(
             info.labels,
@@ -246,7 +235,7 @@ mod tests {
             String::from("MOV 0, 1"),
         ];
 
-        let info = Info::collect(lines);
+        let info = Info::collect_and_expand(lines);
 
         assert_eq!(
             info.labels,
