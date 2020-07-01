@@ -1,8 +1,9 @@
 extern crate assert_cmd;
+extern crate assert_that;
 extern crate corewa_rs;
 extern crate predicates;
 
-use corewa_rs::assert_that;
+use assert_that::assert_that;
 
 use std::process::Command;
 

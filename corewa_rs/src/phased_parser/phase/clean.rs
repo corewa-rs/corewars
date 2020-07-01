@@ -42,7 +42,7 @@ impl Info {
     // TODO: Result output?
     pub fn extract_from_string(input: &str) -> Cleaned {
         let mut metadata = Self::default();
-        let mut origin = None;
+        let mut origin: Option<String> = None;
 
         let lines = {
             let mut lines = Vec::new();
@@ -50,26 +50,33 @@ impl Info {
                 .split_terminator('\n')
                 .filter_map(|line| metadata.parse_line(line))
             {
-                if let Some(captures) = ORG_PATTERN.captures(&line) {
-                    if let Some(new_origin) = captures.name("origin") {
-                        if let Some(old_origin) = origin.as_ref() {
-                            // TODO proper warnings
-                            eprintln!(
-                                "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
-                                new_origin.as_str(),
-                                old_origin
-                            );
-                        } else {
-                            origin = Some(new_origin.as_str().to_owned());
+                let split_line: Vec<String> = line.split_whitespace().map(str::to_string).collect();
+
+                let token = split_line.get(0).map(|s| s.to_uppercase());
+                match token.as_deref() {
+                    Some("ORG") | Some("END") => {
+                        if let Some(new_origin) = split_line.get(1).as_deref() {
+                            if let Some(old_origin) = &origin {
+                                // TODO proper warnings
+                                eprintln!(
+                                    "WARNING: ORG already defined as {:?}, new definition {:?} will be ignored",
+                                    old_origin,
+                                    new_origin,
+                                );
+                                continue;
+                            }
+
+                            origin = split_line.get(1).map(|s| s.to_string());
+                        } else if token.as_deref() == Some("ORG") {
+                            // TODO real error, for now this is basically just a warning
+                            eprintln!("ERROR: ORG must have argument");
+                            continue;
                         }
 
-                        if captures.name("end").is_some() {
-                            lines.push(line);
-                            break;
-                        }
+                        lines.push(line);
                     }
+                    _ => lines.push(line),
                 }
-                lines.push(line);
             }
             lines
         };
@@ -127,12 +134,12 @@ mod tests {
         Param {
             input: dedent!(
                 "
-                  foody who
+                  foo who
                 bar di bar
                 baz.  "
             ),
             expected: vec![
-                "foody who".to_string(),
+                "foo who".to_string(),
                 "bar di bar".to_string(),
                 "baz.".to_string(),
             ],
@@ -143,12 +150,12 @@ mod tests {
     #[test_case(
         Param {
             input: dedent!(
-                "foody who
+                "foo who
                 ; bar di bar
                 baz. ; bar"
             ),
             expected: vec![
-                "foody who".to_string(),
+                "foo who".to_string(),
                 "baz.".to_string(),
             ],
             info: Info::default(),
@@ -199,12 +206,11 @@ mod tests {
             input: dedent!(
                 "
                 ORG 5
-                ORG 2 ; should warn, but now ORG = 2
+                ORG 2 ; should warn and leave org 5
                 "
             ),
             expected: vec![
                 "ORG 5".to_string(),
-                "ORG 2".to_string(),
             ],
             info: Info {
                 origin: Some("5".to_string()),
@@ -219,12 +225,11 @@ mod tests {
             input: dedent!(
                 "
                 org 5
-                END 2 ; should warn, but now ORG = 2
+                END 2 ; should warn and leave org 5
                 "
             ),
             expected: vec![
                 "org 5".to_string(),
-                "END 2".to_string(),
             ],
             info: Info {
                 origin: Some("5".to_string()),
@@ -285,6 +290,33 @@ mod tests {
         "empty result"
     )]
     fn parse(param: Param) {
+        let result = Info::extract_from_string(param.input);
+        let Cleaned { metadata, lines } = result;
+
+        assert_eq!(lines, param.expected);
+        assert_eq!(metadata, param.info);
+    }
+
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
+                ORG
+                MOV 0, 1
+                "
+            ),
+            expected: vec![
+                "MOV 0, 1".to_string()
+            ],
+            info: Info {
+                origin: None,
+                ..Default::default()
+            },
+        };
+        "parse ORG without arg" // should return
+    )]
+    fn parse_error(param: Param) {
+        // TODO: this should either expect_err or have #[should_panic]
         let result = Info::extract_from_string(param.input);
         let Cleaned { metadata, lines } = result;
 
