@@ -18,7 +18,15 @@ enum_string!(pub Opcode {
     Slt => "SLT",
     Spl => "SPL",
     Nop => "NOP",
+    // TODO dedupe with PseudoOpcode::Org
     Org => "ORG",
+});
+
+enum_string!(pub PseudoOpcode {
+    Org => "ORG",
+    End => "END",
+    Equ => "EQU",
+    For => "FOR",
 });
 
 impl Default for Opcode {
@@ -110,7 +118,7 @@ impl fmt::Display for Value {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use itertools::iproduct;
 
     use super::*;

@@ -1,0 +1,37 @@
+// Based on src/parser/grammar/redcode.pest
+
+WHITESPACE = _{ " " | "\t" }
+
+Line = _{ LabelDeclaration? ~ (Instruction | EquStatement)? }
+
+Instruction = { Operation ~ Field ~ ("," ~ Field)? }
+
+LabelDeclaration = _{ !(Operation | EquStatement) ~ Label ~ (":")? }
+
+Label = @{ Alpha ~ Alphanumeral* }
+
+Operation = ${ Opcode ~ ("." ~ Modifier)? }
+
+Field = !{ AddressMode? ~ Expr }
+
+Opcode = {
+    ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
+    ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
+    ^"SLT" | ^"SPL" | ^"NOP"
+}
+
+EquStatement = _{ ^"EQU" ~ Substitution }
+
+Substitution = { ANY* }
+
+Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
+
+AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
+
+Expr = { Number | Label }
+
+Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
+
+Alpha = _{ ASCII_ALPHA | "_" }
+
+Alphanumeral = _{ ASCII_ALPHANUMERIC | "_" }

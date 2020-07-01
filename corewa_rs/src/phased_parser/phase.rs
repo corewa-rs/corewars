@@ -2,6 +2,7 @@
 //! is a submodule within this module.
 
 pub mod clean;
+mod expand;
 
 use std::{convert::Infallible, str::FromStr};
 
@@ -15,6 +16,9 @@ pub struct Phase<S> {
     state: S,
 }
 
+/// The initial state of [Buffer](struct.Buffer.html), before any preprocessing has occurred.
+pub struct Raw;
+
 impl FromStr for Phase<Raw> {
     type Err = Infallible;
 
@@ -26,48 +30,75 @@ impl FromStr for Phase<Raw> {
     }
 }
 
-/// The initial state of [Buffer](struct.Buffer.html), before any preprocessing has occurred.
-pub struct Raw;
+/// The Phase after comments have been removed and metadata parsed from comments.
+/// This phase also parses ORG and END, and removes any text after END
+#[derive(Debug)]
+pub struct Clean {
+    pub lines: Vec<String>,
+    pub metadata: clean::Info,
+}
 
 // TODO: Need to consider TryFrom instead of From? Some transitions could fail
-impl From<Phase<Raw>> for Phase<Cleaned> {
-    fn from(b: Phase<Raw>) -> Self {
-        let state = clean::Info::extract_from_string(&b.buffer);
+impl From<Phase<Raw>> for Phase<Clean> {
+    fn from(prev: Phase<Raw>) -> Self {
+        let state = clean::Info::extract_from_string(&prev.buffer);
         Self {
-            buffer: b.buffer,
+            buffer: prev.buffer,
             state,
         }
     }
 }
 
-/// The state of Phase after cleans have been removed and metadata parsed from
-/// the cleans. Any text after END is also removed.
-pub struct Cleaned {
+/// The phase in which labels are collected and expanded. Resulting struct
+/// contains metadata from previous phase, as well as a table of labels collected.
+#[derive(Debug)]
+pub struct Expand {
     pub lines: Vec<String>,
+    pub labels: expand::Labels,
     pub metadata: clean::Info,
 }
 
+impl From<Phase<Clean>> for Phase<Expand> {
+    fn from(prev: Phase<Clean>) -> Self {
+        let info = expand::Info::collect_and_expand(prev.state.lines);
+
+        Self {
+            buffer: prev.buffer,
+            state: Expand {
+                lines: info.lines,
+                metadata: prev.state.metadata,
+                labels: info.labels,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use textwrap_macros::dedent;
 
     #[test]
-    fn transition_clean() {
+    fn transitions() {
         let raw_phase = Phase::<Raw>::from_str(
             dedent!(
                 "
                 ;redcode
                 ; author Ian Chamberlain
-                ORG 123 ; begin here
+                ORG start
+                EQU thing 4
+                MOV thing, 0
+                start
+                MOV thing, thing+1
+
                 "
             )
             .trim(),
         )
         .unwrap();
 
-        let stripped_phase = Phase::<Cleaned>::from(raw_phase);
+        let _clean_phase = Phase::<Clean>::from(raw_phase);
 
-        assert_eq!(stripped_phase.state.lines, vec![String::from("ORG 123")]);
+        // TODO: expansion transition
     }
 }

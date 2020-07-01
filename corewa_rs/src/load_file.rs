@@ -3,7 +3,7 @@ use std::fmt;
 use lazy_static::lazy_static;
 
 mod program;
-mod types;
+pub(crate) mod types;
 
 pub use program::{LabelMap, Program};
 pub use types::{AddressMode, Modifier, Opcode, Value};
@@ -128,7 +128,7 @@ impl Instruction {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]

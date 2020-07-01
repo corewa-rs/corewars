@@ -7,6 +7,16 @@ Format based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.1.0]
+
+### Added
+
+- Display everything after `END` as a comment
+
+### Changed
+
+- Update CI to use node 14 and `npm ci`
+
 ## [0.0.3]
 
 ### Added
@@ -21,7 +31,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Changed
 
-- Merge into [corewa.rs repository](http://github.com/ian-h-chamberlain/corewa_rs), update links to http://corewa.rs, etc.
+- Merge into [corewa.rs repository](http://github.com/ian-h-chamberlain/corewa_rs), update links to [http://corewa.rs](http://corewa.rs), etc.
 
 ### Fixed
 

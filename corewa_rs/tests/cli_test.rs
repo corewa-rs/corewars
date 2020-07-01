@@ -1,13 +1,13 @@
 extern crate assert_cmd;
 extern crate assert_that;
-extern crate corewa_rs;
 extern crate predicates;
 
-use assert_that::assert_that;
+extern crate corewa_rs;
 
 use std::process::Command;
 
 use assert_cmd::prelude::*;
+use assert_that::assert_that;
 use predicates::prelude::*;
 
 static EXPECTED_OUT: &str = include_str!("data/test_loadfile.red");

@@ -150,6 +150,7 @@ dependencies = [
  "err-derive",
  "itertools",
  "lazy_static",
+ "maplit",
  "pest",
  "pest_derive",
  "predicates",

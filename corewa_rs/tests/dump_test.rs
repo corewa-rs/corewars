@@ -1,6 +1,7 @@
 extern crate assert_that;
-extern crate corewa_rs;
 extern crate predicates;
+
+extern crate corewa_rs;
 
 use assert_that::assert_that;
 
