@@ -6,12 +6,9 @@
 //! Labels used in the right-hand side of an expression are not substituted,
 //! but saved for later evaluation.
 
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 
-use crate::{load_file::types::PseudoOpcode, phased_parser::grammar};
+use crate::phased_parser::grammar;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum LabelValue {
@@ -29,6 +26,7 @@ pub struct Info {
 }
 
 impl Info {
+    /// Collect all labels found in the input lines. For EQU labels, expand usages
     pub fn collect_and_expand(lines: Vec<String>) -> Self {
         let mut result = Self {
             labels: HashMap::new(),
@@ -36,6 +34,13 @@ impl Info {
         };
 
         result.collect_label_declarations(lines);
+
+        dbg!(&result.lines);
+        dbg!(&result.labels);
+
+        result.expand_label_usages();
+
+        dbg!(&result.lines);
 
         result
     }
@@ -50,52 +55,92 @@ impl Info {
 
         for line in input_lines.into_iter() {
             let tokenized_line = grammar::tokenize(&line);
-            let first_token = &tokenized_line[0];
-
-            if first_token.as_rule() == grammar::Rule::Substitution {
-                collector.process_equ_continuation(first_token.as_str());
+            if tokenized_line.is_empty() {
+                eprintln!("Empty line: {:?}", line);
                 continue;
             }
 
-            if first_token.as_rule() == grammar::Rule::Opcode {
-                self.labels
-                    .extend(collector.resolve_pending_labels(self.lines.len()));
-                self.lines.push(line);
-                continue;
-            }
+            let first_token = dbg!(&tokenized_line[0]);
 
-            assert!(first_token.as_rule() == grammar::Rule::Label);
-
-            let new_label = first_token.as_str();
-
-            // At this point, treat first_token as a label since it was not a keyword
-            if self.labels.contains_key(new_label) || collector.pending_labels.contains(new_label) {
-                // TODO substitutions?
-                // Definitely want warnings for duplicate label decl
-                continue;
-            }
-
-            if let Some(second_token) = tokenized_line.get(1) {
-                if second_token.as_rule() == grammar::Rule::Substitution {
-                    collector.process_equ(new_label, second_token.as_str())
-                } else {
-                    // Offset label for a standard line
-                    collector.pending_labels.insert(new_label.to_owned());
+            match first_token.as_rule() {
+                grammar::Rule::Substitution => {
+                    collector.process_equ_continuation(first_token.as_str());
+                }
+                grammar::Rule::Opcode => {
                     self.labels
                         .extend(collector.resolve_pending_labels(self.lines.len()));
-
-                    let line_remainder = &line[second_token.as_span().start()..];
-                    self.lines.push(line_remainder.to_owned());
+                    self.lines.push(line);
                 }
-            } else {
-                // Label declaration by itself on a line
-                collector
-                    .pending_labels
-                    .insert(first_token.as_str().to_owned());
+                grammar::Rule::Label => {
+                    let new_label = first_token.as_str();
+
+                    if let Some(second_token) = tokenized_line.get(1) {
+                        if second_token.as_rule() == grammar::Rule::Substitution {
+                            eprintln!("Found EQU: {:?}", second_token.as_str());
+                            collector.process_equ(new_label, second_token.as_str())
+                        } else {
+                            // Offset label for a standard line
+                            collector.pending_labels.insert(new_label.to_owned());
+                            self.labels
+                                .extend(collector.resolve_pending_labels(self.lines.len()));
+
+                            let line_remainder = &line[second_token.as_span().start()..];
+                            self.lines.push(line_remainder.to_owned());
+                        }
+                    } else {
+                        // TODO: add line if it is a usage
+
+                        // Label declaration or usage by itself on a line
+                        collector
+                            .pending_labels
+                            .insert(first_token.as_str().to_owned());
+                    }
+                }
+                rule => panic!("Unexpected token of type {:?}: {:?}", rule, first_token),
             }
+
+            dbg!(&self.lines);
         }
 
         self.labels.extend(collector.finish());
+    }
+
+    /// Expand usages of all declared labels. For now, this only expands EQU
+    /// labels, but it should eventually handle FOR expansion as well
+    fn expand_label_usages(&mut self) {
+        use LabelValue::*;
+
+        let mut i = 0;
+        while i < self.lines.len() {
+            // TODO: clone
+            let current_line = self.lines[i].clone();
+            let tokenized = dbg!(grammar::tokenize(&current_line));
+
+            for token in tokenized.iter() {
+                if token.as_rule() == grammar::Rule::Label {
+                    match self.labels.get(token.as_str()) {
+                        Some(Substitution(lines)) => {
+                            assert!(!lines.is_empty());
+                            // Do as simple of text substitution as possible
+                            let (before, after) = current_line.split_at(token.as_span().start());
+                            self.lines[i] = before.to_owned() + &lines[0];
+                            if lines.len() > 1 {
+                                for line_to_insert in &lines[1..lines.len() - 1] {
+                                    // TODO clone
+                                    self.lines.insert(i, line_to_insert.clone());
+                                    i += 1;
+                                }
+                            }
+                            self.lines[i].insert_str(0, after);
+                        }
+                        Some(Offset(_)) => {}
+                        None => panic!("No such label {:?}", token.as_str()),
+                    }
+                }
+            }
+
+            i += 1;
+        }
     }
 }
 
@@ -126,13 +171,16 @@ impl LabelCollector {
         );
 
         self.current_equ = Some((label.to_owned(), vec![substitution.to_owned()]));
+
+        dbg!(&self.current_equ);
     }
 
     pub fn process_equ_continuation(&mut self, substitution: &str) {
         if let Some((_, ref mut values)) = self.current_equ {
             values.push(substitution.to_string());
         } else {
-            // TODO (#25) Syntax error, first occurrence of EQU without label
+            // TODO #25 real error
+            eprintln!("Error: first occurrence of EQU without label")
         }
     }
 
@@ -152,6 +200,8 @@ impl LabelCollector {
             // Reached the last line in an equ, add to table and reset
             result.insert(multiline_equ_label, LabelValue::Substitution(values));
         }
+
+        dbg!(&result);
 
         result.into_iter()
     }
@@ -249,6 +299,31 @@ mod test {
         assert_eq!(
             info.lines,
             vec![String::from("mov 1, 1"), String::from("MOV 0, 1")]
+        );
+    }
+
+    #[test]
+    fn expand_single_equ() {
+        let lines = vec![
+            String::from("step equ mov 1, 1"),
+            String::from("nop 1, 1"),
+            String::from("step"),
+            String::from("abc   step"),
+            String::from("step   xyz"),
+            String::from("abc step xyz"),
+        ];
+
+        let info = Info::collect_and_expand(lines);
+
+        assert_eq!(
+            info.lines,
+            vec![
+                String::from("nop 1, 1"),
+                String::from("mov 1, 1"),
+                String::from("abc   mov 1, 1"),
+                String::from("mov 1, 1   xyz"),
+                String::from("abc mov 1, 1 xyz"),
+            ]
         );
     }
 }
