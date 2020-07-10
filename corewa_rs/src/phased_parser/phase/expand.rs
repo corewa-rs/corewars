@@ -38,9 +38,11 @@ impl Info {
         dbg!(&result.lines);
         dbg!(&result.labels);
 
-        result.expand_label_usages();
+        result.expand_equ_usages();
 
         dbg!(&result.lines);
+
+        // TODO offset substitution
 
         result
     }
@@ -60,7 +62,7 @@ impl Info {
                 continue;
             }
 
-            let first_token = dbg!(&tokenized_line[0]);
+            let first_token = &tokenized_line[0];
 
             match first_token.as_rule() {
                 grammar::Rule::Substitution => {
@@ -72,15 +74,15 @@ impl Info {
                     self.lines.push(line);
                 }
                 grammar::Rule::Label => {
-                    let new_label = first_token.as_str();
+                    let found_label = dbg!(first_token.as_str());
 
                     if let Some(second_token) = tokenized_line.get(1) {
                         if second_token.as_rule() == grammar::Rule::Substitution {
                             eprintln!("Found EQU: {:?}", second_token.as_str());
-                            collector.process_equ(new_label, second_token.as_str())
+                            collector.process_equ(found_label, second_token.as_str())
                         } else {
                             // Offset label for a standard line
-                            collector.pending_labels.insert(new_label.to_owned());
+                            collector.pending_labels.insert(found_label.to_owned());
                             self.labels
                                 .extend(collector.resolve_pending_labels(self.lines.len()));
 
@@ -88,18 +90,24 @@ impl Info {
                             self.lines.push(line_remainder.to_owned());
                         }
                     } else {
-                        // TODO: add line if it is a usage
+                        if !self.labels.contains_key(first_token.as_str()) {
+                            // Offset-based label declaration withotu anyb
+                            collector
+                                .pending_labels
+                                .insert(first_token.as_str().to_owned());
+                        }
 
-                        // Label declaration or usage by itself on a line
-                        collector
-                            .pending_labels
-                            .insert(first_token.as_str().to_owned());
+                        for token in tokenized_line[1..].iter() {
+                            if token.as_rule() == grammar::Rule::Label {
+                                // Could be a usage of a previously declared label
+                            }
+                        }
+
+                        self.lines.push(line);
                     }
                 }
                 rule => panic!("Unexpected token of type {:?}: {:?}", rule, first_token),
             }
-
-            dbg!(&self.lines);
         }
 
         self.labels.extend(collector.finish());
@@ -107,34 +115,48 @@ impl Info {
 
     /// Expand usages of all declared labels. For now, this only expands EQU
     /// labels, but it should eventually handle FOR expansion as well
-    fn expand_label_usages(&mut self) {
+    fn expand_equ_usages(&mut self) {
         use LabelValue::*;
 
         let mut i = 0;
-        while i < self.lines.len() {
+        while dbg!(i) < self.lines.len() {
             // TODO: clone
             let current_line = self.lines[i].clone();
-            let tokenized = dbg!(grammar::tokenize(&current_line));
+            let tokenized = grammar::tokenize(&current_line);
+
+            dbg!(&current_line);
+            dbg!(&tokenized);
 
             for token in tokenized.iter() {
                 if token.as_rule() == grammar::Rule::Label {
                     match self.labels.get(token.as_str()) {
-                        Some(Substitution(lines)) => {
-                            assert!(!lines.is_empty());
-                            // Do as simple of text substitution as possible
-                            let (before, after) = current_line.split_at(token.as_span().start());
-                            self.lines[i] = before.to_owned() + &lines[0];
-                            if lines.len() > 1 {
-                                for line_to_insert in &lines[1..lines.len() - 1] {
+                        Some(Offset(_)) => {
+                            // TODO
+                        }
+                        Some(Substitution(subst_lines)) => {
+                            assert!(!subst_lines.is_empty());
+
+                            let span = token.as_span();
+
+                            let before = &current_line[..span.start()];
+                            let after = &current_line[span.end()..];
+
+                            self.lines[i] = before.to_owned() + &subst_lines[0];
+
+                            if subst_lines.len() > 1 {
+                                for line_to_insert in &subst_lines[1..subst_lines.len() - 1] {
                                     // TODO clone
                                     self.lines.insert(i, line_to_insert.clone());
                                     i += 1;
                                 }
                             }
-                            self.lines[i].insert_str(0, after);
+
+                            self.lines[i].push_str(after);
                         }
-                        Some(Offset(_)) => {}
-                        None => panic!("No such label {:?}", token.as_str()),
+                        None => {
+                            // TODO #25 real error
+                            // panic!("No such label {:?}", token.as_str())
+                        }
                     }
                 }
             }
@@ -305,12 +327,14 @@ mod test {
     #[test]
     fn expand_single_equ() {
         let lines = vec![
-            String::from("step equ mov 1, 1"),
+            String::from("step equ mov 1, "),
             String::from("nop 1, 1"),
-            String::from("step"),
-            String::from("abc   step"),
-            String::from("step   xyz"),
-            String::from("abc step xyz"),
+            String::from("step 1"),
+            String::from("lbl1"),
+            // TODO: the following line tokenized to just "lbl2"
+            String::from("lbl2 step 2"),
+            String::from("step lbl2"),
+            String::from("lbl3 step lbl3"),
         ];
 
         let info = Info::collect_and_expand(lines);
@@ -320,9 +344,10 @@ mod test {
             vec![
                 String::from("nop 1, 1"),
                 String::from("mov 1, 1"),
-                String::from("abc   mov 1, 1"),
-                String::from("mov 1, 1   xyz"),
-                String::from("abc mov 1, 1 xyz"),
+                String::from("lbl1"),
+                String::from("lbl2 mov 1, 2"),
+                String::from("mov 1, lbl1"),
+                String::from("lbl3 mov 1, lbl3"),
             ]
         );
     }

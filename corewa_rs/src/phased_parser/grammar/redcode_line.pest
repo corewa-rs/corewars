@@ -2,7 +2,7 @@
 
 WHITESPACE = _{ " " | "\t" }
 
-Line = _{ LabelDeclaration? ~ (Instruction | EquStatement)? }
+Line = _{ LabelDeclaration? ~ (Instruction | EquStatement /* | Substitution */ )? }
 
 Instruction = { Operation ~ Field ~ ("," ~ Field)? }
 
