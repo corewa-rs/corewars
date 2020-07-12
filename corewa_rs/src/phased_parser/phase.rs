@@ -1,8 +1,8 @@
 //! This module defines the phased_parser state machine. Each phase of the parser
 //! is a submodule within this module.
 
-pub mod clean;
-mod expand;
+mod clean;
+mod expansion;
 
 use std::{convert::Infallible, str::FromStr};
 
@@ -50,24 +50,22 @@ impl From<Phase<Raw>> for Phase<Clean> {
 }
 
 /// The phase in which labels are collected and expanded. Resulting struct
-/// contains metadata from previous phase, as well as a table of labels collected.
+/// contains metadata from previous phase and the expanded lines
 #[derive(Debug)]
 pub struct Expand {
     pub lines: Vec<String>,
-    pub labels: expand::Labels,
     pub metadata: clean::Info,
 }
 
 impl From<Phase<Clean>> for Phase<Expand> {
     fn from(prev: Phase<Clean>) -> Self {
-        let info = expand::Info::collect_and_expand(prev.state.lines);
+        let lines = expansion::expand(prev.state.lines);
 
         Self {
             buffer: prev.buffer,
             state: Expand {
-                lines: info.lines,
+                lines,
                 metadata: prev.state.metadata,
-                labels: info.labels,
             },
         }
     }

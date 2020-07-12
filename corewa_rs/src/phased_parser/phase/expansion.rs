@@ -10,9 +10,15 @@ use std::collections::{HashMap, HashSet};
 
 use crate::phased_parser::grammar;
 
+/// Collect, and subsitute all labels found in the input lines.
+/// For EQU labels, expand usages
+pub fn expand(lines: Vec<String>) -> Vec<String> {
+    todo!()
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum LabelValue {
-    // Unresolved, // is this needed for used but undeclared?
+    // Unresolved, // TODO is this needed for used but undeclared?
     Offset(usize),
     Substitution(Vec<String>),
 }
@@ -20,14 +26,10 @@ pub enum LabelValue {
 pub type Labels = HashMap<String, LabelValue>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Info {
-    pub labels: Labels,
-    pub lines: Vec<String>,
-}
+struct Collector {}
 
 impl Info {
-    /// Collect all labels found in the input lines. For EQU labels, expand usages
-    pub fn collect_and_expand(lines: Vec<String>) -> Self {
+    fn collect_and_expand(lines: Vec<String>) -> Self {
         let mut result = Self {
             labels: HashMap::new(),
             lines: Vec::new(),
@@ -58,7 +60,7 @@ impl Info {
         for line in input_lines.into_iter() {
             let tokenized_line = grammar::tokenize(&line);
             if tokenized_line.is_empty() {
-                eprintln!("Empty line: {:?}", line);
+                dbgf!("Empty line: {:?}", line);
                 continue;
             }
 
@@ -76,9 +78,23 @@ impl Info {
                 grammar::Rule::Label => {
                     let found_label = dbg!(first_token.as_str());
 
-                    if let Some(second_token) = tokenized_line.get(1) {
+                    if let Some(value) = self.labels.get(found_label) {
+                        match value {
+                            LabelValue::Substitution(_) => {
+                                // Usage of a predeclared label
+                                self.lines.push(line);
+                            }
+                            LabelValue::Offset(_) => {
+                                // TODO real warning
+                                eprintln!(
+                                    "Duplicate label {:?}, second declaration will be ignored",
+                                    found_label
+                                );
+                            }
+                        }
+                    } else if let Some(second_token) = tokenized_line.get(1) {
                         if second_token.as_rule() == grammar::Rule::Substitution {
-                            eprintln!("Found EQU: {:?}", second_token.as_str());
+                            dbgf!("Found EQU: {:?}", second_token.as_str());
                             collector.process_equ(found_label, second_token.as_str())
                         } else {
                             // Offset label for a standard line
@@ -91,7 +107,7 @@ impl Info {
                         }
                     } else {
                         if !self.labels.contains_key(first_token.as_str()) {
-                            // Offset-based label declaration withotu anyb
+                            // Offset-based label declaration
                             collector
                                 .pending_labels
                                 .insert(first_token.as_str().to_owned());
@@ -126,15 +142,21 @@ impl Info {
 
             dbg!(&current_line);
             dbg!(&tokenized);
+            dbg!(&self.labels);
 
             for token in tokenized.iter() {
                 if token.as_rule() == grammar::Rule::Label {
+                    dbgf!("Found label {:?}", token.as_str());
+
                     match self.labels.get(token.as_str()) {
                         Some(Offset(_)) => {
                             // TODO
+                            dbgf!("Type: offset");
                         }
                         Some(Substitution(subst_lines)) => {
                             assert!(!subst_lines.is_empty());
+
+                            dbgf!("Type: substitution = {:?}", subst_lines);
 
                             let span = token.as_span();
 
@@ -168,13 +190,15 @@ impl Info {
 
 #[derive(Debug)]
 struct LabelCollector {
-    pub current_equ: Option<(String, Vec<String>)>,
-    pub pending_labels: HashSet<String>,
+    labels: Labels,
+    current_equ: Option<(String, Vec<String>)>,
+    pending_labels: HashSet<String>,
 }
 
 impl LabelCollector {
     fn new() -> Self {
         Self {
+            labels: Labels::new(),
             current_equ: None,
             pending_labels: HashSet::new(),
         }
@@ -193,8 +217,6 @@ impl LabelCollector {
         );
 
         self.current_equ = Some((label.to_owned(), vec![substitution.to_owned()]));
-
-        dbg!(&self.current_equ);
     }
 
     pub fn process_equ_continuation(&mut self, substitution: &str) {
@@ -206,10 +228,7 @@ impl LabelCollector {
         }
     }
 
-    pub fn resolve_pending_labels(
-        &mut self,
-        offset: usize,
-    ) -> impl Iterator<Item = (String, LabelValue)> {
+    pub fn resolve_pending_labels(&mut self, offset: usize) {
         let mut result = HashMap::new();
 
         let pending_labels = std::mem::replace(&mut self.pending_labels, HashSet::new());
@@ -225,16 +244,18 @@ impl LabelCollector {
 
         dbg!(&result);
 
-        result.into_iter()
+        self.labels.extend(result.into_iter())
     }
 
-    pub fn finish(self) -> Option<(String, LabelValue)> {
+    pub fn finish(&mut self) {
         if !self.pending_labels.is_empty() {
             // TODO warning for empty definition for each pending label
         }
 
-        self.current_equ
-            .map(|(label, values)| (label, LabelValue::Substitution(values)))
+        self.labels.extend(
+            self.current_equ
+                .map(|(label, values)| (label, LabelValue::Substitution(values))),
+        );
     }
 }
 
