@@ -2,6 +2,7 @@
 //! Provides helper function to tokenize strings into span-like tokens.
 
 pub(crate) use pest::{
+    error::Error,
     iterators::{Pair, Pairs},
     Parser,
 };
@@ -14,9 +15,11 @@ pub(crate) struct Grammar;
 /// Parse an input line and return an iterator over
 
 pub(crate) fn tokenize(line: &str) -> Vec<Pair<Rule>> {
+    parse(line).map(flatten_pairs).unwrap_or_default()
+}
+
+pub(crate) fn parse(line: &str) -> Result<Pairs<Rule>, Error<Rule>> {
     Grammar::parse(Rule::Line, line)
-        .map(flatten_pairs)
-        .unwrap_or_default()
 }
 
 fn flatten_pairs(pairs: Pairs<Rule>) -> Vec<Pair<Rule>> {

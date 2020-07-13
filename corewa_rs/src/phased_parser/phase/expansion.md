@@ -5,8 +5,12 @@
 - For each line:
   - Parse with grammar
   - If first token is label:
-    - If label is declared as substitution:
-      - Expand + continue loop
+    - If label is `EQU` declaration:
+      - Begin storing `EQU`
+      - Continue loop
+    - If label previously declared as substitution:
+      - Expand
+      - Continue loop
     - Else:
       - Store offset for label
   - For remaining token in line:
