@@ -33,7 +33,7 @@ impl Info {
     /// Parse a raw String input and return the output sans comments.
     pub fn extract_from_string(input: &str) -> Clean {
         let mut metadata = Self::default();
-        let mut origin = None;
+        let mut origin: Option<String> = None;
 
         let mut set_origin = |new_origin: String| {
             if let Some(old_origin) = origin.as_ref() {
@@ -153,12 +153,12 @@ mod test {
         Param {
             input: dedent!(
                 "
-                  foody who
+                  foo who
                 bar di bar
                 baz.  "
             ),
             expected: vec![
-                "foody who".to_string(),
+                "foo who".to_string(),
                 "bar di bar".to_string(),
                 "baz.".to_string(),
             ],
@@ -169,12 +169,12 @@ mod test {
     #[test_case(
         Param {
             input: dedent!(
-                "foody who
+                "foo who
                 ; bar di bar
                 baz. ; bar"
             ),
             expected: vec![
-                "foody who".to_string(),
+                "foo who".to_string(),
                 "baz.".to_string(),
             ],
             info: Info::default(),
@@ -237,12 +237,11 @@ mod test {
             input: dedent!(
                 "
                 ORG 5
-                ORG 2 ; should warn, but now ORG = 2
+                ORG 2 ; should warn and leave org 5
                 "
             ),
             expected: vec![
                 "ORG 5".to_string(),
-                "ORG 2".to_string(),
             ],
             info: Info {
                 origin: Some("5".to_string()),
@@ -257,12 +256,11 @@ mod test {
             input: dedent!(
                 "
                 org 5
-                END 2 ; should warn, but now ORG = 2
+                END 2 ; should warn and leave org 5
                 "
             ),
             expected: vec![
                 "org 5".to_string(),
-                "END 2".to_string(),
             ],
             info: Info {
                 origin: Some("5".to_string()),
@@ -327,6 +325,33 @@ mod test {
     fn parse(param: Param) {
         let result = Info::extract_from_string(param.input);
         let Clean { metadata, lines } = result;
+
+        assert_eq!(lines, param.expected);
+        assert_eq!(metadata, param.info);
+    }
+
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
+                ORG
+                MOV 0, 1
+                "
+            ),
+            expected: vec![
+                "MOV 0, 1".to_string()
+            ],
+            info: Info {
+                origin: None,
+                ..Default::default()
+            },
+        };
+        "parse ORG without arg" // should return
+    )]
+    fn parse_error(param: Param) {
+        // TODO: this should either expect_err or have #[should_panic]
+        let result = Info::extract_from_string(param.input);
+        let Cleaned { metadata, lines } = result;
 
         assert_eq!(lines, param.expected);
         assert_eq!(metadata, param.info);
