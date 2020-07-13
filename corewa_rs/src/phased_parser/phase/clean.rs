@@ -35,6 +35,7 @@ impl Info {
         let mut metadata = Self::default();
         let mut origin: Option<String> = None;
 
+        // returns true if new originw as set
         let mut set_origin = |new_origin: String| {
             if let Some(old_origin) = origin.as_ref() {
                 // TODO (#25) proper warnings instead of just eprintln
@@ -42,8 +43,10 @@ impl Info {
                     "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
                     new_origin, old_origin
                 );
+                false
             } else {
                 origin = Some(new_origin);
+                true
             }
         };
 
@@ -60,9 +63,17 @@ impl Info {
 
                 use OriginInLine::*;
                 match found_origin {
-                    NewOrigin(new_origin) => set_origin(new_origin),
+                    NewOrigin(new_origin) => {
+                        if !set_origin(new_origin) {
+                            lines.pop();
+                        }
+                    }
                     EndWithNewOrigin(new_origin) => {
-                        set_origin(new_origin);
+                        if !set_origin(new_origin) {
+                            // We need to ignore the new origin, but still register this as the end.
+                            // So, for now just remove the line and break
+                            lines.pop();
+                        }
                         break;
                     }
                     End => break,
@@ -351,7 +362,7 @@ mod test {
     fn parse_error(param: Param) {
         // TODO: this should either expect_err or have #[should_panic]
         let result = Info::extract_from_string(param.input);
-        let Cleaned { metadata, lines } = result;
+        let Clean { metadata, lines } = result;
 
         assert_eq!(lines, param.expected);
         assert_eq!(metadata, param.info);
