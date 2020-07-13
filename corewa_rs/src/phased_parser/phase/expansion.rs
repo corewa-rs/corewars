@@ -14,33 +14,51 @@ use crate::phased_parser::grammar;
 
 /// Collect, and subsitute all labels found in the input lines.
 /// For EQU labels, expand usages
-pub fn expand(input_lines: Vec<String>) -> Vec<String> {
-    let lines = collect_and_expand(input_lines);
+pub fn expand(mut lines: Vec<String>) -> Vec<String> {
+    let labels = collect_and_expand(&mut lines);
 
-    // TODO: label substitution
+    // TODO: FOR expansion
+
+    substitute_offsets(&mut lines, labels);
 
     lines
 }
 
-fn collect_and_expand(mut lines: Vec<String>) -> Vec<String> {
+fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     use grammar::Rule;
 
     let mut collector = Collector::new();
 
     let mut i = 0;
     while i < lines.len() {
-        let line = &lines[i];
-
+        // TODO clone
+        let line = lines[i].clone();
         let tokenized_line = grammar::tokenize(&line);
 
         if tokenized_line.is_empty() {
-            dbgf!("Empty line: {:?}", line);
+            dbgf!("Line {} is empty", i);
             continue;
         }
 
-        dbg!(&tokenized_line);
-
         let first_token = &tokenized_line[0];
+
+        // Returns true if anything was expanded, false otherwise
+        let mut expand_next_token = |collector: &Collector| {
+            for token in tokenized_line[1..].iter() {
+                if token.as_rule() == Rule::Label {
+                    dbgf!("Found token {:?}", token.as_str());
+
+                    if let Some(LabelValue::Substitution(subst)) =
+                        collector.labels.get(token.as_str())
+                    {
+                        expand_lines(lines, i, token.as_span(), subst);
+                        return true;
+                    }
+                }
+            }
+
+            false
+        };
 
         match first_token.as_rule() {
             Rule::Label => {
@@ -55,14 +73,16 @@ fn collect_and_expand(mut lines: Vec<String>) -> Vec<String> {
                 if let Some(LabelValue::Substitution(subst)) =
                     collector.labels.get(first_token.as_str())
                 {
-                    let expanded = expand_lines(&lines[i], first_token.as_span(), subst);
-                    lines.splice(i..=i, expanded.into_iter());
+                    expand_lines(lines, i, first_token.as_span(), subst);
                     continue;
                 }
 
                 collector.add_pending_label(first_token.as_str());
                 collector.resolve_pending_labels(i);
-                // TODO expand all remaining labels in line
+
+                if expand_next_token(&collector) {
+                    continue;
+                };
             }
             Rule::Substitution => {
                 collector.process_equ_continuation(first_token.as_str());
@@ -71,32 +91,45 @@ fn collect_and_expand(mut lines: Vec<String>) -> Vec<String> {
             }
             _ => {
                 collector.resolve_pending_labels(i);
-                // TODO expand all remaining labels in line
+
+                if expand_next_token(&collector) {
+                    continue;
+                }
             }
         }
 
         i += 1;
     }
 
-    collector.finish();
-
-    lines
+    collector.finish()
 }
 
-fn expand_lines(line: &str, span: Span, substitution: &[String]) -> Vec<String> {
-    assert!(!substitution.is_empty());
-
-    dbgf!("Substituting {:?} for {:?}", substitution, span);
+fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution: &[String]) {
+    // TODO clone
+    let line = &lines[index];
+    dbgf!(
+        "Substituting {:?} for {:?} in line {}: {:?}",
+        substitution,
+        span,
+        index,
+        line,
+    );
 
     let before = &line[..span.start()];
     let after = &line[span.end()..];
 
-    let mut lines = substitution.to_vec();
+    assert!(!substitution.is_empty());
+    let mut new_lines = substitution.to_vec();
 
-    lines[0] = before.to_owned() + &lines[0];
-    lines.last_mut().unwrap().push_str(after);
+    new_lines[0] = before.to_owned() + &new_lines[0];
+    new_lines.last_mut().unwrap().push_str(after);
 
-    lines
+    lines.splice(index..=index, new_lines);
+}
+
+///
+fn substitute_offsets(_lines: &mut Vec<String>, _labels: Labels) {
+    todo!()
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -169,7 +202,7 @@ impl Collector {
         self.labels.extend(result.into_iter())
     }
 
-    fn finish(&mut self) {
+    fn finish(mut self) -> Labels {
         if !self.pending_labels.is_empty() {
             // TODO warning for empty definition for each pending label
         }
@@ -179,6 +212,8 @@ impl Collector {
                 .take()
                 .map(|(label, values)| (label, LabelValue::Substitution(values))),
         );
+
+        self.labels
     }
 }
 
@@ -195,10 +230,10 @@ mod test {
         let mut collector = Collector::new();
 
         collector.process_equ("foo", "1");
-        collector.finish();
+        let labels = collector.finish();
 
         assert_eq!(
-            collector.labels,
+            labels,
             hashmap! {
                 String::from("foo") => Substitution(vec![String::from("1")])
             }
@@ -211,10 +246,10 @@ mod test {
 
         collector.process_equ("foo", "mov 1, 1");
         collector.process_equ_continuation("jne 0, -1");
-        collector.finish();
+        let labels = collector.finish();
 
         assert_eq!(
-            collector.labels,
+            labels,
             hashmap! {
                 String::from("foo") => Substitution(vec![
                     String::from("mov 1, 1"),
@@ -235,10 +270,10 @@ mod test {
         collector.add_pending_label("zip");
         collector.add_pending_label("zap");
         collector.add_pending_label("gone");
-        collector.finish();
+        let labels = collector.finish();
 
         assert_eq!(
-            collector.labels,
+            labels,
             hashmap! {
                 String::from("foo") => Offset(1),
                 String::from("bar") => Offset(1),
@@ -303,34 +338,62 @@ mod test {
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        let expanded = expand_lines(line, span, &substitution);
+        let mut lines = vec![line.to_string()];
 
-        assert_eq!(expanded, expected);
+        expand_lines(&mut lines, 0, span, &substitution);
+
+        assert_eq!(lines, expected);
     }
 
-    #[test]
-    fn expands_single_equ() {
-        let lines = vec![
-            String::from("step equ mov 1, "),
-            String::from("nop 1, 1"),
-            String::from("step 1"),
-            String::from("lbl1"),
-            // TODO: the following line tokenized to just "lbl2"
-            String::from("lbl2 step 2"),
-            String::from("step lbl2"),
-            String::from("lbl3 step lbl3"),
+    #[test_case(
+        &[
+            "step equ mov 1, ",
+            "nop 1, 1",
+            "step 1",
+            "lbl1",
+            "lbl2 step 2",
+            "step lbl2",
+            "lbl3 step lbl3",
+        ],
+        &[
+            "nop 1, 1",
+            "mov 1, 1",
+            "lbl1",
+            "lbl2 mov 1, 2",
+            "mov 1, lbl2",
+            "lbl3 mov 1, lbl3",
         ];
+        "single line equ"
+    )]
+    #[test_case(
+        &[
+            "step equ mov 1, 1",
+            "equ jne 1234",
+            "nop 1, 1",
+            "step",
+            "lbl1",
+            "lbl2 step",
+            "step, lbl2",
+            "lbl3 step, lbl3",
+        ],
+        &[
+            "nop 1, 1",
+            "mov 1, 1",
+            "jne 1234",
+            "lbl1",
+            "lbl2 mov 1, 1",
+            "jne 1234",
+            "mov 1, 1",
+            "jne 1234, lbl2",
+            "lbl3 mov 1, 1",
+            "jne 1234, lbl3",
+        ];
+        "multiline equ"
+    )]
+    fn expands_equ_substitutions(lines: &[&str], expected: &[&str]) {
+        let lines = lines.iter().map(|s| s.to_string()).collect();
+        let expected: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
 
-        assert_eq!(
-            expand(lines),
-            vec![
-                String::from("nop 1, 1"),
-                String::from("mov 1, 1"),
-                String::from("lbl1"),
-                String::from("lbl2 mov 1, 2"),
-                String::from("mov 1, lbl1"),
-                String::from("lbl3 mov 1, lbl3"),
-            ]
-        );
+        assert_eq!(expand(lines), expected);
     }
 }
