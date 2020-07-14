@@ -32,7 +32,7 @@ Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-Expr = { Number | Label }
+Expr = { Number | LabelUsage }
 
 Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
 
