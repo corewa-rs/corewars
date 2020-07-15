@@ -33,7 +33,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     let mut collector = Collector::new();
 
     let mut i = 0;
-    let mut offset: usize = 0;
+    let mut offset = i;
     while i < lines.len() {
         // TODO clone
         let line = lines[i].clone();
@@ -62,6 +62,9 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             false
         };
 
+        dbg!(&collector);
+        dbg!(&offset);
+
         match first_token.as_rule() {
             Rule::Label => {
                 if let Some(next_token) = tokenized_line.get(1) {
@@ -80,23 +83,44 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 }
 
                 collector.add_pending_label(first_token.as_str());
-                // TODO: offset collection machine broke
-                collector.resolve_pending_labels(&mut offset);
 
                 if expand_next_token(&collector) {
                     continue;
-                };
+                }
+
+                if tokenized_line.len() > 1 {
+                    collector.resolve_pending_labels(offset);
+                    offset += 1;
+
+                    let next_token = tokenized_line[1].as_span();
+                    lines[i] = line[next_token.start()..].to_owned();
+                } else {
+                    lines.remove(i);
+                    continue;
+                }
             }
             Rule::Substitution => {
                 collector.process_equ_continuation(first_token.as_str());
                 lines.remove(i);
                 continue;
             }
-            _ => {
-                collector.resolve_pending_labels(&mut offset);
+            other => {
+                dbgf!(
+                    "Encountered {:?} rule in line {:?}; pending labels: {:?}, offset {}",
+                    other,
+                    line,
+                    &collector.pending_labels,
+                    offset
+                );
+                collector.resolve_pending_labels(offset);
 
                 if expand_next_token(&collector) {
                     continue;
+                }
+
+                if tokenized_line.len() > 1 {
+                    collector.resolve_pending_labels(offset);
+                    offset += 1;
                 }
             }
         }
@@ -131,7 +155,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
             let cloned = line.clone();
             let tokenized_line = grammar::tokenize(&cloned);
 
-            // dbg!(&tokenized_line);
+            dbg!(&tokenized_line);
 
             if tokenized_line[0].as_rule() == grammar::Rule::Label {
                 if let Some(next_token) = tokenized_line.get(1) {
@@ -141,7 +165,6 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
                     // TODO actually remove line instead
                     line.clear();
                     // Skip incrementing offset since the line was just a label
-                    i -= 1;
                     continue;
                 }
             }
@@ -232,20 +255,13 @@ impl Collector {
         self.pending_labels.insert(label.to_owned());
     }
 
-    fn resolve_pending_labels(&mut self, offset: &mut usize) {
+    fn resolve_pending_labels(&mut self, offset: usize) {
         let mut result = HashMap::new();
-
-        let next_offset = if self.pending_labels.is_empty() {
-            *offset
-        } else {
-            *offset + 1
-        };
 
         let pending_labels = std::mem::take(&mut self.pending_labels);
         for pending_label in pending_labels.into_iter() {
-            result.insert(pending_label, LabelValue::Offset(*offset));
+            result.insert(pending_label, LabelValue::Offset(offset));
         }
-        *offset = next_offset;
 
         let current_equ = self.current_equ.take();
         if let Some((multiline_equ_label, values)) = current_equ {
@@ -317,12 +333,9 @@ mod test {
     fn collects_label_offset() {
         let mut collector = Collector::new();
 
-        let mut offset = 1;
         collector.add_pending_label("foo");
         collector.add_pending_label("bar");
-        collector.resolve_pending_labels(&mut offset);
-
-        assert_eq!(offset, 2);
+        collector.resolve_pending_labels(1);
 
         collector.add_pending_label("zip");
         collector.add_pending_label("zap");
@@ -404,6 +417,73 @@ mod test {
 
     #[test_case(
         &[
+            "lbl1",
+            "mov 1, 1",
+        ],
+        hashmap!{
+            "lbl1".into() => LabelValue::Offset(0),
+        };
+        "single label"
+    )]
+    #[test_case(
+        &[
+            "lbl1 mov 1, 1",
+        ],
+        hashmap!{
+            "lbl1".into() => LabelValue::Offset(0),
+        };
+        "single label statement"
+    )]
+    #[test_case(
+        &[
+            "lbl1",
+            "lbl2 mov 1, 1",
+        ],
+        hashmap!{
+            "lbl1".into() => LabelValue::Offset(0),
+            "lbl2".into() => LabelValue::Offset(0),
+        };
+        "label alias"
+    )]
+    #[test_case(
+        &[
+            "nop 1, 1",
+            "lbl1",
+            "lbl2 mov 1, 2",
+            "mov 2, 3",
+            "lbl3 mov 3, 4",
+        ],
+        hashmap!{
+            "lbl1".into() => LabelValue::Offset(1),
+            "lbl2".into() => LabelValue::Offset(1),
+            "lbl3".into() => LabelValue::Offset(3),
+        };
+        "multiple labels"
+    )]
+    #[test_case(
+        &[
+            "foo equ 1",
+            "nop 1, foo",
+            "lbl1",
+            "lbl2 mov 1, foo",
+            "mov 2, foo",
+            "lbl3 mov 3, foo",
+        ],
+        hashmap!{
+            "foo".into() => LabelValue::Substitution(vec!["1".into()]),
+            "lbl1".into() => LabelValue::Offset(1),
+            "lbl2".into() => LabelValue::Offset(1),
+            "lbl3".into() => LabelValue::Offset(3),
+        };
+        "label with expansion"
+    )]
+    fn collects_offset_label(lines: &[&str], expected: Labels) {
+        let mut lines = lines.iter().map(|s| s.to_string()).collect();
+        assert_eq!(collect_and_expand(&mut lines), expected);
+    }
+
+    #[test_case(
+        &[
             "step equ mov 1, ",
             "nop 1, 1",
             "step lbl1",
@@ -415,7 +495,6 @@ mod test {
         &[
             "nop 1, 1",
             "mov 1, 1",
-            "", // TODO remove empty lines from labels
             "mov 1, 2",
             "mov 1, -1",
             "mov 1, 0",
