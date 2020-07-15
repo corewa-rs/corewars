@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+          "name": "Run Redcode VSCode Extension",
+          "type": "extensionHost",
+          "request": "launch",
+          "runtimeExecutable": "${execPath}",
+          "preLaunchTask": "build: redcode",
+          "args": [
+            "--disable-extensions",
+            "--extensionDevelopmentPath=${workspaceFolder}/redcode",
+          ],
+          "outFiles": [],
+        },
+        {
+          "type": "lldb",
+          "request": "launch",
+          "name": "Cargo test",
+          "cargo": {
+            "args": [
+              "test",
+              "--no-run",
+              "--lib"
+            ],
+          },
+          "env": {
+            "PYENV_VERSION": "system"
+          },
+          "stdio": null,
+          "program": "${cargo:program}",
+          "internalConsoleOptions": "openOnSessionStart",
+          "console": "internalConsole",
+          "terminal": "console",
+          "args": []
+        }
+    ]
+}
