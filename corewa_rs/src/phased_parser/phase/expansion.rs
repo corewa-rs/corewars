@@ -53,6 +53,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     if let Some(LabelValue::Substitution(subst)) =
                         collector.labels.get(token.as_str())
                     {
+                        dbgf!("Expanded next token in line {}: {:?}", i, lines[i]);
                         expand_lines(lines, i, token.as_span(), subst);
                         return true;
                     }
@@ -61,9 +62,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
             false
         };
-
-        dbg!(&collector);
-        dbg!(&offset);
 
         match first_token.as_rule() {
             Rule::Label => {
@@ -75,9 +73,12 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     }
                 }
 
+                collector.resolve_pending_equ();
+
                 if let Some(LabelValue::Substitution(substitution)) =
                     collector.labels.get(first_token.as_str())
                 {
+                    dbgf!("Expanding substitution into line {}: {:?}", i, lines[i]);
                     expand_lines(lines, i, first_token.as_span(), substitution);
                     continue;
                 }
@@ -106,12 +107,14 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             }
             other => {
                 dbgf!(
-                    "Encountered {:?} rule in line {:?}; pending labels: {:?}, offset {}",
+                    "Encountered {:?} rule in line {}: {:?}, pending labels: {:?}, offset {}",
                     other,
+                    i,
                     line,
                     &collector.pending_labels,
                     offset
                 );
+
                 collector.resolve_pending_labels(offset);
 
                 if expand_next_token(&collector) {
@@ -263,13 +266,19 @@ impl Collector {
             result.insert(pending_label, LabelValue::Offset(offset));
         }
 
-        let current_equ = self.current_equ.take();
-        if let Some((multiline_equ_label, values)) = current_equ {
-            // Reached the last line in an equ, add to table and reset
-            result.insert(multiline_equ_label, LabelValue::Substitution(values));
-        }
+        self.resolve_pending_equ();
 
         self.labels.extend(result.into_iter())
+    }
+
+    fn resolve_pending_equ(&mut self) {
+        let current_equ = self.current_equ.take();
+
+        if let Some((multiline_equ_label, values)) = current_equ {
+            // Reached the last line in an equ, add to table and reset
+            self.labels
+                .insert(multiline_equ_label, LabelValue::Substitution(values));
+        }
     }
 
     fn finish(mut self) -> Labels {
@@ -483,9 +492,26 @@ mod test {
     }
 
     #[test_case(
+        &["step equ 4", "mov 1, step"],
+        &["mov 1, 4"];
+        "expression equ"
+    )]
+    #[test_case(
         &[
-            "step equ mov 1, ",
-            "nop 1, 1",
+            "step equ mov 1, 2",
+            "lbl1 step",
+            "step",
+            "nop lbl1, 0"],
+        &[
+            "mov 1, 2",
+            "mov 1, 2",
+            "nop -2, 0",
+        ];
+        "statement equ"
+    )]
+    #[test_case(
+        &[
+            "step equ mov 1,",
             "step lbl1",
             "lbl1",
             "lbl2 step 2",
@@ -493,39 +519,31 @@ mod test {
             "lbl3 step lbl3",
         ],
         &[
-            "nop 1, 1",
             "mov 1, 1",
             "mov 1, 2",
             "mov 1, -1",
             "mov 1, 0",
         ];
-        "single line equ"
+        "partial statement equ"
     )]
     #[test_case(
         &[
-            "step equ mov 1, 1",
-            "equ jne 1234",
-            "nop 1, 1",
-            "step",
-            "lbl1",
-            "lbl2 step",
-            "step, lbl2",
-            "lbl3 step, lbl3",
+            "do_thing equ mov 1, 2",
+            "equ mov 3, 4",
+            "do_thing",
+            "lbl1 do_thing",
+            "nop 0, lbl1",
         ],
         &[
-            "nop 1, 1",
-            "mov 1, 1",
-            "jne 1234",
-            "mov 1, 1",
-            "jne 1234",
-            "mov 1, 1",
-            "jne 1234, -3",
-            "mov 1, 1",
-            "jne 1234, -1",
+            "mov 1, 2",
+            "mov 3, 4",
+            "mov 1, 2",
+            "mov 3, 4",
+            "nop 0, -2",
         ];
         "multiline equ"
     )]
-    fn expands_equ_substitutions(lines: &[&str], expected: &[&str]) {
+    fn expands_substitutions(lines: &[&str], expected: &[&str]) {
         let lines = lines.iter().map(|s| s.to_string()).collect();
         let expected: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
 

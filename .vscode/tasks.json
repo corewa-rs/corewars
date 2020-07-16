@@ -45,7 +45,7 @@
             "command": "test",
             "args": [
                 "--all-features",
-                "--workspace",
+                "--workspace"
             ],
             "group": "test",
             "env": {
