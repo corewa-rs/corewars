@@ -61,6 +61,7 @@ macro_rules! enum_string {
 /// dbgf!("Print: {:?}", "123");
 /// ```
 #[cfg(debug_assertions)]
+#[allow(unused)]
 macro_rules! dbgf {
     ( $fmt:expr $(, $($args:expr),* $(,)? )? ) => {
         eprintln!(

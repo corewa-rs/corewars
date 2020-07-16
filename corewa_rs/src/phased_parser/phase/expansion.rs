@@ -18,8 +18,6 @@ pub fn expand(mut lines: Vec<String>) -> Vec<String> {
 
     // TODO: FOR expansion
 
-    dbg!(&labels);
-
     substitute_offsets(&mut lines, labels);
 
     lines
@@ -40,7 +38,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
         let tokenized_line = grammar::tokenize(&line);
 
         if tokenized_line.is_empty() {
-            dbgf!("Line {} is empty", i);
             continue;
         }
 
@@ -53,7 +50,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     if let Some(LabelValue::Substitution(subst)) =
                         collector.labels.get(token.as_str())
                     {
-                        dbgf!("Expanded next token in line {}: {:?}", i, lines[i]);
                         expand_lines(lines, i, token.as_span(), subst);
                         return true;
                     }
@@ -78,7 +74,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 if let Some(LabelValue::Substitution(substitution)) =
                     collector.labels.get(first_token.as_str())
                 {
-                    dbgf!("Expanding substitution into line {}: {:?}", i, lines[i]);
                     expand_lines(lines, i, first_token.as_span(), substitution);
                     continue;
                 }
@@ -105,16 +100,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 lines.remove(i);
                 continue;
             }
-            other => {
-                dbgf!(
-                    "Encountered {:?} rule in line {}: {:?}, pending labels: {:?}, offset {}",
-                    other,
-                    i,
-                    line,
-                    &collector.pending_labels,
-                    offset
-                );
-
+            _ => {
                 collector.resolve_pending_labels(offset);
 
                 if expand_next_token(&collector) {
@@ -158,13 +144,10 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
             let cloned = line.clone();
             let tokenized_line = grammar::tokenize(&cloned);
 
-            dbg!(&tokenized_line);
-
             if tokenized_line[0].as_rule() == grammar::Rule::Label {
                 if let Some(next_token) = tokenized_line.get(1) {
                     line.replace_range(..next_token.as_span().start(), "");
                 } else {
-                    dbgf!("Line {} is empty", i);
                     // TODO actually remove line instead
                     line.clear();
                     // Skip incrementing offset since the line was just a label
@@ -177,20 +160,15 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
         let cloned = line.clone();
         let tokenized_line = grammar::tokenize(&cloned);
 
-        dbgf!("Line is {:?}, current offset is {:?}", line, i);
-
         for token in tokenized_line.iter() {
             if token.as_rule() == grammar::Rule::Label {
                 let label_value = labels.get(token.as_str());
 
                 match label_value {
                     Some(LabelValue::Offset(offset)) => {
-                        let relative_offset = dbg!(*offset as i32) - dbg!(i as i32);
+                        let relative_offset = *offset as i32 - i as i32;
                         let span = token.as_span();
-                        line.replace_range(
-                            span.start()..span.end(),
-                            &dbg!(relative_offset).to_string(),
-                        );
+                        line.replace_range(span.start()..span.end(), &relative_offset.to_string());
                     }
                     _ => {
                         // TODO #25 actual error
@@ -200,7 +178,6 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
             }
         }
 
-        dbg!(&line);
         i += 1;
     }
 }
