@@ -5,6 +5,7 @@
 use super::Clean;
 
 /// Metadata about a Redcode program that is stored in the comments.
+// TODO: this probably belongs in crate::load_file
 #[derive(Debug, Default, PartialEq)]
 pub struct Info {
     /// The Redcode standard for this warrior (e.g. "94").

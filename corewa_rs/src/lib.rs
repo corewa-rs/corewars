@@ -15,11 +15,11 @@ mod util;
 
 // Public modules
 pub mod cli;
-
-// Exported functions
-pub use parser::parse;
+pub mod error;
 
 // Private modules
 mod load_file;
-mod parser;
 mod phased_parser;
+
+// Re-exports
+pub use phased_parser::parse;

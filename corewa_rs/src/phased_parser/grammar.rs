@@ -1,7 +1,7 @@
 //! Definition and tests for the grammar that defines a valid line of Redcode.
 //! Provides helper function to tokenize strings into span-like tokens.
 
-pub(crate) use pest::{
+pub(super) use pest::{
     error::Error,
     iterators::{Pair, Pairs},
     Parser,
@@ -10,15 +10,15 @@ use pest_derive::Parser;
 
 #[derive(Parser)]
 #[grammar = "phased_parser/grammar/redcode_line.pest"]
-pub(crate) struct Grammar;
+pub(super) struct Grammar;
 
 /// Parse an input line and return an iterator over
 
-pub(crate) fn tokenize(line: &str) -> Vec<Pair<Rule>> {
+pub(super) fn tokenize(line: &str) -> Vec<Pair<Rule>> {
     parse(line).map(flatten_pairs).unwrap_or_default()
 }
 
-pub(crate) fn parse(line: &str) -> Result<Pairs<Rule>, Error<Rule>> {
+pub(super) fn parse(line: &str) -> Result<Pairs<Rule>, Error<Rule>> {
     Grammar::parse(Rule::Line, line)
 }
 

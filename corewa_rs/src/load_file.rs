@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 mod program;
 pub(crate) mod types;
 
-pub use program::{LabelMap, Program};
+pub use program::{Instructions, LabelMap, Program};
 pub use types::{AddressMode, Modifier, Opcode, Value};
 
 lazy_static! {

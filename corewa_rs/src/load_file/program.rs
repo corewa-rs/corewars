@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt};
 
 use super::{Field, Instruction, Opcode, DEFAULT_CONSTANTS};
 
-type Instructions = Vec<Instruction>;
+pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
 
 pub struct Program {

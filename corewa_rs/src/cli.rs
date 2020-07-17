@@ -8,7 +8,7 @@ use std::{
 use lazy_static::lazy_static;
 use structopt::StructOpt;
 
-use crate::parser;
+use crate::phased_parser::parse;
 
 lazy_static! {
     static ref IO_SENTINEL: PathBuf = PathBuf::from("-");
@@ -53,20 +53,17 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         input = fs::read_to_string(cli_options.input_file)?;
     }
 
-    let mut parsed_core = parser::parse(input.as_str())?;
+    let parsed_core = parse(input.as_str())?;
 
-    // TODO colored output?
-    for warning in parsed_core.warnings.iter() {
-        eprintln!("Warning:\n  {}", warning);
-    }
+    // TODO bring back warnings
 
     match cli_options.command {
         Command::Dump {
             output_file,
             no_expand,
         } => {
-            if !no_expand {
-                parsed_core.result.resolve()?;
+            if no_expand {
+                unimplemented!()
             }
 
             if output_file == *IO_SENTINEL {
