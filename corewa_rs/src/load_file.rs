@@ -2,9 +2,11 @@ use std::fmt;
 
 use lazy_static::lazy_static;
 
+mod metadata;
 mod program;
 pub(crate) mod types;
 
+pub use metadata::Metadata;
 pub use program::{Instructions, LabelMap, Program};
 pub use types::{AddressMode, Modifier, Opcode, Value};
 

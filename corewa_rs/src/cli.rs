@@ -18,7 +18,7 @@ lazy_static! {
 #[structopt(rename_all = "kebab")]
 /// Parse, assemble, and save Redcode files
 struct CliOptions {
-    /// Input file; use '-' to read from stdin
+    /// Input file; use "-" to read from stdin
     #[structopt(parse(from_os_str))]
     input_file: PathBuf,
 
@@ -28,10 +28,10 @@ struct CliOptions {
 
 #[derive(Debug, StructOpt)]
 enum Command {
-    /// Save/print a program in 'load file' format
+    /// Save/print a program in "load file" format
     #[structopt(name = "dump")]
     Dump {
-        /// Output file; defaults to stdout ('-')
+        /// Output file; defaults to stdout ("-")
         #[structopt(long, short, parse(from_os_str), default_value = IO_SENTINEL.to_str().unwrap())]
         output_file: PathBuf,
 

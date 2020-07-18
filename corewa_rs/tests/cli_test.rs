@@ -33,7 +33,7 @@ fn help_dump() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Save/print a program in 'load file' format",
+            r#"Save/print a program in "load file" format"#,
         ));
 }
 

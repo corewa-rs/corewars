@@ -2,6 +2,9 @@
 //! It operates in multiple phases, which are found in the [phase](phase/index.html)
 //! module. Each phase passes its result to the next phase.
 
+mod grammar;
+mod phase;
+
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
@@ -9,11 +12,8 @@ use std::str::FromStr;
 
 use err_derive::Error;
 
-mod grammar;
-mod phase;
-
 use crate::load_file;
-use phase::{Clean, Deserialized, Expand, Phase, Raw};
+use phase::{CommentsRemoved, Deserialized, Expanded, Phase, Raw};
 
 /// The main error type that may be returned by the parser.
 #[derive(Debug, Error)]
@@ -36,15 +36,15 @@ impl fmt::Display for Warrior {
     }
 }
 
-// TODO: function for parsing without expansion?
+// TODO: function for parsing without expansion
 
 pub fn parse(input: &str) -> Result<Warrior, Box<dyn Error>> {
     // UNWRAP: Infallible conversion
     let raw = Phase::<Raw>::from_str(input).unwrap();
 
-    let cleaned = Phase::<Clean>::from(raw);
+    let cleaned = Phase::<CommentsRemoved>::from(raw);
 
-    let expanded = Phase::<Expand>::from(cleaned);
+    let expanded = Phase::<Expanded>::from(cleaned);
 
     let deserialized = Phase::<Deserialized>::try_from(expanded)?;
 

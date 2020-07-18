@@ -4,7 +4,7 @@
 use std::convert::{Infallible, TryFrom};
 use std::str::FromStr;
 
-mod clean;
+mod comment;
 mod deserialize;
 mod expansion;
 
@@ -38,15 +38,15 @@ impl FromStr for Phase<Raw> {
 /// The Phase after comments have been removed and metadata parsed from comments.
 /// This phase also parses ORG and END, and removes any text after END
 #[derive(Debug)]
-pub struct Clean {
-    lines: Vec<String>,
-    metadata: clean::Info,
+pub struct CommentsRemoved {
+    pub lines: Vec<String>,
+    pub metadata: load_file::Metadata,
 }
 
 // TODO: Need to consider TryFrom instead of From? Some transitions could fail
-impl From<Phase<Raw>> for Phase<Clean> {
+impl From<Phase<Raw>> for Phase<CommentsRemoved> {
     fn from(prev: Phase<Raw>) -> Self {
-        let state = clean::Info::extract_from_string(&prev.buffer);
+        let state = comment::extract_from_string(&prev.buffer);
         Self {
             buffer: prev.buffer,
             state,
@@ -57,18 +57,18 @@ impl From<Phase<Raw>> for Phase<Clean> {
 /// The phase in which labels are collected and expanded. Resulting struct
 /// contains metadata from previous phase and the expanded lines
 #[derive(Debug)]
-pub struct Expand {
+pub struct Expanded {
     lines: Vec<String>,
-    metadata: clean::Info,
+    metadata: load_file::Metadata,
 }
 
-impl From<Phase<Clean>> for Phase<Expand> {
-    fn from(prev: Phase<Clean>) -> Self {
+impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
+    fn from(prev: Phase<CommentsRemoved>) -> Self {
         let lines = expansion::expand(prev.state.lines);
 
         Self {
             buffer: prev.buffer,
-            state: Expand {
+            state: Expanded {
                 lines,
                 metadata: prev.state.metadata,
             },
@@ -81,13 +81,13 @@ impl From<Phase<Clean>> for Phase<Expand> {
 // TODO: rename? Or just return a `load_file::Program`
 #[derive(Debug)]
 pub struct Deserialized {
-    metadata: clean::Info,
+    pub metadata: load_file::Metadata,
     pub instructions: load_file::Instructions,
 }
 
-impl TryFrom<Phase<Expand>> for Phase<Deserialized> {
+impl TryFrom<Phase<Expanded>> for Phase<Deserialized> {
     type Error = Error;
-    fn try_from(prev: Phase<Expand>) -> Result<Self, Error> {
+    fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
         let instructions = deserialize::deserialize(prev.state.lines)?;
 
         Ok(Self {
@@ -97,38 +97,5 @@ impl TryFrom<Phase<Expand>> for Phase<Deserialized> {
                 instructions,
             },
         })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use textwrap_macros::dedent;
-
-    // TODO: are tests really needed here? or can we just use integration tests
-    // as "good enough"?
-
-    #[test]
-    fn transitions() {
-        let raw_phase = Phase::<Raw>::from_str(
-            dedent!(
-                "
-                ;redcode
-                ; author Ian Chamberlain
-                ORG start
-                EQU thing 4
-                MOV thing, 0
-                start
-                MOV thing, thing+1
-
-                "
-            )
-            .trim(),
-        )
-        .unwrap();
-
-        let _clean_phase = Phase::<Clean>::from(raw_phase);
-
-        // TODO: expansion transition
     }
 }
