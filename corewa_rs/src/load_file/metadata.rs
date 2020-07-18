@@ -1,3 +1,8 @@
+//! Metadata about a Redcode program. Most of this is not used for execution,
+//! with some exceptions, namely `;redcode` and `;assertion`
+
+use std::fmt;
+
 /// Metadata about a Redcode program that is stored in the comments.
 #[derive(Debug, Default, PartialEq)]
 pub struct Metadata {
@@ -16,6 +21,9 @@ pub struct Metadata {
     /// The version of this warrior.
     pub version: Option<String>,
 
+    /// A description of the warrior's strategy
+    pub strategy: Option<String>,
+
     /// An assertion for this warrior to ensure compilation.
     pub assertion: Option<String>,
 }
@@ -31,7 +39,7 @@ impl Metadata {
             let value = Some(
                 split_comment
                     .get(1)
-                    .map_or_else(String::new, ToString::to_string),
+                    .map_or_else(String::new, |s| s.trim().to_owned()),
             );
 
             match split_comment[0] {
@@ -40,15 +48,36 @@ impl Metadata {
                 "author" => self.author = value,
                 "date" => self.date = value,
                 "version" => self.version = value,
-                "assertion" => self.assertion = value,
+                "strategy" => self.strategy = value,
+                "assert" => self.assertion = value,
                 _ => (),
             }
         }
 
         split_line[0].trim().to_string()
     }
+}
 
-    pub fn to_lines(&self) -> Vec<String> {
-        todo!()
+impl fmt::Display for Metadata {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        for (field, name) in &[
+            // TODO better handling of different standards
+            (&self.redcode, "redcode"),
+            (&self.name, "name"),
+            (&self.author, "author"),
+            (&self.version, "version"),
+            (&self.date, "date"),
+            (&self.strategy, "strategy"),
+            (&self.assertion, "assert"),
+        ] {
+            if let Some(value) = field.as_deref() {
+                if value.is_empty() {
+                    writeln!(formatter, ";{}", name)?;
+                } else {
+                    writeln!(formatter, ";{} {}", name, value)?;
+                }
+            }
+        }
+        Ok(())
     }
 }

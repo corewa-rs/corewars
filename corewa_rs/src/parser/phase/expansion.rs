@@ -1,10 +1,9 @@
 //! This phase finds and expands substitutions, namely:
 //! - EQU definitions
-//! - FOR blocks
+//! - FOR blocks (not yet implemented)
 //! - Standard labels which alias an address
 //!
-//! Labels used in the right-hand side of an expression are not substituted,
-//! but saved for later evaluation.
+//! Labels used in the right-hand side of an expression substituted in-place.
 
 use std::collections::{HashMap, HashSet};
 
@@ -12,15 +11,26 @@ use pest::Span;
 
 use crate::parser::grammar;
 
+/// The result of expansion and substitution
+#[derive(Debug, Default, PartialEq)]
+pub struct Lines {
+    pub text: Vec<String>,
+    pub origin: Option<String>,
+}
+
 /// Collect and subsitute all labels found in the input lines.
-pub fn expand(mut lines: Vec<String>) -> Vec<String> {
-    let labels = collect_and_expand(&mut lines);
+pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
+    let labels = collect_and_expand(&mut text);
 
     // TODO: FOR expansion
 
-    substitute_offsets(&mut lines, labels);
+    substitute_offsets(&mut text, &labels);
 
-    lines
+    if let Some(mut origin_str) = origin.as_mut() {
+        substitute_offsets_in_line(&mut origin_str, &labels, 0);
+    }
+
+    Lines { text, origin }
 }
 
 /// Collect and strip out offset-based label declarations, meanwhile expanding
@@ -136,49 +146,50 @@ fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution:
     lines.splice(index..=index, new_lines);
 }
 
-fn substitute_offsets(lines: &mut Vec<String>, labels: Labels) {
+fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
     let mut i = 0;
     for line in lines.iter_mut() {
-        {
-            // TODO: clone
-            let cloned = line.clone();
-            let tokenized_line = grammar::tokenize(&cloned);
-
-            if tokenized_line[0].as_rule() == grammar::Rule::Label {
-                if let Some(next_token) = tokenized_line.get(1) {
-                    line.replace_range(..next_token.as_span().start(), "");
-                } else {
-                    // TODO actually remove line instead
-                    line.clear();
-                    // Skip incrementing offset since the line was just a label
-                    continue;
-                }
-            }
-        }
-
         // TODO: clone
         let cloned = line.clone();
         let tokenized_line = grammar::tokenize(&cloned);
 
-        for token in tokenized_line.iter() {
-            if token.as_rule() == grammar::Rule::Label {
-                let label_value = labels.get(token.as_str());
-
-                match label_value {
-                    Some(LabelValue::Offset(offset)) => {
-                        let relative_offset = *offset as i32 - i as i32;
-                        let span = token.as_span();
-                        line.replace_range(span.start()..span.end(), &relative_offset.to_string());
-                    }
-                    _ => {
-                        // TODO #25 actual error
-                        panic!("No label {:?} found", token.as_str());
-                    }
-                }
+        if tokenized_line[0].as_rule() == grammar::Rule::Label {
+            if let Some(next_token) = tokenized_line.get(1) {
+                line.replace_range(..next_token.as_span().start(), "");
+            } else {
+                // TODO actually remove line instead
+                line.clear();
+                // Skip incrementing offset since the line was just a label
+                continue;
             }
         }
 
+        substitute_offsets_in_line(line, labels, i);
         i += 1;
+    }
+}
+
+fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: usize) {
+    // TODO: clone
+    let cloned = line.clone();
+    let tokenized_line = grammar::tokenize(&cloned);
+
+    for token in tokenized_line.iter() {
+        if token.as_rule() == grammar::Rule::Label {
+            let label_value = labels.get(token.as_str());
+
+            match label_value {
+                Some(LabelValue::Offset(offset)) => {
+                    let relative_offset = *offset as i32 - from_offset as i32;
+                    let span = token.as_span();
+                    line.replace_range(span.start()..span.end(), &relative_offset.to_string());
+                }
+                _ => {
+                    // TODO #25 actual error
+                    panic!("No label {:?} found", token.as_str());
+                }
+            }
+        }
     }
 }
 
@@ -524,6 +535,90 @@ mod test {
         let lines = lines.iter().map(|s| s.to_string()).collect();
         let expected: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
 
-        assert_eq!(expand(lines), expected);
+        assert_eq!(
+            expand(lines, None),
+            Lines {
+                text: expected,
+                origin: None,
+            }
+        );
+    }
+
+    #[test_case(
+        &[
+            "mov 1, 1",
+            "start nop 1, 1",
+            "mov 2, 3",
+        ],
+        &[
+            "mov 1, 1",
+            "nop 1, 1",
+            "mov 2, 3",
+        ],
+        Some(String::from("start")),
+        Some(String::from("1"));
+        "label"
+    )]
+    #[test_case(
+        &[
+            "mov 1, 1",
+            "start nop 1, 1",
+            "mov 2, 3",
+        ],
+        &[
+            "mov 1, 1",
+            "nop 1, 1",
+            "mov 2, 3",
+        ],
+        Some(String::from("start + 1")),
+        Some(String::from("1 + 1"));
+        "expression"
+    )]
+    #[test_case(
+        &[
+            "mov 1, 1",
+            "start nop 1, 1",
+            "mov 2, 3",
+        ],
+        &[
+            "mov 1, 1",
+            "nop 1, 1",
+            "mov 2, 3",
+        ],
+        Some(String::from("1")),
+        Some(String::from("1"));
+        "literal"
+    )]
+    #[test_case(
+        &[
+            "mov 1, 1",
+            "start nop 1, 1",
+            "mov 2, 3",
+        ],
+        &[
+            "mov 1, 1",
+            "nop 1, 1",
+            "mov 2, 3",
+        ],
+        None,
+        None;
+        "none"
+    )]
+    fn expands_origin(
+        lines: &[&str],
+        expected_lines: &[&str],
+        origin: Option<String>,
+        expected_origin: Option<String>,
+    ) {
+        let lines = lines.iter().map(|s| s.to_string()).collect();
+        let expected: Vec<String> = expected_lines.iter().map(|s| s.to_string()).collect();
+
+        assert_eq!(
+            expand(lines, origin),
+            Lines {
+                text: expected,
+                origin: expected_origin,
+            }
+        );
     }
 }

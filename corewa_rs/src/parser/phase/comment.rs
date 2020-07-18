@@ -5,6 +5,7 @@
 use super::CommentsRemoved;
 
 use crate::load_file::Metadata;
+use crate::parser::grammar;
 
 enum OriginInLine {
     NewOrigin(String),
@@ -26,10 +27,8 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
                 "Warning: ORG already defined as {:?}, new definition {:?} will be ignored",
                 new_origin, old_origin
             );
-            false
         } else {
             origin = Some(new_origin);
-            true
         }
     };
 
@@ -44,16 +43,10 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
         if let Ok(found_origin) = find_origin_in_line(&trimmed_line) {
             match found_origin {
                 OriginInLine::NewOrigin(new_origin) => {
-                    if !set_origin(new_origin) {
-                        lines.pop();
-                    }
+                    set_origin(new_origin);
                 }
                 OriginInLine::EndWithNewOrigin(new_origin) => {
-                    if !set_origin(new_origin) {
-                        // We need to ignore the new origin, but still register this as the end.
-                        // So, for now just remove the line and break
-                        lines.pop();
-                    }
+                    set_origin(new_origin);
                     break;
                 }
                 OriginInLine::End => break,
@@ -73,23 +66,41 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
 
 /// Find and return the origin defined in the given line.
 fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
-    let tokenized_line = line
-        .split_whitespace()
-        .map(|s| s.to_uppercase())
-        .collect::<Vec<String>>();
-
-    let tokens: Vec<_> = tokenized_line.iter().map(String::as_str).collect();
-
     use OriginInLine::*;
-    match tokens[..] {
-        ["ORG"] => {
-            // TODO (#25) proper error handling, probably in the return type
-            eprintln!("Error: ORG must be given an argument!");
-            Err(())
+
+    let tokenized = grammar::tokenize(line);
+
+    if tokenized.is_empty() {
+        return Ok(NotFound);
+    }
+
+    match &tokenized[0].as_rule() {
+        grammar::Rule::Opcode => {
+            let remainder = tokenized
+                .get(1)
+                .map(|s| &line[s.as_span().start()..])
+                .filter(|s| !s.is_empty());
+
+            match tokenized[0].as_str().to_uppercase().as_str() {
+                "ORG" => {
+                    if let Some(remainder) = remainder {
+                        Ok(NewOrigin(remainder.to_owned()))
+                    } else {
+                        // TODO (#25) proper error handling, probably in the return type
+                        eprintln!("Error: ORG must be given an argument!");
+                        Err(())
+                    }
+                }
+                "END" => {
+                    if let Some(remainder) = remainder {
+                        Ok(EndWithNewOrigin(remainder.to_owned()))
+                    } else {
+                        Ok(End)
+                    }
+                }
+                _ => Ok(NotFound),
+            }
         }
-        ["ORG", new_origin] => Ok(NewOrigin(new_origin.to_owned())),
-        ["END"] => Ok(End),
-        ["END", new_origin] => Ok(EndWithNewOrigin(new_origin.to_owned())),
         _ => Ok(NotFound),
     }
 }
@@ -182,6 +193,44 @@ mod test {
             },
         };
         "parse ORG"
+    )]
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
+                ORG lbl1
+                lbl1 MOV 0, 1
+                ; ORG 4 behind comment ignored
+                "
+            ),
+            expected: CommentsRemoved {
+                lines: vec![
+                    "lbl1 MOV 0, 1".to_string()
+                ],
+                origin: Some("lbl1".to_string()),
+                ..Default::default()
+            },
+        };
+        "parse ORG label"
+    )]
+    #[test_case(
+        Param {
+            input: dedent!(
+                "
+                ORG lbl1 + 1
+                lbl1 MOV 0, 1
+                ; ORG 4 behind comment ignored
+                "
+            ),
+            expected: CommentsRemoved {
+                lines: vec![
+                    "lbl1 MOV 0, 1".to_string()
+                ],
+                origin: Some("lbl1 + 1".to_string()),
+                ..Default::default()
+            },
+        };
+        "parse ORG expression"
     )]
     #[test_case(
         Param {

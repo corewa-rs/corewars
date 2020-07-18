@@ -67,9 +67,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
 
             if output_file == *IO_SENTINEL {
-                print!("{}", parsed_core);
+                println!("{}", parsed_core);
             } else {
-                fs::write(output_file, format!("{}", parsed_core))?;
+                fs::write(output_file, format!("{}\n", parsed_core))?;
             };
         }
     };

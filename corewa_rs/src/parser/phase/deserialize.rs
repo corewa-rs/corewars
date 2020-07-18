@@ -9,7 +9,10 @@ use crate::load_file;
 
 use super::super::grammar;
 
-pub fn deserialize(lines: Vec<String>) -> Result<load_file::Program, Error> {
+pub fn deserialize(
+    lines: Vec<String>,
+    origin: Option<String>,
+) -> Result<load_file::Program, Error> {
     let mut program = load_file::Program::with_capacity(lines.len());
 
     for (i, line) in lines.into_iter().enumerate() {
@@ -23,6 +26,8 @@ pub fn deserialize(lines: Vec<String>) -> Result<load_file::Program, Error> {
             }
         }
     }
+
+    program.origin = origin.map(|s| parse_origin(&s));
 
     Ok(program)
 }
@@ -113,6 +118,11 @@ fn parse_value(value_pair: Pair<grammar::Rule>) -> load_file::Value {
     }
 }
 
+fn parse_origin(origin_str: &str) -> usize {
+    // TODO: this should be de-duped with parse_value and use expression parsing logic
+    usize::from_str_radix(origin_str, 10).expect("Origin must be positive integer")
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -144,9 +154,23 @@ mod test {
             ..Default::default()
         };
 
-        let parsed = deserialize(simple_input)
+        let parsed = deserialize(simple_input, None)
             .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));
 
         assert_eq!(parsed, expected_core);
+    }
+
+    #[test]
+    fn parse_org() {
+        let parsed = deserialize(vec![], Some("1".into()))
+            .unwrap_or_else(|err| panic!("Failed to parse origin file: {}", err));
+
+        assert_eq!(
+            parsed,
+            load_file::Program {
+                instructions: vec![],
+                origin: Some(1)
+            }
+        );
     }
 }

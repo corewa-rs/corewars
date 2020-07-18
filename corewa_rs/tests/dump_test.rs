@@ -20,5 +20,8 @@ use test_case::test_case;
 fn run_test(input: &str, expected_output: &'static str) {
     let parsed_core = corewa_rs::parse(input).unwrap_or_else(|e| panic!("Parse error:\n{}", e));
 
-    assert_that!(&parsed_core.to_string(), str::similar(expected_output));
+    assert_that!(
+        &parsed_core.to_string().trim(),
+        str::similar(expected_output.trim())
+    );
 }

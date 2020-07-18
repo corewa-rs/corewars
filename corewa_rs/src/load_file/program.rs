@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use super::{Instruction, Value};
+use super::{Instruction, PseudoOpcode};
 
 pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
@@ -11,27 +11,44 @@ pub type LabelMap = HashMap<String, usize>;
 /// A parsed Redcode program, which can be loaded into a core for execution
 #[derive(Default, PartialEq)]
 pub struct Program {
+    /// The list of instructions in the program. These are one-to-one copied into
+    /// the core when loaded for execution
     pub instructions: Instructions,
-    pub origin: Option<Value>,
+
+    /// The program's entry point as an instruction index
+    pub origin: Option<usize>,
 }
 
 impl fmt::Debug for Program {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self)
+        writeln!(formatter, "{{")?;
+        writeln!(formatter, "origin: {:?},", self.origin)?;
+
+        let lines = self
+            .instructions
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>();
+
+        write!(formatter, "lines: {:#?},", lines)?;
+        writeln!(formatter, "}}")
     }
 }
 
 impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.instructions
-                .iter()
-                .fold(String::new(), |result, instruction| {
-                    result + &instruction.to_string() + "\n"
-                })
-        )
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let mut lines = Vec::new();
+
+        if let Some(offset) = self.origin {
+            // Width to match other instruction types
+            lines.push(format!("{:<6} {}", PseudoOpcode::Org, offset));
+        }
+
+        for instruction in self.instructions.iter() {
+            lines.push(instruction.to_string());
+        }
+
+        write!(formatter, "{}", lines.join("\n"))
     }
 }
 

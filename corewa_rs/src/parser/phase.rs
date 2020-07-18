@@ -57,20 +57,28 @@ impl From<Phase<Raw>> for Phase<CommentsRemoved> {
 
 /// The phase in which labels are collected and expanded. Resulting struct
 /// contains metadata from previous phase and the expanded lines
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Expanded {
+    /// The expanded lines of text to be parsed later
     lines: Vec<String>,
+
+    /// Metadata gathered in previous phase
     metadata: load_file::Metadata,
+
+    /// The entrypoint to the program, gathered in previous phase. This is still
+    /// a string because it may be an expression to be evaluated later
+    origin: Option<String>,
 }
 
 impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
     fn from(prev: Phase<CommentsRemoved>) -> Self {
-        let lines = expansion::expand(prev.state.lines);
+        let lines = expansion::expand(prev.state.lines, prev.state.origin);
 
         Self {
             buffer: prev.buffer,
             state: Expanded {
-                lines,
+                lines: lines.text,
+                origin: lines.origin,
                 metadata: prev.state.metadata,
             },
         }
@@ -88,7 +96,7 @@ impl TryFrom<Phase<Expanded>> for Phase<Deserialized> {
     type Error = Error;
 
     fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
-        let program = deserialize::deserialize(prev.state.lines)?;
+        let program = deserialize::deserialize(prev.state.lines, prev.state.origin)?;
 
         Ok(Self {
             buffer: prev.buffer,

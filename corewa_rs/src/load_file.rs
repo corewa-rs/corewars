@@ -34,18 +34,9 @@ pub struct Warrior {
 }
 
 impl fmt::Display for Warrior {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: metadata
-        write!(
-            f,
-            "{}",
-            self.program
-                .instructions
-                .iter()
-                .fold(String::new(), |result, instruction| {
-                    result + &instruction.to_string() + "\n"
-                })
-        )
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.metadata)?;
+        write!(formatter, "{}", self.program)
     }
 }
 

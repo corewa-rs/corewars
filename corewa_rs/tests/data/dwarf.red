@@ -6,7 +6,8 @@
 ;date           April 29, 1993
 
 ;strategy       Bombs every fourth instruction.
-;assert         (CORESIZE % 4 == 0) && (foo > baz)
+;assert         CORESIZE % 4 == 0
+; TODO: handle expressions like (CORESIZE % 4 == 0) && (foo > baz)
 
         ORG     start           ; Indicates the instruction with
                                 ; the label "start" should be the
