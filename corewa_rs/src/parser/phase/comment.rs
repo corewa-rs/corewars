@@ -1,6 +1,6 @@
 //! In this phase, all comments are removed from the input phase.
 //! Any comments like `;redcode` and `;author` will be parsed and stored in
-//! load_file::Metadata.
+//! load_file::Metadata. This phase also finds the origin and end of the program.
 
 use super::CommentsRemoved;
 
@@ -13,12 +13,12 @@ enum OriginInLine {
     NotFound,
 }
 
-/// Parse a raw String input and return the output sans comments.
+/// Parse a raw String input and return the output sans comments, with metadata.
 pub fn extract_from_string(input: &str) -> CommentsRemoved {
     let mut metadata = Metadata::default();
     let mut origin: Option<String> = None;
 
-    // returns true if new originw as set
+    // Returns whether a new origin was set
     let mut set_origin = |new_origin: String| {
         if let Some(old_origin) = origin.as_ref() {
             // TODO (#25) proper warnings instead of just eprintln
@@ -44,14 +44,13 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
         if let Ok(found_origin) = find_origin_in_line(&trimmed_line) {
             lines.push(trimmed_line);
 
-            use OriginInLine::*;
             match found_origin {
-                NewOrigin(new_origin) => {
+                OriginInLine::NewOrigin(new_origin) => {
                     if !set_origin(new_origin) {
                         lines.pop();
                     }
                 }
-                EndWithNewOrigin(new_origin) => {
+                OriginInLine::EndWithNewOrigin(new_origin) => {
                     if !set_origin(new_origin) {
                         // We need to ignore the new origin, but still register this as the end.
                         // So, for now just remove the line and break
@@ -59,20 +58,21 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
                     }
                     break;
                 }
-                End => break,
-                NotFound => (),
+                OriginInLine::End => break,
+                OriginInLine::NotFound => (),
             }
         } else {
             // TODO (#25) return error
         }
     }
 
-    metadata.origin = origin;
-
-    CommentsRemoved { lines, metadata }
+    CommentsRemoved {
+        lines,
+        metadata,
+        origin,
+    }
 }
 
-// TODO: this can probably get moved to `deserialized` since we need to preserve ORG/END
 /// Find and return the origin defined in the given line.
 fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
     let tokenized_line = line
@@ -105,8 +105,7 @@ mod test {
 
     struct Param {
         input: &'static str,
-        expected: Vec<String>,
-        info: Metadata,
+        expected: CommentsRemoved,
     }
 
     #[test_case(
@@ -117,12 +116,14 @@ mod test {
                 bar di bar
                 baz.  "
             ),
-            expected: vec![
-                "foo who".to_string(),
-                "bar di bar".to_string(),
-                "baz.".to_string(),
-            ],
-            info: Metadata::default(),
+            expected: CommentsRemoved {
+                lines: vec![
+                    "foo who".to_string(),
+                    "bar di bar".to_string(),
+                    "baz.".to_string(),
+                ],
+                ..Default::default()
+            }
         };
         "no comments"
     )]
@@ -133,11 +134,13 @@ mod test {
                 ; bar di bar
                 baz. ; bar"
             ),
-            expected: vec![
-                "foo who".to_string(),
-                "baz.".to_string(),
-            ],
-            info: Metadata::default(),
+            expected: CommentsRemoved {
+                lines: vec![
+                    "foo who".to_string(),
+                    "baz.".to_string(),
+                ],
+                ..Default::default()
+            }
         };
         "remove comments"
     )]
@@ -150,11 +153,14 @@ mod test {
                 ; name my-amazing-warrior
                 MOV 1, 1"
             ),
-            expected: vec!["MOV 1, 1".to_string()],
-            info: Metadata {
-                redcode: Some("".to_string()),
-                name: Some("my-amazing-warrior".to_string()),
-                author: Some("Ian Chamberlain".to_string()),
+            expected: CommentsRemoved {
+                lines: vec!["MOV 1, 1".to_string()],
+                metadata: Metadata {
+                    redcode: Some("".to_string()),
+                    name: Some("my-amazing-warrior".to_string()),
+                    author: Some("Ian Chamberlain".to_string()),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
         };
@@ -169,11 +175,11 @@ mod test {
                 ; ORG 4 behind comment ignored
                 "
             ),
-            expected: vec![
-                "ORG 5".to_string(),
-                "MOV 0, 1".to_string()
-            ],
-            info: Metadata {
+            expected: CommentsRemoved {
+                lines: vec![
+                    "ORG 5".to_string(),
+                    "MOV 0, 1".to_string()
+                ],
                 origin: Some("5".to_string()),
                 ..Default::default()
             },
@@ -184,26 +190,14 @@ mod test {
         Param {
             input: dedent!(
                 "
-                ORG
-                "
-            ),
-            expected: vec![],
-            info: Default::default(),
-        };
-        "parse ORG without arg"
-    )]
-    #[test_case(
-        Param {
-            input: dedent!(
-                "
                 ORG 5
                 ORG 2 ; should warn and leave org 5
                 "
             ),
-            expected: vec![
-                "ORG 5".to_string(),
-            ],
-            info: Metadata {
+            expected: CommentsRemoved {
+                lines: vec![
+                    "ORG 5".to_string(),
+                ],
                 origin: Some("5".to_string()),
                 ..Default::default()
             }
@@ -219,10 +213,10 @@ mod test {
                 END 2 ; should warn and leave org 5
                 "
             ),
-            expected: vec![
-                "org 5".to_string(),
-            ],
-            info: Metadata {
+            expected: CommentsRemoved {
+                lines: vec![
+                    "org 5".to_string(),
+                ],
                 origin: Some("5".to_string()),
                 ..Default::default()
             }
@@ -238,11 +232,11 @@ mod test {
                 END 2
                 "
             ),
-            expected: vec![
-                "MOV 1, 1".to_string(),
-                "END 2".to_string(),
-            ],
-            info: Metadata {
+            expected: CommentsRemoved {
+                lines: vec![
+                    "MOV 1, 1".to_string(),
+                    "END 2".to_string(),
+                ],
                 origin: Some("2".to_string()),
                 ..Default::default()
             }
@@ -259,11 +253,11 @@ mod test {
                 stuff here should also be ignored
                 "
             ),
-            expected: vec![
-                "MOV 1, 1".to_string(),
-                "END 2".to_string(),
-            ],
-            info: Metadata {
+            expected: CommentsRemoved {
+                lines: vec![
+                    "MOV 1, 1".to_string(),
+                    "END 2".to_string(),
+                ],
                 origin: Some("2".to_string()),
                 ..Default::default()
             }
@@ -277,16 +271,14 @@ mod test {
                 ; no real data in this input
                 ; some silly comment"
             ),
-            expected: vec![],
-            info: Default::default(),
+            expected: Default::default()
         };
         "empty result"
     )]
     fn parse(param: Param) {
         let result = extract_from_string(param.input);
 
-        assert_eq!(result.lines, param.expected);
-        assert_eq!(result.metadata, param.info);
+        assert_eq!(result, param.expected);
     }
 
     #[test_case(
@@ -297,21 +289,16 @@ mod test {
                 MOV 0, 1
                 "
             ),
-            expected: vec![
-                "MOV 0, 1".to_string()
-            ],
-            info: Metadata {
-                origin: None,
+            expected: CommentsRemoved {
+                lines: vec!["MOV 0, 1".to_string()],
                 ..Default::default()
-            },
+            }
         };
-        "parse ORG without arg" // should return
+        "inconclusive(should error): parse ORG without arg"
     )]
     fn parse_error(param: Param) {
-        // TODO: this should either expect_err or have #[should_panic]
         let result = extract_from_string(param.input);
 
-        assert_eq!(result.lines, param.expected);
-        assert_eq!(result.metadata, param.info);
+        assert_eq!(result, param.expected);
     }
 }

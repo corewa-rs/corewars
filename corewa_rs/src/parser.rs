@@ -7,34 +7,16 @@ mod phase;
 
 use std::convert::TryFrom;
 use std::error::Error;
-use std::fmt;
 use std::str::FromStr;
 
 use err_derive::Error;
 
-use crate::load_file;
+use crate::load_file::Warrior;
 use phase::{CommentsRemoved, Deserialized, Expanded, Phase, Raw};
 
 /// The main error type that may be returned by the parser.
 #[derive(Debug, Error)]
 pub enum ParseError {}
-
-pub struct Warrior {
-    pub core: load_file::Instructions,
-}
-
-impl fmt::Display for Warrior {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: metadata
-        write!(
-            f,
-            "{}",
-            self.core.iter().fold(String::new(), |result, instruction| {
-                result + &instruction.to_string() + "\n"
-            })
-        )
-    }
-}
 
 // TODO: function for parsing without expansion
 
@@ -48,7 +30,5 @@ pub fn parse(input: &str) -> Result<Warrior, Box<dyn Error>> {
 
     let deserialized = Phase::<Deserialized>::try_from(expanded)?;
 
-    Ok(Warrior {
-        core: deserialized.state.instructions,
-    })
+    Ok(deserialized.state.warrior)
 }

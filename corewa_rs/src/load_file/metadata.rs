@@ -18,9 +18,6 @@ pub struct Metadata {
 
     /// An assertion for this warrior to ensure compilation.
     pub assertion: Option<String>,
-
-    /// The entry point of the warrior. May be a label, which is why it's a String.
-    pub origin: Option<String>,
 }
 
 impl Metadata {

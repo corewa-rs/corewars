@@ -22,7 +22,7 @@ Field = !{ AddressMode? ~ Expr }
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
-    ^"SLT" | ^"SPL" | ^"NOP"
+    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"END"
 }
 
 EquStatement = _{ ^"EQU" ~ Substitution }

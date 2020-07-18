@@ -16,12 +16,12 @@ use crate::load_file;
 #[derive(Debug)]
 pub struct Phase<PhaseState> {
     /// The original input to the parser, which can be used for spans / string views
-    pub buffer: String,
+    buffer: String,
     /// State specific to the current phase of the state machine
     pub state: PhaseState,
 }
 
-/// The initial state of [Buffer](struct.Buffer.html), before any preprocessing has occurred.
+/// The initial state of parsing, before any preprocessing has occurred.
 pub struct Raw;
 
 impl FromStr for Phase<Raw> {
@@ -37,10 +37,11 @@ impl FromStr for Phase<Raw> {
 
 /// The Phase after comments have been removed and metadata parsed from comments.
 /// This phase also parses ORG and END, and removes any text after END
-#[derive(Debug)]
+#[derive(Debug, Default, PartialEq)]
 pub struct CommentsRemoved {
     pub lines: Vec<String>,
     pub metadata: load_file::Metadata,
+    pub origin: Option<String>,
 }
 
 // TODO: Need to consider TryFrom instead of From? Some transitions could fail
@@ -78,23 +79,24 @@ impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
 
 /// The phase in which string-based lines are converted into in-memory data structures
 /// for later simulation. This should be the final phase of parsing.
-// TODO: rename? Or just return a `load_file::Program`
 #[derive(Debug)]
 pub struct Deserialized {
-    pub metadata: load_file::Metadata,
-    pub instructions: load_file::Instructions,
+    pub warrior: load_file::Warrior,
 }
 
 impl TryFrom<Phase<Expanded>> for Phase<Deserialized> {
     type Error = Error;
+
     fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
-        let instructions = deserialize::deserialize(prev.state.lines)?;
+        let program = deserialize::deserialize(prev.state.lines)?;
 
         Ok(Self {
             buffer: prev.buffer,
             state: Deserialized {
-                metadata: prev.state.metadata,
-                instructions,
+                warrior: load_file::Warrior {
+                    metadata: prev.state.metadata,
+                    program,
+                },
             },
         })
     }

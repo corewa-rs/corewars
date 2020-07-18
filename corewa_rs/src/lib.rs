@@ -1,6 +1,3 @@
-// Allow dead code in test/debug mode
-#![cfg_attr(debug_assertions, allow(dead_code))]
-
 // Extern crates
 extern crate itertools;
 extern crate lazy_static;

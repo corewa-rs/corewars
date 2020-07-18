@@ -18,8 +18,6 @@ enum_string!(pub Opcode {
     Slt => "SLT",
     Spl => "SPL",
     Nop => "NOP",
-    // TODO dedupe with PseudoOpcode::Org
-    Org => "ORG",
 });
 
 enum_string!(pub PseudoOpcode {

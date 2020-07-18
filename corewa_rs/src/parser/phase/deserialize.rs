@@ -9,22 +9,22 @@ use crate::load_file;
 
 use super::super::grammar;
 
-pub fn deserialize(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
-    let mut instructions = load_file::Instructions::with_capacity(lines.len());
+pub fn deserialize(lines: Vec<String>) -> Result<load_file::Program, Error> {
+    let mut program = load_file::Program::with_capacity(lines.len());
 
-    for line in lines.into_iter() {
+    for (i, line) in lines.into_iter().enumerate() {
         if let Some(parse_result) = grammar::parse(&line)?.next() {
             match &parse_result.as_rule() {
                 grammar::Rule::Instruction => {
                     let instruction = parse_instruction(parse_result.into_inner());
-                    instructions.push(instruction);
+                    program.set(i, instruction);
                 }
                 rule => dbgf!("Unexpected rule {:?}", rule),
             }
         }
     }
 
-    Ok(instructions)
+    Ok(program)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> load_file::Instruction {
@@ -132,14 +132,17 @@ mod test {
         .map(|s| s.to_string())
         .collect();
 
-        let expected_core = vec![
-            Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
-            Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
-            Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(0)),
-            Instruction::new(Opcode::Jmp, Field::direct(123), Field::immediate(45)),
-            Instruction::new(Opcode::Jmp, Field::direct(-4), Field::immediate(0)),
-            Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
-        ];
+        let expected_core = load_file::Program {
+            instructions: vec![
+                Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
+                Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
+                Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(0)),
+                Instruction::new(Opcode::Jmp, Field::direct(123), Field::immediate(45)),
+                Instruction::new(Opcode::Jmp, Field::direct(-4), Field::immediate(0)),
+                Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
+            ],
+            ..Default::default()
+        };
 
         let parsed = deserialize(simple_input)
             .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));

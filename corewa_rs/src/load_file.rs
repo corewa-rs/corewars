@@ -26,6 +26,29 @@ lazy_static! {
     };
 }
 
+/// The main public struct used to represent a Redcode warrior
+#[derive(Debug)]
+pub struct Warrior {
+    pub program: Program,
+    pub metadata: Metadata,
+}
+
+impl fmt::Display for Warrior {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: metadata
+        write!(
+            f,
+            "{}",
+            self.program
+                .instructions
+                .iter()
+                .fold(String::new(), |result, instruction| {
+                    result + &instruction.to_string() + "\n"
+                })
+        )
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Field {
     pub address_mode: AddressMode,
