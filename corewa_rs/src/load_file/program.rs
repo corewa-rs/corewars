@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use super::{Field, Instruction};
+use super::{Instruction, Value};
 
 pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
@@ -12,7 +12,7 @@ pub type LabelMap = HashMap<String, usize>;
 #[derive(Default, PartialEq)]
 pub struct Program {
     pub instructions: Instructions,
-    pub origin: Option<Field>,
+    pub origin: Option<Value>,
 }
 
 impl fmt::Debug for Program {

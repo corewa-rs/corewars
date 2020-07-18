@@ -1,3 +1,4 @@
+;redcode
 ORG    5
 MOV.I  $0, $1
 DAT.F  $1, $2

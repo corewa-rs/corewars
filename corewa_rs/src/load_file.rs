@@ -8,7 +8,7 @@ pub(crate) mod types;
 
 pub use metadata::Metadata;
 pub use program::{Instructions, LabelMap, Program};
-pub use types::{AddressMode, Modifier, Opcode, Value};
+pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
 
 lazy_static! {
     pub static ref DEFAULT_CONSTANTS: LabelMap = {

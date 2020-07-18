@@ -42,8 +42,6 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
         }
 
         if let Ok(found_origin) = find_origin_in_line(&trimmed_line) {
-            lines.push(trimmed_line);
-
             match found_origin {
                 OriginInLine::NewOrigin(new_origin) => {
                     if !set_origin(new_origin) {
@@ -59,7 +57,7 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
                     break;
                 }
                 OriginInLine::End => break,
-                OriginInLine::NotFound => (),
+                OriginInLine::NotFound => lines.push(trimmed_line),
             }
         } else {
             // TODO (#25) return error
@@ -177,7 +175,6 @@ mod test {
             ),
             expected: CommentsRemoved {
                 lines: vec![
-                    "ORG 5".to_string(),
                     "MOV 0, 1".to_string()
                 ],
                 origin: Some("5".to_string()),
@@ -195,9 +192,7 @@ mod test {
                 "
             ),
             expected: CommentsRemoved {
-                lines: vec![
-                    "ORG 5".to_string(),
-                ],
+                lines: vec![],
                 origin: Some("5".to_string()),
                 ..Default::default()
             }
@@ -214,9 +209,7 @@ mod test {
                 "
             ),
             expected: CommentsRemoved {
-                lines: vec![
-                    "org 5".to_string(),
-                ],
+                lines: vec![],
                 origin: Some("5".to_string()),
                 ..Default::default()
             }
@@ -233,10 +226,7 @@ mod test {
                 "
             ),
             expected: CommentsRemoved {
-                lines: vec![
-                    "MOV 1, 1".to_string(),
-                    "END 2".to_string(),
-                ],
+                lines: vec!["MOV 1, 1".to_string()],
                 origin: Some("2".to_string()),
                 ..Default::default()
             }
@@ -254,10 +244,7 @@ mod test {
                 "
             ),
             expected: CommentsRemoved {
-                lines: vec![
-                    "MOV 1, 1".to_string(),
-                    "END 2".to_string(),
-                ],
+                lines: vec!["MOV 1, 1".to_string()],
                 origin: Some("2".to_string()),
                 ..Default::default()
             }
@@ -280,7 +267,6 @@ mod test {
 
         assert_eq!(result, param.expected);
     }
-
     #[test_case(
         Param {
             input: dedent!(

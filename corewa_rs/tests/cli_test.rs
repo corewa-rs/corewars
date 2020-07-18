@@ -10,7 +10,7 @@ use assert_cmd::prelude::*;
 use assert_that::assert_that;
 use predicates::prelude::*;
 
-static EXPECTED_OUT: &str = include_str!("data/test_loadfile.red");
+static EXPECTED_OUT: &str = include_str!("data/basic_loadfile.red");
 
 #[test]
 fn help() {
@@ -42,7 +42,7 @@ fn dump_stdout() {
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .arg("tests/data/test.red")
+        .arg("tests/data/basic.red")
         .arg("dump")
         .arg("--output-file")
         .arg("-")
@@ -57,7 +57,7 @@ fn dump_file() {
 
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
-        .arg("tests/data/test.red")
+        .arg("tests/data/basic.red")
         .arg("dump")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("--output-file")
