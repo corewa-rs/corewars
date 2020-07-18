@@ -34,7 +34,7 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
 
     let mut lines: Vec<String> = Vec::new();
 
-    for line in input.split_terminator('\n') {
+    for line in input.lines() {
         let trimmed_line = metadata.parse_line(line);
         if trimmed_line.is_empty() {
             continue;
