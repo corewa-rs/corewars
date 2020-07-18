@@ -1,4 +1,5 @@
-// Based on src/parser/grammar/redcode.pest
+//! This grammar describes a single line of Redcode, without handling comments
+//! or multi-line `EQU` and `FOR` macros.
 
 WHITESPACE = _{ " " | "\t" }
 

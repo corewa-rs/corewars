@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 
 use pest::Span;
 
-use crate::phased_parser::grammar;
+use crate::parser::grammar;
 
 /// Collect and subsitute all labels found in the input lines.
 pub fn expand(mut lines: Vec<String>) -> Vec<String> {

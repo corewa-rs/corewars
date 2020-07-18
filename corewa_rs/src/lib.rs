@@ -19,7 +19,7 @@ pub mod error;
 
 // Private modules
 mod load_file;
-mod phased_parser;
+mod parser;
 
 // Re-exports
-pub use phased_parser::parse;
+pub use parser::parse;

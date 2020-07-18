@@ -1,4 +1,4 @@
-//! This module defines the phased_parser state machine. Each phase of the parser
+//! This module defines the parser state machine. Each phase of the parser
 //! is a submodule within this module.
 
 use std::convert::{Infallible, TryFrom};

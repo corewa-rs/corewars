@@ -9,7 +9,7 @@ pub(super) use pest::{
 use pest_derive::Parser;
 
 #[derive(Parser)]
-#[grammar = "phased_parser/grammar/redcode_line.pest"]
+#[grammar = "parser/grammar/redcode.pest"]
 pub(super) struct Grammar;
 
 /// Parse an input line and return an iterator over
