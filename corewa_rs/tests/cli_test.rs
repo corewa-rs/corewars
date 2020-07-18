@@ -1,14 +1,16 @@
 extern crate assert_cmd;
+extern crate assert_that;
 extern crate predicates;
-extern crate testutils;
+
+extern crate corewa_rs;
 
 use std::process::Command;
 
 use assert_cmd::prelude::*;
+use assert_that::assert_that;
 use predicates::prelude::*;
-use testutils::assert_that;
 
-static EXPECTED_OUT: &str = include_str!("data/test_loadfile.red");
+static EXPECTED_OUT: &str = include_str!("data/basic_loadfile.red");
 
 #[test]
 fn help() {
@@ -31,7 +33,7 @@ fn help_dump() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Save/print a program in 'load file' format",
+            r#"Save/print a program in "load file" format"#,
         ));
 }
 
@@ -40,7 +42,7 @@ fn dump_stdout() {
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .arg("tests/data/test.red")
+        .arg("tests/data/basic.red")
         .arg("dump")
         .arg("--output-file")
         .arg("-")
@@ -55,7 +57,7 @@ fn dump_file() {
 
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
-        .arg("tests/data/test.red")
+        .arg("tests/data/basic.red")
         .arg("dump")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("--output-file")
@@ -65,8 +67,6 @@ fn dump_file() {
 
     assert_that!(
         out_file.path(),
-        predicate::str::similar(EXPECTED_OUT)
-            .from_utf8()
-            .from_file_path(),
+        str::similar(EXPECTED_OUT).from_utf8().from_file_path(),
     );
 }

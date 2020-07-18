@@ -8,7 +8,6 @@ on:
     paths:
       - .github/**
       - corewa_rs/**
-      - testutils/**
       - Cargo.*
   pull_request:
     branches:
@@ -17,7 +16,6 @@ on:
     paths:
       - .github/**
       - corewa_rs/**
-      - testutils/**
       - Cargo.*
 
 jobs:
@@ -33,7 +31,7 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --verbose -- --check
       - name: Run clippy linting
-        run: cargo clippy --color=always --workspace --verbose --all-targets --all-features
+        run: cargo clippy --color=always --workspace --verbose --all-targets
         env:
           RUSTFLAGS:
             "-D warnings"
@@ -59,4 +57,4 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       - name: Build and run tests
-        run: cargo test --color=always --workspace --all-targets --all-features
+        run: cargo test --color=always --workspace
