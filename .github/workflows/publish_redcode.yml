@@ -1,4 +1,4 @@
-name: redcode-publish
+name: publish_redcode
 
 on:
   release:

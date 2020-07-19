@@ -1,7 +1,7 @@
 # Redcode Syntax highlighting
 
 [![Latest Release](https://img.shields.io/visual-studio-marketplace/v/ian-h-chamberlain.redcode?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=ian-h-chamberlain.redcode)
-[![Build Status](https://img.shields.io/github/workflow/status/ian-h-chamberlain/corewa_rs/redcode/develop)](https://github.com/ian-h-chamberlain/corewa_rs/actions)
+[![Build Status](https://img.shields.io/github/workflow/status/ian-h-chamberlain/corewa_rs/ci/master)](https://github.com/ian-h-chamberlain/corewa_rs/actions)
 
 Basic syntax highlighting for Redcode, the language used in [Core Wars](https://corewa.rs).
 
@@ -19,4 +19,4 @@ Syntax highlighting for redcode, based partially on [this vim syntax file](https
 
 ## Release Notes
 
-See [the changelog](CHANGELOG.md).
+See [the changelog](./CHANGELOG.md).

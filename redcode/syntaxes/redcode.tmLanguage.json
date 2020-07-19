@@ -111,10 +111,10 @@
     },
     "eof": {
       "name": "comment.block.end.redcode",
-      "begin": "\\b(END)\\b(.*)",
+      "begin": "(?i)\\b(END)\\b(.*)",
       "captures": {
         "1": {
-          "name": "keyword.operator.control.psuedo-opcode.88.end.redcode"
+          "name": "keyword.operator.control.pseudo-opcode.88.end.redcode"
         },
         "2": {
           "patterns": [
@@ -196,15 +196,15 @@
           "match": "(?i)\\b(LDP|STP)\\b"
         },
         {
-          "name": "keyword.operator.control.psuedo-opcode.88.redcode",
+          "name": "keyword.operator.control.pseudo-opcode.88.redcode",
           "match": "(?i)\\b(EQU|FOR|ROF)\\b"
         },
         {
-          "name": "keyword.operator.control.psuedo-opcode.94.redcode",
+          "name": "keyword.operator.control.pseudo-opcode.94.redcode",
           "match": "(?i)\\b(ORG)\\b"
         },
         {
-          "name": "keyword.operator.control.psuedo-opcode.p-space.redcode",
+          "name": "keyword.operator.control.pseudo-opcode.p-space.redcode",
           "match": "(?i)\\b(PIN)\\b"
         }
       ]

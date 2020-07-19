@@ -59,6 +59,17 @@
             ],
             "type": "cargo"
         },
+        {
+            "type": "npm",
+            "script": "build",
+            "path": "redcode/",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "group": "build",
+            "label": "npm: build - redcode",
+            "detail": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json"
+        }
     ],
     "version": "2.0.0"
 }

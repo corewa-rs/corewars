@@ -6,7 +6,7 @@
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
-      "preLaunchTask": "build: redcode",
+      "preLaunchTask": "npm: build - redcode",
       "args": [
         "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/redcode",
