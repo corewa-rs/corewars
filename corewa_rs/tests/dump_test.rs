@@ -1,10 +1,3 @@
-extern crate assert_that;
-extern crate predicates;
-extern crate test_case;
-extern crate test_generator;
-
-extern crate corewa_rs;
-
 use std::fs;
 
 use assert_that::assert_that;
