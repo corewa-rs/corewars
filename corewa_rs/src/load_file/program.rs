@@ -19,6 +19,20 @@ pub struct Program {
     pub origin: Option<usize>,
 }
 
+impl Program {
+    pub fn get(&self, index: usize) -> Option<Instruction> {
+        self.instructions.get(index).cloned()
+    }
+
+    pub fn set(&mut self, index: usize, value: Instruction) {
+        if index >= self.instructions.len() {
+            self.instructions.resize_with(index + 1, Default::default);
+        }
+
+        self.instructions[index] = value;
+    }
+}
+
 impl fmt::Debug for Program {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         writeln!(formatter, "{{")?;
@@ -49,26 +63,5 @@ impl fmt::Display for Program {
         }
 
         write!(formatter, "{}", lines.join("\n"))
-    }
-}
-
-impl Program {
-    pub fn with_capacity(size: usize) -> Self {
-        Self {
-            instructions: vec![Default::default(); size],
-            origin: None,
-        }
-    }
-
-    pub fn get(&self, index: usize) -> Option<Instruction> {
-        self.instructions.get(index).cloned()
-    }
-
-    pub fn set(&mut self, index: usize, value: Instruction) {
-        if index >= self.instructions.len() {
-            self.instructions.resize_with(index + 1, Default::default);
-        }
-
-        self.instructions[index] = value;
     }
 }

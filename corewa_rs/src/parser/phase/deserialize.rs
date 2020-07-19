@@ -1,4 +1,4 @@
-//! In this phase, parse expanded outputs into their memory representation
+//! In this phase, string lines are parsed into their memory representation.
 
 use std::str::FromStr;
 
@@ -6,30 +6,24 @@ use pest::iterators::{Pair, Pairs};
 
 use crate::error::Error;
 use crate::load_file;
+use crate::parser::grammar;
 
-use super::super::grammar;
+/// Convert the text input lins into in-memory data structures
+pub fn deserialize(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
+    let mut instructions = Vec::with_capacity(lines.len());
 
-pub fn deserialize(
-    lines: Vec<String>,
-    origin: Option<String>,
-) -> Result<load_file::Program, Error> {
-    let mut program = load_file::Program::with_capacity(lines.len());
-
-    for (i, line) in lines.into_iter().enumerate() {
+    for line in lines.into_iter() {
         if let Some(parse_result) = grammar::parse(&line)?.next() {
             match &parse_result.as_rule() {
                 grammar::Rule::Instruction => {
-                    let instruction = parse_instruction(parse_result.into_inner());
-                    program.set(i, instruction);
+                    instructions.push(parse_instruction(parse_result.into_inner()));
                 }
                 rule => dbgf!("Unexpected rule {:?}", rule),
             }
         }
     }
 
-    program.origin = origin.map(|s| parse_origin(&s));
-
-    Ok(program)
+    Ok(instructions)
 }
 
 fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> load_file::Instruction {
@@ -118,11 +112,6 @@ fn parse_value(value_pair: Pair<grammar::Rule>) -> load_file::Value {
     }
 }
 
-fn parse_origin(origin_str: &str) -> usize {
-    // TODO: this should be de-duped with parse_value and use expression parsing logic
-    usize::from_str_radix(origin_str, 10).expect("Origin must be positive integer")
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -142,35 +131,18 @@ mod test {
         .map(|s| s.to_string())
         .collect();
 
-        let expected_core = load_file::Program {
-            instructions: vec![
-                Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
-                Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
-                Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(0)),
-                Instruction::new(Opcode::Jmp, Field::direct(123), Field::immediate(45)),
-                Instruction::new(Opcode::Jmp, Field::direct(-4), Field::immediate(0)),
-                Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
-            ],
-            ..Default::default()
-        };
+        let expected_core = vec![
+            Instruction::new(Opcode::Mov, Field::direct(1), Field::direct(3)),
+            Instruction::new(Opcode::Mov, Field::direct(100), Field::immediate(12)),
+            Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(0)),
+            Instruction::new(Opcode::Jmp, Field::direct(123), Field::immediate(45)),
+            Instruction::new(Opcode::Jmp, Field::direct(-4), Field::immediate(0)),
+            Instruction::new(Opcode::Jmp, Field::direct(-1), Field::immediate(0)),
+        ];
 
-        let parsed = deserialize(simple_input, None)
+        let parsed = deserialize(simple_input)
             .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));
 
         assert_eq!(parsed, expected_core);
-    }
-
-    #[test]
-    fn parse_org() {
-        let parsed = deserialize(vec![], Some("1".into()))
-            .unwrap_or_else(|err| panic!("Failed to parse origin file: {}", err));
-
-        assert_eq!(
-            parsed,
-            load_file::Program {
-                instructions: vec![],
-                origin: Some(1)
-            }
-        );
     }
 }

@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 mod comment;
 mod deserialize;
+mod evaluation;
 mod expansion;
 
 use crate::error::Error;
@@ -85,22 +86,62 @@ impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
     }
 }
 
-/// The phase in which string-based lines are converted into in-memory data structures
-/// for later simulation. This should be the final phase of parsing.
-#[derive(Debug)]
-pub struct Deserialized {
-    pub warrior: load_file::Warrior,
+/// The program after all expressions have been evaluated. This stage
+/// handles arithmetic,
+#[derive(Debug, Default)]
+pub struct Evaluated {
+    /// The evaluated lines of text to be parsed later
+    lines: Vec<String>,
+
+    /// Metadata gathered in previous phase
+    metadata: load_file::Metadata,
+
+    /// The entrypoint to the program, evaluated to an absolute offset into `lines`
+    origin: Option<usize>,
 }
 
-impl TryFrom<Phase<Expanded>> for Phase<Deserialized> {
+impl TryFrom<Phase<Expanded>> for Phase<Evaluated> {
     type Error = Error;
 
     fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
-        let program = deserialize::deserialize(prev.state.lines, prev.state.origin)?;
+        let lines = evaluation::evaluate(prev.state.lines)?;
+        let origin = prev
+            .state
+            .origin
+            .map(evaluation::evaluate_expression)
+            .transpose()?;
+
+        // TODO evaluate assertion
 
         Ok(Self {
             buffer: prev.buffer,
-            state: Deserialized {
+            state: Evaluated {
+                metadata: prev.state.metadata,
+                lines,
+                origin,
+            },
+        })
+    }
+}
+
+/// The final resulting output of the parser, which is suitable for simulation.
+#[derive(Debug)]
+pub struct Output {
+    pub warrior: load_file::Warrior,
+}
+
+impl TryFrom<Phase<Evaluated>> for Phase<Output> {
+    type Error = Error;
+
+    fn try_from(prev: Phase<Evaluated>) -> Result<Self, Error> {
+        let program = load_file::Program {
+            instructions: deserialize::deserialize(prev.state.lines)?,
+            origin: prev.state.origin,
+        };
+
+        Ok(Self {
+            buffer: prev.buffer,
+            state: Output {
                 warrior: load_file::Warrior {
                     metadata: prev.state.metadata,
                     program,
