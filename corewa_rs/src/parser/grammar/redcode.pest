@@ -1,5 +1,7 @@
-//! This grammar describes a single line of Redcode, without handling comments
-//! or multi-line `EQU` and `FOR` macros.
+// This grammar describes a single line of Redcode, without handling comments
+// or multi-line `EQU` and `FOR` macros.
+
+// Top-level definitions
 
 WHITESPACE = _{ " " | "\t" }
 
@@ -7,17 +9,16 @@ Line = _{ LabelDeclaration? ~ Statement? }
 
 Statement = _{ Instruction | EquStatement | LabelUsage }
 
+Expression = { Expr }
+
+
+// Redcode instructions
+
 Instruction = { Operation ~ Field ~ ("," ~ Field)? }
-
-LabelDeclaration = _{ !(Operation | EquStatement) ~ Label ~ (":")? }
-
-LabelUsage = _{ Label }
-
-Label = @{ Alpha ~ Alphanumeral* }
 
 Operation = ${ Opcode ~ ("." ~ Modifier)? }
 
-Field = !{ AddressMode? ~ Expr }
+Field = !{ AddressMode? ~ Expression }
 
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
@@ -25,18 +26,63 @@ Opcode = {
     ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"END"
 }
 
-EquStatement = _{ ^"EQU" ~ Substitution }
-
-Substitution = { ANY* }
-
 Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-Expr = { Number | LabelUsage }
 
-Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
+// Substitutions
+
+LabelDeclaration = _{ !(Operation | EquStatement) ~ Label ~ (":")? }
+
+LabelUsage = _{ Label }
+
+EquStatement = _{ ^"EQU" ~ Substitution }
+
+Substitution = { ANY* }
+
+
+// Expressions
+
+Expr = _{ Value ~ BooleanExpr* }
+
+Value = { Sum ~ CompareExpr* }
+
+BooleanExpr = _{ BooleanOp ~ Value }
+
+Sum = { Product ~ AddExpr* }
+
+CompareExpr = _{ CompareOp ~ Sum }
+
+ParenExpr = _{ "(" ~ Expr ~ ")" }
+
+Product = { UnaryExpr ~ MultiplyExpr* }
+
+UnaryExpr = { UnaryOp* ~ (Atom | ParenExpr) }
+
+MultiplyExpr = _{ MultiplyOp ~ UnaryExpr }
+
+AddExpr = _{ AddOp ~ Product }
+
+Atom = _{ Number | LabelUsage }
+
+MultiplyOp = { "*" | "/" | "%" }
+
+AddOp = {"+" | "-" }
+
+UnaryOp = { "-" | "+" | "!" }
+
+CompareOp = { "<=" | "<" | ">=" | ">" | "==" | "!=" }
+
+BooleanOp = { "&&" | "||" }
+
+
+// Terminal rules
+
+Number = @{ ASCII_DIGIT+ }
 
 Alpha = _{ ASCII_ALPHA | "_" }
 
 Alphanumeral = _{ ASCII_ALPHANUMERIC | "_" }
+
+Label = @{ Alpha ~ Alphanumeral* }

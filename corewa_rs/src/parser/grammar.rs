@@ -79,12 +79,141 @@ mod test {
     }
 
     #[test]
-    fn parse_field() {
-        match_parse!(Field {
+    fn parse_expression() {
+        match_parse!(Expression {
             "123" => [
-                Field(0, 3, [
-                    Expr(0, 3, [
-                        Number(0, 3),
+                Expression(0, 3, [
+                    Value(0, 3, [
+                        Sum(0, 3, [
+                            Product(0, 3, [
+                                UnaryExpr(0, 3, [
+                                    Number(0, 3)
+                                ])
+                            ])
+                        ]),
+                    ]),
+                ]),
+            ],
+            "-10" => [
+                Expression(0, 3, [
+                    Value(0, 3, [
+                        Sum(0, 3, [
+                            Product(0, 3, [
+                                UnaryExpr(0, 3, [
+                                    UnaryOp(0, 1),
+                                    Number(1, 3)
+                                ])
+                            ])
+                        ]),
+                    ]),
+                ]),
+            ],
+            "2 + 2" => [
+                Expression(0, 5, [
+                    Value(0, 5, [
+                        Sum(0, 5, [
+                            Product(0, 2, [
+                                UnaryExpr(0, 1, [
+                                    Number(0, 1)
+                                ]),
+                            ]),
+                            AddOp(2, 3),
+                            Product(4, 5, [
+                                UnaryExpr(4, 5, [
+                                    Number(4, 5)
+                                ]),
+                            ]),
+                        ]),
+                    ]),
+                ]),
+            ],
+            "2 + -2" => [
+                Expression(0, 6, [
+                    Value(0, 6, [
+                        Sum(0, 6, [
+                            Product(0, 2, [
+                                UnaryExpr(0, 1, [
+                                    Number(0, 1)
+                                ]),
+                            ]),
+                            AddOp(2, 3),
+                            Product(4, 6, [
+                                UnaryExpr(4, 6, [
+                                    UnaryOp(4, 5),
+                                    Number(5, 6),
+                                ]),
+                            ]),
+                        ]),
+                    ]),
+                ]),
+            ],
+            "2*(x + 1)" => [
+                Expression(0, 9, [
+                    Value(0, 9, [
+                        Sum(0, 9, [
+                            Product(0, 9, [
+                                UnaryExpr(0, 1, [
+                                    Number(0, 1)
+                                ]),
+                                MultiplyOp(1, 2),
+                                UnaryExpr(2, 9, [
+                                    Value(3, 8, [
+                                        Sum(3, 8, [
+                                            Product(3, 5, [
+                                                UnaryExpr(3, 4, [
+                                                    Label(3, 4),
+                                                ]),
+                                            ]),
+                                            AddOp(5, 6),
+                                            Product(7, 8, [
+                                                UnaryExpr(7, 8, [
+                                                    Number(7, 8)
+                                                ]),
+                                            ]),
+                                        ]),
+                                    ]),
+                                ]),
+                            ]),
+                        ]),
+                    ]),
+                ]),
+            ],
+            "x >= 2 || x < 0" => [
+                Expression(0, 15, [
+                    Value(0, 7, [
+                        Sum(0, 2, [
+                            Product(0, 2, [
+                                UnaryExpr(0, 1, [
+                                    Label(0, 1),
+                                ]),
+                            ]),
+                        ]),
+                        CompareOp(2, 4),
+                        Sum(5, 7, [
+                            Product(5, 7, [
+                                UnaryExpr(5, 6, [
+                                    Number(5, 6),
+                                ]),
+                            ]),
+                        ]),
+                    ]),
+                    BooleanOp(7, 9),
+                    Value(10, 15, [
+                        Sum(10, 12, [
+                            Product(10, 12, [
+                                UnaryExpr(10, 11, [
+                                    Label(10, 11),
+                                ]),
+                            ]),
+                        ]),
+                        CompareOp(12, 13),
+                        Sum(14, 15, [
+                            Product(14, 15, [
+                                UnaryExpr(14, 15, [
+                                    Number(14, 15),
+                                ]),
+                            ]),
+                        ]),
                     ]),
                 ]),
             ],
@@ -97,33 +226,36 @@ mod test {
             "#123" | "$123" | "*123" | "@123" | "{123" | "<123" | "}123" | ">123" => [
                 Field(0, 4, [
                     AddressMode(0, 1),
-                    Expr(1, 4, [
-                        Number(1, 4),
+                    Expression(1, 4, [
+                        Value(1, 4, [
+                            Sum(1, 4, [
+                                Product(1, 4, [
+                                    UnaryExpr(1, 4, [
+                                        Number(1, 4)
+                                    ])
+                                ])
+                            ]),
+                        ]),
                     ]),
-                ]),
+                ])
             ],
         });
     }
 
     #[test]
-    fn parse_expr() {
-        // TODO: expand grammar for math operations, parens, etc.
-        // Then test it here. Possibly worth breaking into its own module
-        match_parse!(Expr {
-            "123" => [
-                Expr(0, 3, [
-                    Number(0, 3),
-                ]),
-            ]
-        });
-    }
-
-    #[test]
     fn parse_label_expr() {
-        match_parse!(Expr {
+        match_parse!(Expression {
             "foo" | "fo2" | "f_2" => [
-                Expr(0, 3, [
-                    Label(0, 3),
+                Expression(0, 3, [
+                    Value(0, 3, [
+                        Sum(0, 3, [
+                            Product(0, 3, [
+                                UnaryExpr(0, 3, [
+                                    Label(0, 3)
+                                ])
+                            ])
+                        ]),
+                    ]),
                 ]),
             ]
         });
@@ -161,13 +293,29 @@ mod test {
                     ]),
                     Field(4, 6, [
                         AddressMode(4, 5),
-                        Expr(5, 6, [
-                            Number(5, 6),
+                        Expression(5, 6, [
+                            Value(5, 6, [
+                                Sum(5, 6, [
+                                    Product(5, 6, [
+                                        UnaryExpr(5, 6, [
+                                            Number(5, 6)
+                                        ])
+                                    ])
+                                ]),
+                            ]),
                         ]),
                     ]),
                     Field(8, 9, [
-                        Expr(8, 9, [
-                            Number(8, 9),
+                        Expression(8, 9, [
+                            Value(8, 9, [
+                                Sum(8, 9, [
+                                    Product(8, 9, [
+                                        UnaryExpr(8, 9, [
+                                            Number(8, 9)
+                                        ])
+                                    ])
+                                ]),
+                            ]),
                         ]),
                     ]),
                 ]),
