@@ -12,11 +12,11 @@ repository:
   builtin:
     patterns:
       - name: constant.language.88.redcode
-        match: \b(CORESIZE|MAXPROCESSES|MAXCYCLES|MAXLENGTH)\b
+        match: '\b(CORESIZE|MAXPROCESSES|MAXCYCLES|MAXLENGTH)\b'
       - name: constant.language.94.redcode
-        match: \b(MINDISTANCE|ROUNDS|CURLINE|VERSION|WARRIORS)\b
+        match: '\b(MINDISTANCE|ROUNDS|CURLINE|VERSION|WARRIORS)\b'
       - name: constant.language.p-space.redcode
-        match: \b(PSPACESIZE)\b
+        match: '\b(PSPACESIZE)\b'
 
   directive:
     begin: '(;)'
@@ -27,19 +27,19 @@ repository:
     patterns:
       - include: '#directive_with_argument'
       - name: keyword.operator.directive.main.redcode
-        match: (?i)(redcode)(?!-)
+        match: '(?i)(redcode)(?!-)'
       - name: keyword.operator.directive.koth.main.redcode
-        match: (?i)(redcode-[a-zA-Z0-9]+)
+        match: '(?i)(redcode-[a-zA-Z0-9]+)'
       - name: keyword.operator.directive.debug.redcode
-        match: (?i)(debug)[[:blank:]]+(off|static)
+        match: '(?i)(debug)[[:blank:]]+(off|static)'
       - name: keyword.operator.directive.trace.redcode
-        match: (?i)(trace)[[:blank:]]+(off)
+        match: '(?i)(trace)[[:blank:]]+(off)'
       - name: comment.line.semicolon.redcode
         match: '.*'
 
   directive_with_argument:
     patterns:
-      - match: (?i)(assert)\b(.*)
+      - match: '(?i)(assert)\b(.*)'
         captures:
           '1':
             name: keyword.operator.directive.redcode
@@ -47,14 +47,14 @@ repository:
             patterns:
               - include: '#expression'
 
-      - match: (?i)(author|break|name)\b(.*)
+      - match: '(?i)(author|break|name)\b(.*)'
         captures:
           '1':
             name: keyword.operator.directive.redcode
           '2':
             name: string.unquoted.directive.argument.redcode
 
-      - match: (?i)(help|kill|status|strategy|test|password|newpasswd|newredcode|url|version|date)\b(.*)
+      - match: '(?i)(help|kill|status|strategy|test|password|newpasswd|newredcode|url|version|date)\b(.*)'
         name: keyword.operator.directive.koth.redcode
         captures:
           '2':
@@ -62,11 +62,11 @@ repository:
 
   eof:
     name: comment.block.end.redcode
-    begin: '\b(END)\b(.*)'
+    begin: '(?i)\b(END)\b(.*)'
     # no end defined, the rest of the file should be treated as a comment
     captures:
       '1':
-        name: keyword.operator.control.psuedo-opcode.88.end.redcode
+        name: keyword.operator.control.pseudo-opcode.88.end.redcode
       '2':
         # Allow comments + expression on the same line
         patterns:
@@ -81,7 +81,7 @@ repository:
       - name: keyword.operator.logical.redcode
         match: '[=<>&|!]'
       - name: constant.numeric.redcode
-        match: \b\d+\b
+        match: '\b\d+\b'
       - include: '#builtin'
       - include: '#label'
       - include: '#paren_expression'
@@ -104,17 +104,17 @@ repository:
   opcode:
     patterns:
       - name: keyword.operator.control.opcode.88.redcode
-        match: (?i)\b(DAT|MOV|ADD|SUB|JMP|JMZ|JMN|DJN|SLT|CMP|SPL)\b
+        match: '(?i)\b(DAT|MOV|ADD|SUB|JMP|JMZ|JMN|DJN|SLT|CMP|SPL)\b'
       - name: keyword.operator.control.opcode.94.redcode
-        match: (?i)\b(MUL|DIV|MOD|SEQ|SNE|NOP)\b
+        match: '(?i)\b(MUL|DIV|MOD|SEQ|SNE|NOP)\b'
       - name: keyword.operator.control.opcode.p-space.redcode
-        match: (?i)\b(LDP|STP)\b
-      - name: keyword.operator.control.psuedo-opcode.88.redcode
-        match: (?i)\b(EQU|FOR|ROF)\b
-      - name: keyword.operator.control.psuedo-opcode.94.redcode
-        match: (?i)\b(ORG)\b
-      - name: keyword.operator.control.psuedo-opcode.p-space.redcode
-        match: (?i)\b(PIN)\b
+        match: '(?i)\b(LDP|STP)\b'
+      - name: keyword.operator.control.pseudo-opcode.88.redcode
+        match: '(?i)\b(EQU|FOR|ROF)\b'
+      - name: keyword.operator.control.pseudo-opcode.94.redcode
+        match: '(?i)\b(ORG)\b'
+      - name: keyword.operator.control.pseudo-opcode.p-space.redcode
+        match: '(?i)\b(PIN)\b'
 
   paren_expression:
     name: expression.group

@@ -1,10 +1,9 @@
-name: redcode-publish
+name: publish_redcode
 
 on:
   release:
     types:
-      - created
-      - edited
+      - published
 
 defaults:
   run:

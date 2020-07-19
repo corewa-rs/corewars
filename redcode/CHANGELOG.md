@@ -1,13 +1,19 @@
 <!-- markdownlint-disable-file no-duplicate-header -->
 
-# Change Log
+# Changelog
 
 All notable changes to the "redcode" extension will be documented in this file.
 Format based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.1.0]
+## [0.1.1] - 2020-07-19
+
+### Fixed
+
+- Lowercase `end` keyword highlighted incorrectly
+
+## [0.1.0] - 2020-06-14
 
 ### Added
 
