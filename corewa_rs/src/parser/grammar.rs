@@ -1,22 +1,43 @@
-use pest::{error::Error, iterators::Pairs, Parser};
+//! Definition and tests for the grammar that defines a valid line of Redcode.
+//! Provides helper function to tokenize strings into span-like tokens.
+
+pub(super) use pest::{
+    error::Error,
+    iterators::{Pair, Pairs},
+    Parser,
+};
+use pest_derive::Parser;
 
 #[derive(Parser)]
 #[grammar = "parser/grammar/redcode.pest"]
-struct Grammar;
+pub(super) struct Grammar;
 
-pub fn parse(rule: Rule, input: &str) -> Result<Pairs<Rule>, Error<Rule>> {
-    Grammar::parse(rule, input)
+/// Parse an input line and return an iterator over
+
+pub(super) fn tokenize(line: &str) -> Vec<Pair<Rule>> {
+    parse(line).map(flatten_pairs).unwrap_or_default()
 }
 
-#[cfg(test)]
-#[allow(clippy::cognitive_complexity)]
-mod tests {
+pub(super) fn parse(line: &str) -> Result<Pairs<Rule>, Error<Rule>> {
+    Grammar::parse(Rule::Line, line)
+}
+
+fn flatten_pairs(pairs: Pairs<Rule>) -> Vec<Pair<Rule>> {
+    pairs
+        .flatten()
+        .filter(|pair|
+            // TODO avoid clone here if possible
+            pair.clone().into_inner().peek().is_none())
+        .collect()
+}
+
+#[cfg(any(test, doctest))] // cfg(doctest) so we run the helper's doctest
+mod test {
     use pest::{consumes_to, parses_to};
+    use test_case::test_case;
 
     use super::*;
-
-    // NOTE: these "doctests" are not actually compiled or run
-    // since they are in a #[cfg(test)] module
+    use Rule::*;
 
     /// A macro to assert on the way a certain input string parses
     /// Two forms are allowed. One has no identifier:
@@ -48,7 +69,7 @@ mod tests {
                 for $value in [$($input,)*].iter() {
                     parses_to! {
                         parser: Grammar,
-                        input: dbg!($value),
+                        input: $value,
                         rule: Rule::$rule,
                         tokens: $expected
                     };
@@ -131,33 +152,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_instruction() {
-        match_parse!(Instruction {
-            "mov #1, 3" => [
-                Instruction(0, 9, [
-                    Operation(0, 3, [
-                        Opcode(0, 3),
-                    ]),
-                    Field(4, 6, [
-                        AddressMode(4, 5),
-                        Expr(5, 6, [
-                            Number(5, 6),
-                        ]),
-                    ]),
-                    Field(8, 9, [
-                        Expr(8, 9, [
-                        Number(8, 9),
-                        ])
-                    ]),
-                ]),
-            ],
-        });
-    }
-
-    #[test]
     fn parse_full_line() {
         match_parse!(input, Line {
-            "mov #1, 3; comment" | "mov #1, 3" => [
+            "mov #1, 3" => [
                 Instruction(0, 9, [
                     Operation(0, 3, [
                         Opcode(0, 3),
@@ -175,89 +172,47 @@ mod tests {
                     ]),
                 ]),
             ],
-            "lbl mov #1, 3; comment" | "lbl mov #1, 3" => [
-                Label(0, 3),
-                Instruction(4, 13, [
-                    Operation(4, 7, [
-                        Opcode(4, 7),
-                    ]),
-                    Field(8, 10, [
-                        AddressMode(8, 9),
-                        Expr(9, 10, [
-                            Number(9, 10),
-                        ]),
-                    ]),
-                    Field(12, 13, [
-                        Expr(12, 13, [
-                            Number(12, 13),
-                        ]),
-                    ]),
-                ]),
-            ],
         });
     }
 
-    #[test]
-    fn parse_comment() {
-        match_parse!(input, COMMENT {
-            "; foo bar" | ";" => [COMMENT(0, input.len())],
-            "; foo bar\n" | ";\n" => [COMMENT(0, input.len() - 1)],
-        });
-    }
+    #[test_case("lbl", vec![(Label, "lbl")]; "label")]
+    #[test_case("lbl: ", vec![(Label, "lbl")]; "label with colon")]
+    #[test_case(
+        "lbl: mov 0, 1",
+        vec![
+            (Label, "lbl"),
+            (Opcode, "mov"),
+            (Number, "0"),
+            (Number, "1"),
+        ];
+        "label instruction"
+    )]
+    #[test_case(
+        "lbl equ 4",
+        vec![(Label, "lbl"), (Substitution, "4")];
+        "label equ expr"
+    )]
+    #[test_case(
+        "lbl equ mov 1, 2",
+        vec![(Label, "lbl"), (Substitution, "mov 1, 2")];
+        "label equ instruction"
+    )]
+    #[test_case(
+        "equ mov 1, 2",
+        vec![(Substitution, "mov 1, 2")];
+        "equ continuation"
+    )]
+    #[test_case(
+        "equ mov 1, (1 + 2)",
+        vec![(Substitution, "mov 1, (1 + 2)")];
+        "equ continuation expr"
+    )]
+    fn tokenize_line(input: &str, expected_result: Vec<(Rule, &str)>) {
+        let actual: Vec<(Rule, &str)> = tokenize(input)
+            .iter()
+            .map(|pair| (pair.as_rule(), pair.as_str()))
+            .collect();
 
-    #[test]
-    fn parse_end() {
-        match_parse!(input, EndProgram {
-            "end" | "END" | "end   " => [
-                EndProgram(0, input.len())
-            ],
-            "end; foo bar" => [
-                EndProgram(0, input.len(), [
-                    COMMENT(3, input.len()),
-                ]),
-            ],
-            "end\n" | "END\n" | "end   \n" => [
-                EndProgram(0, input.len() - 1),
-            ],
-            "end; foo bar\n" => [
-                EndProgram(0, input.len() - 1, [
-                    COMMENT(3, input.len() - 1),
-                ]),
-            ],
-        });
-    }
-
-    #[test]
-    fn parse_end_with_operand() {
-        match_parse!(input, EndProgram {
-            "end 12345" => [
-                EndProgram(0, input.len(), [
-                    Expr(4, input.len(), [
-                        Number(4, input.len()),
-                    ]),
-                ]),
-            ],
-            "end start" => [
-                EndProgram(0, input.len(), [
-                    Expr(4, input.len(), [
-                        Label(4, input.len()),
-                    ]),
-                ]),
-            ],
-            "end 12345\n" => [
-                EndProgram(0, input.len() - 1, [
-                    Expr(4, input.len() - 1, [
-                        Number(4, input.len() - 1),
-                    ]),
-                ]),
-            ],
-            "end start\n" => [
-                EndProgram(0, input.len() - 1, [
-                    Expr(4, input.len() - 1, [
-                        Label(4, input.len() - 1),
-                    ]),
-                ]),
-            ],
-        });
+        assert_eq!(actual, expected_result);
     }
 }

@@ -2,11 +2,13 @@ use std::fmt;
 
 use lazy_static::lazy_static;
 
+mod metadata;
 mod program;
-mod types;
+pub(crate) mod types;
 
-pub use program::{LabelMap, Program};
-pub use types::{AddressMode, Modifier, Opcode, Value};
+pub use metadata::Metadata;
+pub use program::{Instructions, LabelMap, Program};
+pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
 
 lazy_static! {
     pub static ref DEFAULT_CONSTANTS: LabelMap = {
@@ -22,6 +24,20 @@ lazy_static! {
         // CURLINE, VERSION, WARRIORS, PSPACESIZE
         constants
     };
+}
+
+/// The main public struct used to represent a Redcode warrior
+#[derive(Debug)]
+pub struct Warrior {
+    pub program: Program,
+    pub metadata: Metadata,
+}
+
+impl fmt::Display for Warrior {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.metadata)?;
+        write!(formatter, "{}", self.program)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -128,7 +144,7 @@ impl Instruction {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]

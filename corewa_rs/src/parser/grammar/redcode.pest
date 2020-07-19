@@ -1,16 +1,17 @@
+//! This grammar describes a single line of Redcode, without handling comments
+//! or multi-line `EQU` and `FOR` macros.
+
 WHITESPACE = _{ " " | "\t" }
 
-COMMENT = @{ ";" ~ (!NEWLINE ~ ANY)* }
+Line = _{ LabelDeclaration? ~ Statement? }
 
-Program = { SOI ~ (Line ~ NEWLINE+)+ ~ Line? ~ (EndProgram | EOI) }
-
-EndProgram = { ^"END" ~ Expr? }
-
-Line = _{ LabelDeclaration* ~ Instruction? }
+Statement = _{ Instruction | EquStatement | LabelUsage }
 
 Instruction = { Operation ~ Field ~ ("," ~ Field)? }
 
-LabelDeclaration = _{ !(Operation | EndProgram) ~ Label ~ (":")? }
+LabelDeclaration = _{ !(Operation | EquStatement) ~ Label ~ (":")? }
+
+LabelUsage = _{ Label }
 
 Label = @{ Alpha ~ Alphanumeral* }
 
@@ -21,14 +22,18 @@ Field = !{ AddressMode? ~ Expr }
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
-    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG"
+    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"END"
 }
+
+EquStatement = _{ ^"EQU" ~ Substitution }
+
+Substitution = { ANY* }
 
 Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
 
 AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
-Expr = { Number | Label }
+Expr = { Number | LabelUsage }
 
 Number = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
 

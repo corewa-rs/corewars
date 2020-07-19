@@ -1,4 +1,6 @@
-/// # Syntax
+/// Generate an enum impl with string conversion methods.
+///
+/// # Examples
 ///
 /// ```
 /// enum_string!(pub Foo {
@@ -6,6 +8,7 @@
 ///     Baz => "BAZ"
 /// })
 /// ```
+///
 /// This will generate a `pub enum Foo` with variants `Bar` and `Baz`, which
 /// implements `std::str::FromStr` and `std::fmt::Display` for the string
 /// values specified.
@@ -50,8 +53,28 @@ macro_rules! enum_string {
     };
 }
 
+/// Print a format string like `dbg!` without stringify-ing the input.
+///
+/// # Examples:
+///
+/// ```
+/// dbgf!("Print: {:?}", "123");
+/// ```
+#[cfg(debug_assertions)]
+#[allow(unused)]
+macro_rules! dbgf {
+    ( $fmt:expr $(, $($args:expr),* $(,)? )? ) => {
+        eprintln!(
+            concat!("[{}:{}] ", $fmt),
+            file!(),
+            line!(),
+            $($($args),* )?
+        )
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod test {
     use std::str::FromStr;
 
     mod submod {

@@ -24,11 +24,6 @@ begin:  add # 1, @ 2
         nop  0
 
 loop
-        ; TODO rewrite grammar to handle org, equ, end
-        ; org  0
-        ; equ  0
-        ; end  0
-
         mov.a 1, 2
         mov.b 1, 2
         mov.ab 1, 2
@@ -39,6 +34,6 @@ loop
 
         jmp loop
 
-        end foo bar baz
+        end begin
 
 Some Junk Here mov.ba 1,2
