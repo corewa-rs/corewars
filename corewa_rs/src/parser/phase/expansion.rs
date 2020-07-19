@@ -223,12 +223,9 @@ impl Collector {
             // TODO: warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
         }
 
-        assert!(
-            self.current_equ.is_none(),
-            "Already parsing EQU: {:?} but encountered more substitution: {:?}",
-            &self.current_equ,
-            &substitution,
-        );
+        if self.current_equ.is_some() {
+            self.resolve_pending_equ();
+        }
 
         self.current_equ = Some((label.to_owned(), vec![substitution.to_owned()]));
     }
@@ -483,6 +480,11 @@ mod test {
         &["step equ 4", "mov 1, step"],
         &["mov 1, 4"];
         "expression equ"
+    )]
+    #[test_case(
+        &["foo equ 4", "bar equ 1", "mov 1, foo", "nop bar, bar"],
+        &["mov 1, 4", "nop 1, 1"];
+        "subsequent equ"
     )]
     #[test_case(
         &[

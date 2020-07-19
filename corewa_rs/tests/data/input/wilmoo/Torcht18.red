@@ -1,0 +1,55 @@
+;redcode-94m
+;name Torch t18
+;kill Torch
+;author P.Kline
+;strategy very rapid incendiary bombing, core-clear & gate
+;strategy t18: reinstated boot & decoy
+;strategy t18: use jmz not djn for spl/mov bombing!
+;macro
+step     equ   54
+count    equ   2000
+boot     equ   4300
+
+start    mov   sm,*p1               ; boot away
+         mov   w2,@p1
+spl1     spl   1,1                  ; using 2 processes
+         mov   <bp,{bp
+         mov   <bp,{bp
+         mov   <bp,{bp
+         mov   <bp,{bp
+         djn   *p2,#1               ; ignite torch
+         mov   spl1,@p2
+p1       div.f #sm+boot,#w2+boot    ; erase pointers
+p2       div.f #sp+boot,#sm+boot+30 ;
+bp       div.f #cp+1+boot,#cp+1     ;
+     for 10
+         dat   0,0
+     rof
+
+gate     dat   0,0
+     for 3
+         dat   0,0
+     rof
+w2       dat   -7,cp-gate+3
+         dat   0,0
+wipe     dat   -7,cp-gate+3
+sp       spl   #-1-step,-step    ; spl half of the incendiary
+in       sub   #step+step,1
+msm      mov   sm,*tgt+(step*count)-17228
+msp      mov   sp,@msm           ; bomb alternately with spl & mov
+tgt      jmz   in,#0             ; bombed with spl to start clear
+clr      mov   @cp,>gate
+cp       djn.b clr,{wipe+1
+     for 2
+         dat   0,0
+     rof
+sm       mov   step+1,>step+1    ; mov half of the incendiary
+     for 18
+         dat   0,0
+     rof
+     for 12
+         dat   1,1
+         dat   gate-1000,gate+1000
+         dat   gate-1000,gate+1000
+     rof
+         end   start

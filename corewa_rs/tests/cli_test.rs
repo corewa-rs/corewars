@@ -10,7 +10,7 @@ use assert_cmd::prelude::*;
 use assert_that::assert_that;
 use predicates::prelude::*;
 
-static EXPECTED_OUT: &str = include_str!("data/basic_loadfile.red");
+static EXPECTED_OUT: &str = include_str!("data/expected_output/simple/basic.red");
 
 #[test]
 fn help() {
