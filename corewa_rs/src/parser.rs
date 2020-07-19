@@ -146,7 +146,7 @@ fn parse_opcode(opcode_pair: &Pair<grammar::Rule>) -> Opcode {
 }
 
 fn parse_field(field_pair: Pair<grammar::Rule>) -> Field {
-    let field_pairs = field_pair.into_inner();
+    let mut field_pairs = field_pair.into_inner();
 
     let address_mode = field_pairs
         .peek()
@@ -157,8 +157,7 @@ fn parse_field(field_pair: Pair<grammar::Rule>) -> Field {
 
     let value = parse_value(
         field_pairs
-            .skip_while(|pair| pair.as_rule() != grammar::Rule::Expr)
-            .next()
+            .find(|pair| pair.as_rule() == grammar::Rule::Expr)
             .expect("No Expr in Field"),
     );
 
