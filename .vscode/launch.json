@@ -1,0 +1,67 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Redcode VSCode Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "preLaunchTask": "npm: build - redcode",
+      "args": [
+        "--disable-extensions",
+        "--extensionDevelopmentPath=${workspaceFolder}/redcode",
+      ],
+      "outFiles": [],
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Cargo test: all",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib"
+        ],
+      },
+      "args": [
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "PYENV_VERSION": "system"
+      },
+      "console": "internalConsole",
+      "terminal": "console",
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Cargo test: by name",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+        ],
+      },
+      "args": [
+        "${input:cargoTest}",
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "env": {
+        "PYENV_VERSION": "system"
+      },
+      "console": "internalConsole",
+      "terminal": "console",
+    }
+  ],
+  "inputs": [
+    {
+      "id": "cargoTest",
+      "type": "promptString",
+      "description": "A cargo test name or name substring"
+    }
+  ]
+}
