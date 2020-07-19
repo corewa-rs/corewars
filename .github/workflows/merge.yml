@@ -8,6 +8,9 @@ on:
 jobs:
   create_pull_request:
     runs-on: ubuntu-latest
+    env:
+      FROM_BRANCH: master
+      TO_BRANCH: develop
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -20,8 +23,8 @@ jobs:
         uses: tretuna/sync-branches@1.2.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FROM_BRANCH: master
-          TO_BRANCH: develop
-          PULL_REQUEST_TITLE: 'Automated merge: {FROM_BRANCH} to {TO_BRANCH}'
+          FROM_BRANCH: ${{ env.FROM_BRANCH }}
+          TO_BRANCH: ${{ env.TO_BRANCH }}
+          PULL_REQUEST_TITLE: 'Automated merge: ${{ env.FROM_BRANCH }} to ${{ env.TO_BRANCH }}'
           PULL_REQUEST_BODY: |
-            Automated PR to keep `{TO_BRANCH}` up-to-date with `{FROM_BRANCH}`.
+            Automated PR to keep `${{ env.TO_BRANCH }}` up-to-date with `${{ env.FROM_BRANCH }}`.
