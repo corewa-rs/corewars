@@ -54,8 +54,6 @@ Sum = { Product ~ AddExpr* }
 
 CompareExpr = _{ CompareOp ~ Sum }
 
-ParenExpr = _{ "(" ~ Expr ~ ")" }
-
 Product = { UnaryExpr ~ MultiplyExpr* }
 
 UnaryExpr = { UnaryOp* ~ (Atom | ParenExpr) }
@@ -65,6 +63,8 @@ MultiplyExpr = _{ MultiplyOp ~ UnaryExpr }
 AddExpr = _{ AddOp ~ Product }
 
 Atom = _{ Number | LabelUsage }
+
+ParenExpr = _{ "(" ~ Expression ~ ")" }
 
 MultiplyOp = { "*" | "/" | "%" }
 

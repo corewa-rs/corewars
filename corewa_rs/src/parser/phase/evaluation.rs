@@ -1,9 +1,9 @@
 //! In this phase, string lines are parsed into their memory representation.
 
+mod expression;
+
 use std::convert::TryFrom;
 use std::str::FromStr;
-
-use pest::iterators::{Pair, Pairs};
 
 use crate::error::Error;
 use crate::load_file;
@@ -30,13 +30,13 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
 pub fn evaluate_origin(expr: String) -> Result<load_file::UOffset, Error> {
     let expr_pair = grammar::parse_expression(&expr)?;
 
-    let origin = parse_expression(expr_pair);
+    let origin = expression::evaluate(expr_pair);
 
     load_file::UOffset::try_from(origin)
         .map_err(|_| Error::new(format!("Invalid origin {}", origin)))
 }
 
-fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> load_file::Instruction {
+fn parse_instruction(mut instruction_pairs: grammar::Pairs) -> load_file::Instruction {
     let mut operation_pairs = instruction_pairs
         .next()
         .expect("Operation must be first pair after Label in Instruction")
@@ -76,15 +76,15 @@ fn parse_instruction(mut instruction_pairs: Pairs<grammar::Rule>) -> load_file::
     }
 }
 
-fn parse_modifier(modifier_pair: &Pair<grammar::Rule>) -> load_file::Modifier {
+fn parse_modifier(modifier_pair: &grammar::Pair) -> load_file::Modifier {
     load_file::Modifier::from_str(modifier_pair.as_str().to_uppercase().as_ref()).unwrap()
 }
 
-fn parse_opcode(opcode_pair: &Pair<grammar::Rule>) -> load_file::Opcode {
+fn parse_opcode(opcode_pair: &grammar::Pair) -> load_file::Opcode {
     load_file::Opcode::from_str(opcode_pair.as_str().to_uppercase().as_ref()).unwrap()
 }
 
-fn parse_field(field_pair: Pair<grammar::Rule>) -> load_file::Field {
+fn parse_field(field_pair: grammar::Pair) -> load_file::Field {
     let mut field_pairs = field_pair.into_inner();
 
     let address_mode = field_pairs
@@ -94,7 +94,7 @@ fn parse_field(field_pair: Pair<grammar::Rule>) -> load_file::Field {
             load_file::AddressMode::from_str(pair.as_str()).expect("Invalid AddressMode")
         });
 
-    let offset = parse_expression(
+    let offset = expression::evaluate(
         field_pairs
             .find(|pair| pair.as_rule() == grammar::Rule::Expression)
             .unwrap_or_else(|| panic!("No expression found in Field: {:?}", field_pairs)),
@@ -106,33 +106,12 @@ fn parse_field(field_pair: Pair<grammar::Rule>) -> load_file::Field {
     }
 }
 
-fn parse_expression(expr_pair: Pair<grammar::Rule>) -> load_file::Offset {
-    let mut value = 1;
-
-    for pair in expr_pair.into_inner() {
-        match pair.as_rule() {
-            grammar::Rule::UnaryOp => {
-                if pair.as_str() == "-" {
-                    value *= -1;
-                } else {
-                    panic!("Unexpected unary op {:?}", pair.as_str());
-                }
-            }
-            grammar::Rule::Number => {
-                value = load_file::Offset::from_str_radix(pair.as_str(), 10)
-                    .expect("Number type must be decimal integer");
-            }
-            other => panic!("Unexpected rule {:?}", other),
-        }
-    }
-
-    value
-}
-
 #[cfg(test)]
 mod test {
+    use test_case::test_case;
+
     use super::*;
-    use load_file::{Field, Instruction, Opcode};
+    use load_file::{Field, Instruction, Opcode, UOffset};
 
     #[test]
     fn parse_simple_file() {
@@ -161,5 +140,20 @@ mod test {
             .unwrap_or_else(|err| panic!("Failed to parse simple file: {}", err));
 
         assert_eq!(parsed, expected_core);
+    }
+
+    #[test]
+    fn fail_negative_origin() {
+        evaluate_origin("-10".into()).expect_err("-10 should be an invalid origin");
+    }
+
+    #[test_case("10", 10; "int")]
+    #[test_case("2 + 2", 10; "sum")]
+    #[test_case("2 * 3", 6; "product")]
+    #[test_case("2*(4+3)", 14; "sum and product")]
+    fn evaluates_origin(org_str: &str, expected: UOffset) {
+        let evaluated = evaluate_origin(org_str.into()).expect("Should parse successfully");
+
+        assert_eq!(evaluated, expected);
     }
 }

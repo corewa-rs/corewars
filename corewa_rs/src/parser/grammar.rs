@@ -1,14 +1,17 @@
 //! Definition and tests for the grammar that defines a valid line of Redcode.
 //! Provides helper function to tokenize strings into span-like tokens.
 
-pub use pest::{
+use pest::{
     error::Error as PestError,
-    iterators::{Pair, Pairs},
+    iterators::{Pair as PestPair, Pairs as PestPairs},
     Parser,
 };
 use pest_derive::Parser;
 
 use crate::error::Error;
+
+pub type Pair<'a> = PestPair<'a, Rule>;
+pub type Pairs<'a> = PestPairs<'a, Rule>;
 
 #[derive(Parser)]
 #[grammar = "parser/grammar/redcode.pest"]
@@ -16,22 +19,22 @@ pub struct Grammar;
 
 /// Parse an input line and return an iterator over
 
-pub fn tokenize(line: &str) -> Vec<Pair<Rule>> {
+pub fn tokenize(line: &str) -> Vec<Pair> {
     parse_line(line).map(flatten_pairs).unwrap_or_default()
 }
 
-pub fn parse_line(line: &str) -> Result<Pairs<Rule>, PestError<Rule>> {
+pub fn parse_line(line: &str) -> Result<Pairs, PestError<Rule>> {
     Grammar::parse(Rule::Line, line)
 }
 
-pub fn parse_expression(line: &str) -> Result<Pair<Rule>, Error> {
+pub fn parse_expression(line: &str) -> Result<Pair, Error> {
     let mut pairs = Grammar::parse(Rule::Expression, line)?;
     pairs
         .find(|pair| pair.as_rule() == Rule::Expression)
         .ok_or_else(|| Error::new(format!("No expression found in line: {:?}", line)))
 }
 
-fn flatten_pairs(pairs: Pairs<Rule>) -> Vec<Pair<Rule>> {
+fn flatten_pairs(pairs: Pairs) -> Vec<Pair> {
     pairs
         .flatten()
         .filter(|pair|
@@ -166,17 +169,19 @@ mod test {
                                 ]),
                                 MultiplyOp(1, 2),
                                 UnaryExpr(2, 9, [
-                                    Value(3, 8, [
-                                        Sum(3, 8, [
-                                            Product(3, 5, [
-                                                UnaryExpr(3, 4, [
-                                                    Label(3, 4),
+                                    Expression(3, 8, [
+                                        Value(3, 8, [
+                                            Sum(3, 8, [
+                                                Product(3, 5, [
+                                                    UnaryExpr(3, 4, [
+                                                        Label(3, 4),
+                                                    ]),
                                                 ]),
-                                            ]),
-                                            AddOp(5, 6),
-                                            Product(7, 8, [
-                                                UnaryExpr(7, 8, [
-                                                    Number(7, 8)
+                                                AddOp(5, 6),
+                                                Product(7, 8, [
+                                                    UnaryExpr(7, 8, [
+                                                        Number(7, 8)
+                                                    ]),
                                                 ]),
                                             ]),
                                         ]),
