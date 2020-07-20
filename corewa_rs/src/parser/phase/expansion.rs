@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 use pest::Span;
 
+use crate::load_file::{Offset, UOffset};
 use crate::parser::grammar;
 
 /// The result of expansion and substitution
@@ -40,8 +41,9 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
     let mut collector = Collector::new();
 
-    let mut i = 0;
-    let mut offset = i;
+    let mut i: usize = 0;
+    let mut offset = 0;
+
     while i < lines.len() {
         // TODO clone
         let line = lines[i].clone();
@@ -169,7 +171,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
     }
 }
 
-fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: usize) {
+fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: UOffset) {
     // TODO: clone
     let cloned = line.clone();
     let tokenized_line = grammar::tokenize(&cloned);
@@ -180,7 +182,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
 
             match label_value {
                 Some(LabelValue::Offset(offset)) => {
-                    let relative_offset = *offset as i32 - from_offset as i32;
+                    let relative_offset = *offset as Offset - from_offset as Offset;
                     let span = token.as_span();
                     line.replace_range(span.start()..span.end(), &relative_offset.to_string());
                 }
@@ -195,8 +197,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
 
 #[derive(Debug, Eq, PartialEq)]
 enum LabelValue {
-    // Unresolved, // TODO is this needed for used but undeclared?
-    Offset(usize),
+    Offset(UOffset),
     Substitution(Vec<String>),
 }
 
@@ -246,7 +247,7 @@ impl Collector {
         self.pending_labels.insert(label.to_owned());
     }
 
-    fn resolve_pending_labels(&mut self, offset: usize) {
+    fn resolve_pending_labels(&mut self, offset: UOffset) {
         let mut result = HashMap::new();
 
         let pending_labels = std::mem::take(&mut self.pending_labels);

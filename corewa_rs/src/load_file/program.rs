@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use super::{Instruction, PseudoOpcode};
+use super::{Instruction, PseudoOpcode, UOffset};
 
 pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
@@ -16,7 +16,7 @@ pub struct Program {
     pub instructions: Instructions,
 
     /// The program's entry point as an instruction index
-    pub origin: Option<usize>,
+    pub origin: Option<UOffset>,
 }
 
 impl Program {

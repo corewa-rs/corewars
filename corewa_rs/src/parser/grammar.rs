@@ -1,25 +1,34 @@
 //! Definition and tests for the grammar that defines a valid line of Redcode.
 //! Provides helper function to tokenize strings into span-like tokens.
 
-pub(super) use pest::{
-    error::Error,
+pub use pest::{
+    error::Error as PestError,
     iterators::{Pair, Pairs},
     Parser,
 };
 use pest_derive::Parser;
 
+use crate::error::Error;
+
 #[derive(Parser)]
 #[grammar = "parser/grammar/redcode.pest"]
-pub(super) struct Grammar;
+pub struct Grammar;
 
 /// Parse an input line and return an iterator over
 
-pub(super) fn tokenize(line: &str) -> Vec<Pair<Rule>> {
-    parse(line).map(flatten_pairs).unwrap_or_default()
+pub fn tokenize(line: &str) -> Vec<Pair<Rule>> {
+    parse_line(line).map(flatten_pairs).unwrap_or_default()
 }
 
-pub(super) fn parse(line: &str) -> Result<Pairs<Rule>, Error<Rule>> {
+pub fn parse_line(line: &str) -> Result<Pairs<Rule>, PestError<Rule>> {
     Grammar::parse(Rule::Line, line)
+}
+
+pub fn parse_expression(line: &str) -> Result<Pair<Rule>, Error> {
+    let mut pairs = Grammar::parse(Rule::Expression, line)?;
+    pairs
+        .find(|pair| pair.as_rule() == Rule::Expression)
+        .ok_or_else(|| Error::new(format!("No expression found in line: {:?}", line)))
 }
 
 fn flatten_pairs(pairs: Pairs<Rule>) -> Vec<Pair<Rule>> {

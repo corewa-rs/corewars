@@ -5,7 +5,6 @@ use std::convert::{Infallible, TryFrom};
 use std::str::FromStr;
 
 mod comment;
-mod deserialize;
 mod evaluation;
 mod expansion;
 
@@ -90,35 +89,34 @@ impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
 /// handles arithmetic,
 #[derive(Debug, Default)]
 pub struct Evaluated {
-    /// The evaluated lines of text to be parsed later
-    lines: Vec<String>,
-
     /// Metadata gathered in previous phase
     metadata: load_file::Metadata,
 
-    /// The entrypoint to the program, evaluated to an absolute offset into `lines`
-    origin: Option<usize>,
+    /// The parsed program
+    program: load_file::Program,
 }
 
 impl TryFrom<Phase<Expanded>> for Phase<Evaluated> {
     type Error = Error;
 
     fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
-        let lines = evaluation::evaluate(prev.state.lines)?;
+        let instructions = evaluation::evaluate(prev.state.lines)?;
         let origin = prev
             .state
             .origin
-            .map(evaluation::evaluate_expression)
+            .map(evaluation::evaluate_origin)
             .transpose()?;
 
-        // TODO evaluate assertion
+        // TODO evaluate assertions
 
         Ok(Self {
             buffer: prev.buffer,
             state: Evaluated {
                 metadata: prev.state.metadata,
-                lines,
-                origin,
+                program: load_file::Program {
+                    instructions,
+                    origin,
+                },
             },
         })
     }
@@ -130,23 +128,16 @@ pub struct Output {
     pub warrior: load_file::Warrior,
 }
 
-impl TryFrom<Phase<Evaluated>> for Phase<Output> {
-    type Error = Error;
-
-    fn try_from(prev: Phase<Evaluated>) -> Result<Self, Error> {
-        let program = load_file::Program {
-            instructions: deserialize::deserialize(prev.state.lines)?,
-            origin: prev.state.origin,
-        };
-
-        Ok(Self {
+impl From<Phase<Evaluated>> for Phase<Output> {
+    fn from(prev: Phase<Evaluated>) -> Self {
+        Self {
             buffer: prev.buffer,
             state: Output {
                 warrior: load_file::Warrior {
                     metadata: prev.state.metadata,
-                    program,
+                    program: prev.state.program,
                 },
             },
-        })
+        }
     }
 }
