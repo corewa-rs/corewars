@@ -108,10 +108,9 @@ fn parse_field(field_pair: grammar::Pair) -> load_file::Field {
 
 #[cfg(test)]
 mod test {
-    use test_case::test_case;
 
     use super::*;
-    use load_file::{Field, Instruction, Opcode, UOffset};
+    use load_file::{Field, Instruction, Opcode};
 
     #[test]
     fn parse_simple_file() {
@@ -143,17 +142,13 @@ mod test {
     }
 
     #[test]
-    fn fail_negative_origin() {
-        evaluate_origin("-10".into()).expect_err("-10 should be an invalid origin");
+    fn evaluates_origin() {
+        let evaluated = evaluate_origin("2 * (4 + 3)".into()).expect("Should parse successfully");
+        assert_eq!(evaluated, 14);
     }
 
-    #[test_case("10", 10; "int")]
-    #[test_case("2 + 2", 10; "sum")]
-    #[test_case("2 * 3", 6; "product")]
-    #[test_case("2*(4+3)", 14; "sum and product")]
-    fn evaluates_origin(org_str: &str, expected: UOffset) {
-        let evaluated = evaluate_origin(org_str.into()).expect("Should parse successfully");
-
-        assert_eq!(evaluated, expected);
+    #[test]
+    fn fails_for_negative_origin() {
+        evaluate_origin("-10".into()).expect_err("-10 should be an invalid origin");
     }
 }
