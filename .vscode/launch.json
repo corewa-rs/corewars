@@ -29,7 +29,7 @@
         "--test-threads=1"
       ],
       "env": {
-        "PYENV_VERSION": "system"
+        "RUST_BACKTRACE": "1",
       },
       "console": "internalConsole",
       "terminal": "console",
@@ -51,7 +51,7 @@
         "--test-threads=1",
       ],
       "env": {
-        "PYENV_VERSION": "system"
+        "RUST_BACKTRACE": "1",
       },
       "console": "internalConsole",
       "terminal": "console",

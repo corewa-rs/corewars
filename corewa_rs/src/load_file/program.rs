@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use super::{Instruction, PseudoOpcode};
+use super::{Instruction, PseudoOpcode, UOffset};
 
 pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, usize>;
@@ -16,7 +16,21 @@ pub struct Program {
     pub instructions: Instructions,
 
     /// The program's entry point as an instruction index
-    pub origin: Option<usize>,
+    pub origin: Option<UOffset>,
+}
+
+impl Program {
+    pub fn get(&self, index: usize) -> Option<Instruction> {
+        self.instructions.get(index).cloned()
+    }
+
+    pub fn set(&mut self, index: usize, value: Instruction) {
+        if index >= self.instructions.len() {
+            self.instructions.resize_with(index + 1, Default::default);
+        }
+
+        self.instructions[index] = value;
+    }
 }
 
 impl fmt::Debug for Program {
@@ -49,26 +63,5 @@ impl fmt::Display for Program {
         }
 
         write!(formatter, "{}", lines.join("\n"))
-    }
-}
-
-impl Program {
-    pub fn with_capacity(size: usize) -> Self {
-        Self {
-            instructions: vec![Default::default(); size],
-            origin: None,
-        }
-    }
-
-    pub fn get(&self, index: usize) -> Option<Instruction> {
-        self.instructions.get(index).cloned()
-    }
-
-    pub fn set(&mut self, index: usize, value: Instruction) {
-        if index >= self.instructions.len() {
-            self.instructions.resize_with(index + 1, Default::default);
-        }
-
-        self.instructions[index] = value;
     }
 }

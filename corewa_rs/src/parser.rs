@@ -12,7 +12,7 @@ use std::str::FromStr;
 use err_derive::Error;
 
 use crate::load_file::Warrior;
-use phase::{CommentsRemoved, Deserialized, Expanded, Phase, Raw};
+use phase::{CommentsRemoved, Evaluated, Expanded, Output, Phase, Raw};
 
 /// The main error type that may be returned by the parser.
 #[derive(Debug, Error)]
@@ -20,15 +20,18 @@ pub enum ParseError {}
 
 // TODO: function for parsing without expansion
 
+/// Parse a given input string into a
 pub fn parse(input: &str) -> Result<Warrior, Box<dyn Error>> {
-    // UNWRAP: Infallible conversion
+    // Unwrap: infallible conversion
     let raw = Phase::<Raw>::from_str(input).unwrap();
 
     let cleaned = Phase::<CommentsRemoved>::from(raw);
 
     let expanded = Phase::<Expanded>::from(cleaned);
 
-    let deserialized = Phase::<Deserialized>::try_from(expanded)?;
+    let evaluated = Phase::<Evaluated>::try_from(expanded)?;
 
-    Ok(deserialized.state.warrior)
+    let output = Phase::<Output>::try_from(evaluated)?;
+
+    Ok(output.state.warrior)
 }

@@ -7,7 +7,6 @@
 
 ;strategy       Bombs every fourth instruction.
 ;assert         CORESIZE % 4 == 0
-; TODO: handle expressions like (CORESIZE % 4 == 0) && (foo > baz)
 
         ORG     start           ; Indicates the instruction with
                                 ; the label "start" should be the
@@ -20,6 +19,6 @@ target  DAT.F   #0,     #0      ; Pointer to target instruction.
 start   ADD.AB  #step,  target  ; Increments pointer by step.
         MOV.AB  #0,     @target ; Bombs target instruction.
         JMP.A   start           ; Same as JMP.A -2.  Loops back to
-                                ; the instruction labelled "start
+                                ; the instruction labelled "start".
 
         END
