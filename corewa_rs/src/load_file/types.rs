@@ -1,5 +1,8 @@
 use std::fmt;
 
+pub type Offset = i16;
+pub type UOffset = u16;
+
 enum_string!(pub Opcode {
     Dat => "DAT",
     Mov => "MOV",
@@ -96,7 +99,7 @@ impl Default for AddressMode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Label(String),
-    Literal(i32),
+    Literal(Offset),
 }
 
 impl Default for Value {

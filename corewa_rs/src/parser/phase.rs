@@ -5,7 +5,7 @@ use std::convert::{Infallible, TryFrom};
 use std::str::FromStr;
 
 mod comment;
-mod deserialize;
+mod evaluation;
 mod expansion;
 
 use crate::error::Error;
@@ -85,27 +85,59 @@ impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
     }
 }
 
-/// The phase in which string-based lines are converted into in-memory data structures
-/// for later simulation. This should be the final phase of parsing.
-#[derive(Debug)]
-pub struct Deserialized {
-    pub warrior: load_file::Warrior,
+/// The program after all expressions have been evaluated. This stage handles
+/// arithmetic and boolean logic, as well as parsing regular integer values.
+#[derive(Debug, Default)]
+pub struct Evaluated {
+    /// Metadata gathered in previous phase
+    metadata: load_file::Metadata,
+
+    /// The parsed program
+    program: load_file::Program,
 }
 
-impl TryFrom<Phase<Expanded>> for Phase<Deserialized> {
+impl TryFrom<Phase<Expanded>> for Phase<Evaluated> {
     type Error = Error;
 
     fn try_from(prev: Phase<Expanded>) -> Result<Self, Error> {
-        let program = deserialize::deserialize(prev.state.lines, prev.state.origin)?;
+        let instructions = evaluation::evaluate(prev.state.lines)?;
+        let origin = prev
+            .state
+            .origin
+            .map(evaluation::evaluate_origin)
+            .transpose()?;
+
+        // TODO evaluate assertions
 
         Ok(Self {
             buffer: prev.buffer,
-            state: Deserialized {
-                warrior: load_file::Warrior {
-                    metadata: prev.state.metadata,
-                    program,
+            state: Evaluated {
+                metadata: prev.state.metadata,
+                program: load_file::Program {
+                    instructions,
+                    origin,
                 },
             },
         })
+    }
+}
+
+/// The final resulting output of the parser, which is suitable for simulation.
+#[derive(Debug)]
+pub struct Output {
+    pub warrior: load_file::Warrior,
+}
+
+impl From<Phase<Evaluated>> for Phase<Output> {
+    fn from(prev: Phase<Evaluated>) -> Self {
+        Self {
+            buffer: prev.buffer,
+            state: Output {
+                warrior: load_file::Warrior {
+                    metadata: prev.state.metadata,
+                    program: prev.state.program,
+                },
+            },
+        }
     }
 }

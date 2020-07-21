@@ -4,11 +4,11 @@ use lazy_static::lazy_static;
 
 mod metadata;
 mod program;
-pub(crate) mod types;
+mod types;
 
 pub use metadata::Metadata;
 pub use program::{Instructions, LabelMap, Program};
-pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
+pub use types::{AddressMode, Modifier, Offset, Opcode, PseudoOpcode, UOffset, Value};
 
 lazy_static! {
     pub static ref DEFAULT_CONSTANTS: LabelMap = {
@@ -62,7 +62,7 @@ impl fmt::Display for Field {
 }
 
 impl Field {
-    pub fn direct(value: i32) -> Self {
+    pub fn direct(value: Offset) -> Self {
         Self {
             address_mode: AddressMode::Direct,
             value: Value::Literal(value),
@@ -76,28 +76,10 @@ impl Field {
         }
     }
 
-    pub fn immediate(value: i32) -> Self {
+    pub fn immediate(value: Offset) -> Self {
         Self {
             address_mode: AddressMode::Immediate,
             value: Value::Literal(value),
-        }
-    }
-
-    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
-        match &self.value {
-            Value::Literal(_) => Ok(self.clone()),
-            Value::Label(label) => {
-                let label_value = labels
-                    .get(label)
-                    .ok_or_else(|| format!("Label '{}' not found", &label))?;
-
-                let value = Value::Literal((*label_value as i32) - (from as i32));
-
-                Ok(Self {
-                    value,
-                    ..self.clone()
-                })
-            }
         }
     }
 }
@@ -130,16 +112,6 @@ impl Instruction {
             field_a,
             field_b,
         }
-    }
-
-    pub fn resolve(&self, from: usize, labels: &LabelMap) -> Result<Self, String> {
-        let field_a = self.field_a.resolve(from, labels)?;
-        let field_b = self.field_b.resolve(from, labels)?;
-        Ok(Self {
-            field_a,
-            field_b,
-            ..self.clone()
-        })
     }
 }
 

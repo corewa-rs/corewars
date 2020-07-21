@@ -1,4 +1,6 @@
-use std::{error, fmt};
+use std::error;
+use std::fmt;
+use std::string::ToString;
 
 #[derive(Debug, PartialEq)]
 pub struct Error {
@@ -8,6 +10,12 @@ pub struct Error {
 impl error::Error for Error {}
 
 impl Error {
+    pub fn new<S: ToString>(details: S) -> Self {
+        Self {
+            details: details.to_string(),
+        }
+    }
+
     pub fn no_input() -> Error {
         Error {
             details: "No input found".to_owned(),
@@ -25,6 +33,7 @@ pub trait IntoError: fmt::Display {}
 impl<T: pest::RuleType> IntoError for pest::error::Error<T> {}
 impl IntoError for String {}
 impl IntoError for &str {}
+impl IntoError for std::num::TryFromIntError {}
 
 impl<T: IntoError> From<T> for Error {
     fn from(displayable_error: T) -> Self {
