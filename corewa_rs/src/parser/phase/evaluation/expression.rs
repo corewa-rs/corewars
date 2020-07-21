@@ -1,4 +1,5 @@
-//! Helper functions for evaluating an expression syntax tree
+//! Helper functions for evaluating an expression syntax tree.
+//!
 //! Most functions here panic instead of returning Result because at this point
 //! any errors should have been caught earlier during initial parsing.
 

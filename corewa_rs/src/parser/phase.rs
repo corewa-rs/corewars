@@ -85,8 +85,8 @@ impl From<Phase<CommentsRemoved>> for Phase<Expanded> {
     }
 }
 
-/// The program after all expressions have been evaluated. This stage
-/// handles arithmetic,
+/// The program after all expressions have been evaluated. This stage handles
+/// arithmetic and boolean logic, as well as parsing regular integer values.
 #[derive(Debug, Default)]
 pub struct Evaluated {
     /// Metadata gathered in previous phase
