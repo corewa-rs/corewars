@@ -175,6 +175,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: U
     // TODO: clone
     let cloned = line.clone();
     let tokenized_line = grammar::tokenize(&cloned);
+    let mut char_offset = 0;
 
     for token in tokenized_line.iter() {
         if token.as_rule() == grammar::Rule::Label {
@@ -184,7 +185,15 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: U
                 Some(LabelValue::Offset(offset)) => {
                     let relative_offset = *offset as Offset - from_offset as Offset;
                     let span = token.as_span();
-                    line.replace_range(span.start()..span.end(), &relative_offset.to_string());
+
+                    // Span will be offset after each substitution, so subtract accordingly
+                    let range = (span.start() - char_offset)..(span.end() - char_offset);
+                    let replacement = relative_offset.to_string();
+
+                    line.replace_range(range, &replacement);
+
+                    // TODO saturating subtract? Overflows in ScanMan.red
+                    char_offset += (span.end() - span.start()) - (replacement.len());
                 }
                 _ => {
                     // TODO #25 actual error

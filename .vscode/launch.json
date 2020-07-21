@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+
     {
       "name": "Run Redcode VSCode Extension",
       "type": "extensionHost",
@@ -55,6 +56,26 @@
       },
       "console": "internalConsole",
       "terminal": "console",
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Corewa_rs dump load file",
+      "cargo": {
+        "args": [
+          "build",
+        ],
+      },
+      "args": [
+        "${input:inputFile}",
+        "dump",
+      ],
+      "cwd": "${workspaceFolder}/corewa_rs/tests",
+      "env": {
+        "RUST_BACKTRACE": "1",
+      },
+      "console": "internalConsole",
+      "terminal": "console",
     }
   ],
   "inputs": [
@@ -62,6 +83,11 @@
       "id": "cargoTest",
       "type": "promptString",
       "description": "A cargo test name or name substring"
+    },
+    {
+      "id": "inputFile",
+      "type": "promptString",
+      "description": "An input file for "
     }
   ]
 }
