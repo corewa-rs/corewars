@@ -95,8 +95,13 @@ pub struct Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!(
-            "{}.{:<2} {}, {}",
-            self.opcode, self.modifier, self.field_a, self.field_b,
+            // Example output:
+            // MOV.AB  $-100,  $1
+            // |----->||----->|
+            "{op:<8}{a:<8}{b}",
+            op = format!("{}.{}", self.opcode, self.modifier),
+            a = format!("{},", self.field_a),
+            b = self.field_b,
         ))
     }
 }

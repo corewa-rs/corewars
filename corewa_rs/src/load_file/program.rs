@@ -55,7 +55,7 @@ impl fmt::Display for Program {
 
         if let Some(offset) = self.origin {
             // Width to match other instruction types
-            lines.push(format!("{:<6} {}", PseudoOpcode::Org, offset));
+            lines.push(format!("{:<8}{}", PseudoOpcode::Org, offset));
         }
 
         for instruction in self.instructions.iter() {

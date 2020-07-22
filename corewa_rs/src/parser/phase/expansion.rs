@@ -192,8 +192,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: U
 
                     line.replace_range(range, &replacement);
 
-                    // TODO saturating subtract? Overflows in ScanMan.red
-                    char_offset += (span.end() - span.start()) - (replacement.len());
+                    char_offset += (span.end() - span.start()).saturating_sub(replacement.len());
                 }
                 _ => {
                     // TODO #25 actual error

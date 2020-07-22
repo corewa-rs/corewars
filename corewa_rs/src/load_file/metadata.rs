@@ -7,6 +7,7 @@ use std::fmt;
 #[derive(Debug, Default, PartialEq)]
 pub struct Metadata {
     /// The Redcode standard for this warrior (e.g. "94").
+    // TODO handle directives like `redcode-94` etc.
     pub redcode: Option<String>,
 
     /// The name of this warrior.
@@ -22,6 +23,7 @@ pub struct Metadata {
     pub version: Option<String>,
 
     /// A description of the warrior's strategy
+    // TODO: handle multiline strategies
     pub strategy: Option<String>,
 
     /// An assertion for this warrior to ensure compilation.

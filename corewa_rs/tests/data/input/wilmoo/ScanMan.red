@@ -119,6 +119,7 @@ boot        mov     gate    ,   gate+boot_loc
             mov     }tgt2   ,   >tgt2
             mov     }tgt2   ,   >tgt2       ;total copied after 13c
 
+; TODO: this line is different...
 tgt1        div.f   #cc+1   ,   #gate+boot_loc+10+6     ;<- Check
 tgt2        dat     #bombp-1,   #gate+boot_loc+10+6+17
 
