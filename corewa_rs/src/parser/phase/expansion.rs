@@ -112,7 +112,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 lines.remove(i);
                 continue;
             }
-            _ => {
+            other_rule => {
                 collector.resolve_pending_labels(offset);
 
                 if expand_next_token(&collector) {
@@ -121,7 +121,10 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
                 if tokenized_line.len() > 1 {
                     collector.resolve_pending_labels(offset);
-                    offset += 1;
+
+                    if other_rule != Rule::Opcode || first_token.as_str().to_uppercase() != "ORG" {
+                        offset += 1;
+                    }
                 }
             }
         }
@@ -167,32 +170,37 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
         }
 
         substitute_offsets_in_line(line, labels, i);
-        i += 1;
+
+        if tokenized_line[0].as_rule() != grammar::Rule::Opcode
+            || tokenized_line[0].as_str().to_uppercase() != "ORG"
+        {
+            i += 1;
+        }
     }
 }
 
 fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: UOffset) {
-    // TODO: clone
-    let cloned = line.clone();
-    let tokenized_line = grammar::tokenize(&cloned);
-    let mut char_offset = 0;
+    let tokenized_line = grammar::tokenize(&line);
 
     for token in tokenized_line.iter() {
         if token.as_rule() == grammar::Rule::Label {
             let label_value = labels.get(token.as_str());
 
             match label_value {
-                Some(LabelValue::Offset(offset)) => {
-                    let relative_offset = *offset as Offset - from_offset as Offset;
+                Some(&LabelValue::Offset(offset)) => {
+                    // FIXME: off by one error here for substitution within an expression
+                    let relative_offset = (offset as Offset) - (from_offset as Offset);
                     let span = token.as_span();
 
-                    // Span will be offset after each substitution, so subtract accordingly
-                    let range = (span.start() - char_offset)..(span.end() - char_offset);
-                    let replacement = relative_offset.to_string();
+                    let range = span.start()..span.end();
+                    let replace_with = relative_offset.to_string();
+                    line.replace_range(range, &replace_with);
 
-                    line.replace_range(range, &replacement);
-
-                    char_offset += (span.end() - span.start()).saturating_sub(replacement.len());
+                    // Recursively re-parse line and continue substitution.
+                    // This is less efficient, but means we don't need to deal
+                    // with the fact that the whole line was invalidate after
+                    // `replace_range`
+                    return substitute_offsets_in_line(line, labels, from_offset);
                 }
                 _ => {
                     // TODO #25 actual error
@@ -480,7 +488,7 @@ mod test {
         };
         "label with expansion"
     )]
-    fn collects_offset_label(lines: &[&str], expected: Labels) {
+    fn collects_and_expands_labels(lines: &[&str], expected: Labels) {
         let mut lines = lines.iter().map(|s| s.to_string()).collect();
         assert_eq!(collect_and_expand(&mut lines), expected);
     }
@@ -541,6 +549,26 @@ mod test {
             "nop 0, -2",
         ];
         "multiline equ"
+    )]
+    #[test_case(
+        &[
+            "org lbl_b",
+            "four equ 2+2",
+            "lbl_a dat four+1, four+3",
+            "nop -1, -1",
+            "lbl_b dat 1, 1",
+            "nop -1, -1",
+            "lbl_c add #lbl_a+1, #lbl_b+four+3+4",
+        ],
+        &[
+            "org 2",
+            "dat 2+2+1, 2+2+3",
+            "nop -1, -1",
+            "dat 1, 1",
+            "nop -1, -1",
+            "add #-4+1, #-2+2+2+3+4",
+        ];
+        "equ in expression"
     )]
     fn expands_substitutions(lines: &[&str], expected: &[&str]) {
         let lines = lines.iter().map(|s| s.to_string()).collect();
