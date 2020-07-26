@@ -44,7 +44,6 @@ pub struct CommentsRemoved {
     pub origin: Option<String>,
 }
 
-// TODO: Need to consider TryFrom instead of From? Some transitions could fail
 impl From<Phase<Raw>> for Phase<CommentsRemoved> {
     fn from(prev: Phase<Raw>) -> Self {
         let state = comment::extract_from_string(&prev.buffer);

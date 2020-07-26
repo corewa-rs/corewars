@@ -23,7 +23,7 @@ pub struct Lines {
 pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
     let labels = collect_and_expand(&mut text);
 
-    // TODO: FOR expansion
+    // TODO: #39 FOR expansion
 
     substitute_offsets(&mut text, &labels);
 
@@ -162,7 +162,6 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
             if let Some(next_token) = tokenized_line.get(1) {
                 line.replace_range(..next_token.as_span().start(), "");
             } else {
-                // TODO actually remove line instead
                 line.clear();
                 // Skip incrementing offset since the line was just a label
                 continue;
@@ -237,7 +236,7 @@ impl Collector {
 
     fn process_equ(&mut self, label: &str, substitution: &str) {
         if substitution.is_empty() {
-            // TODO: warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
+            // TODO #25 warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
         }
 
         if self.current_equ.is_some() {
@@ -285,7 +284,7 @@ impl Collector {
 
     fn finish(mut self) -> Labels {
         if !self.pending_labels.is_empty() {
-            // TODO warning for empty definition for each pending label
+            // TODO #25 warning for empty definition for each pending label
         }
 
         self.labels.extend(

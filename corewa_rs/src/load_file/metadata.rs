@@ -7,7 +7,7 @@ use std::fmt;
 #[derive(Debug, Default, PartialEq)]
 pub struct Metadata {
     /// The Redcode standard for this warrior (e.g. "94").
-    // TODO handle directives like `redcode-94` etc.
+    // TODO #38 handle directives like `redcode-94` etc.
     pub redcode: Option<String>,
 
     /// The name of this warrior.
@@ -23,7 +23,7 @@ pub struct Metadata {
     pub version: Option<String>,
 
     /// A description of the warrior's strategy
-    // TODO: handle multiline strategies
+    // TODO #38 handle multiline strategies
     pub strategy: Option<String>,
 
     /// An assertion for this warrior to ensure compilation.
@@ -64,7 +64,6 @@ impl Metadata {
 impl fmt::Display for Metadata {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         for (field, name) in &[
-            // TODO better handling of different standards
             (&self.redcode, "redcode"),
             (&self.name, "name"),
             (&self.author, "author"),
@@ -85,4 +84,4 @@ impl fmt::Display for Metadata {
     }
 }
 
-// TODO: test parse_line
+// TODO as part of #38 test parse_line

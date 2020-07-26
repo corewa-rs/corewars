@@ -17,7 +17,7 @@ fn read_dir(input_file: &str) {
 
     let expected_out_file = PathBuf::from(input_file.replace("input", "expected_output"));
     if !expected_out_file.exists() {
-        // TODO: eventually this shouldn't be needed
+        // TODO after #39 this shouldn't be needed
         eprintln!("No output file, skipping test");
         return;
     }
