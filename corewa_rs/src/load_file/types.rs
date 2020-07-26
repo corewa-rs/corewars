@@ -1,7 +1,12 @@
 use std::fmt;
 
-pub type Offset = i16;
-pub type UOffset = u16;
+/// Type alias for signed integer offset. Even though all offsets are modulo
+/// `CORESIZE`, they may be larger before `CORESIZE` is known.
+pub type Offset = i32;
+
+/// Type alias for unsigned integer offset. Even though all offsets are modulo
+/// `CORESIZE`, they may be larger before `CORESIZE` is known.
+pub type UOffset = u32;
 
 enum_string!(pub Opcode {
     Dat => "DAT",

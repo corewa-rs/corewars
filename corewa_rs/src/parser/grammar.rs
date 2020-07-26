@@ -278,7 +278,7 @@ mod test {
     #[test]
     fn parse_label() {
         match_parse!(label_input, LabelDeclaration {
-            "some_label" | "some_label2" => [Label(0, label_input.len())],
+            "some_label" | "some_label2" | "DJNOFF" => [Label(0, label_input.len())],
             "a: " => [Label(0, 1)],
             " a " => [Label(1, 2)],
             "a :" => [Label(0, 1)],

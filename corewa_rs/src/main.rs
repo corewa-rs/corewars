@@ -1,5 +1,3 @@
-extern crate corewa_rs;
-
 use corewa_rs::cli;
 
 fn main() {

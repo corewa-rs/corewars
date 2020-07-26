@@ -23,7 +23,7 @@ pub struct Lines {
 pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
     let labels = collect_and_expand(&mut text);
 
-    // TODO: FOR expansion
+    // TODO: #39 FOR expansion
 
     substitute_offsets(&mut text, &labels);
 
@@ -112,7 +112,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 lines.remove(i);
                 continue;
             }
-            _ => {
+            other_rule => {
                 collector.resolve_pending_labels(offset);
 
                 if expand_next_token(&collector) {
@@ -121,7 +121,10 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
                 if tokenized_line.len() > 1 {
                     collector.resolve_pending_labels(offset);
-                    offset += 1;
+
+                    if other_rule != Rule::Opcode || first_token.as_str().to_uppercase() != "ORG" {
+                        offset += 1;
+                    }
                 }
             }
         }
@@ -159,7 +162,6 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
             if let Some(next_token) = tokenized_line.get(1) {
                 line.replace_range(..next_token.as_span().start(), "");
             } else {
-                // TODO actually remove line instead
                 line.clear();
                 // Skip incrementing offset since the line was just a label
                 continue;
@@ -167,24 +169,37 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
         }
 
         substitute_offsets_in_line(line, labels, i);
-        i += 1;
+
+        if tokenized_line[0].as_rule() != grammar::Rule::Opcode
+            || tokenized_line[0].as_str().to_uppercase() != "ORG"
+        {
+            i += 1;
+        }
     }
 }
 
 fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: UOffset) {
-    // TODO: clone
-    let cloned = line.clone();
-    let tokenized_line = grammar::tokenize(&cloned);
+    let tokenized_line = grammar::tokenize(&line);
 
     for token in tokenized_line.iter() {
         if token.as_rule() == grammar::Rule::Label {
             let label_value = labels.get(token.as_str());
 
             match label_value {
-                Some(LabelValue::Offset(offset)) => {
-                    let relative_offset = *offset as Offset - from_offset as Offset;
+                Some(&LabelValue::Offset(offset)) => {
+                    // FIXME: off by one error here for substitution within an expression
+                    let relative_offset = (offset as Offset) - (from_offset as Offset);
                     let span = token.as_span();
-                    line.replace_range(span.start()..span.end(), &relative_offset.to_string());
+
+                    let range = span.start()..span.end();
+                    let replace_with = relative_offset.to_string();
+                    line.replace_range(range, &replace_with);
+
+                    // Recursively re-parse line and continue substitution.
+                    // This is less efficient, but means we don't need to deal
+                    // with the fact that the whole line was invalidate after
+                    // `replace_range`
+                    return substitute_offsets_in_line(line, labels, from_offset);
                 }
                 _ => {
                     // TODO #25 actual error
@@ -221,15 +236,12 @@ impl Collector {
 
     fn process_equ(&mut self, label: &str, substitution: &str) {
         if substitution.is_empty() {
-            // TODO: warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
+            // TODO #25 warning empty RHS of EQU (see docs/pmars-redcode-94.txt:170)
         }
 
-        assert!(
-            self.current_equ.is_none(),
-            "Already parsing EQU: {:?} but encountered more substitution: {:?}",
-            &self.current_equ,
-            &substitution,
-        );
+        if self.current_equ.is_some() {
+            self.resolve_pending_equ();
+        }
 
         self.current_equ = Some((label.to_owned(), vec![substitution.to_owned()]));
     }
@@ -272,7 +284,7 @@ impl Collector {
 
     fn finish(mut self) -> Labels {
         if !self.pending_labels.is_empty() {
-            // TODO warning for empty definition for each pending label
+            // TODO #25 warning for empty definition for each pending label
         }
 
         self.labels.extend(
@@ -475,7 +487,7 @@ mod test {
         };
         "label with expansion"
     )]
-    fn collects_offset_label(lines: &[&str], expected: Labels) {
+    fn collects_and_expands_labels(lines: &[&str], expected: Labels) {
         let mut lines = lines.iter().map(|s| s.to_string()).collect();
         assert_eq!(collect_and_expand(&mut lines), expected);
     }
@@ -484,6 +496,11 @@ mod test {
         &["step equ 4", "mov 1, step"],
         &["mov 1, 4"];
         "expression equ"
+    )]
+    #[test_case(
+        &["foo equ 4", "bar equ 1", "mov 1, foo", "nop bar, bar"],
+        &["mov 1, 4", "nop 1, 1"];
+        "subsequent equ"
     )]
     #[test_case(
         &[
@@ -531,6 +548,26 @@ mod test {
             "nop 0, -2",
         ];
         "multiline equ"
+    )]
+    #[test_case(
+        &[
+            "org lbl_b",
+            "four equ 2+2",
+            "lbl_a dat four+1, four+3",
+            "nop -1, -1",
+            "lbl_b dat 1, 1",
+            "nop -1, -1",
+            "lbl_c add #lbl_a+1, #lbl_b+four+3+4",
+        ],
+        &[
+            "org 2",
+            "dat 2+2+1, 2+2+3",
+            "nop -1, -1",
+            "dat 1, 1",
+            "nop -1, -1",
+            "add #-4+1, #-2+2+2+3+4",
+        ];
+        "equ in expression"
     )]
     fn expands_substitutions(lines: &[&str], expected: &[&str]) {
         let lines = lines.iter().map(|s| s.to_string()).collect();

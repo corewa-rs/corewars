@@ -16,9 +16,9 @@ Expression = { Expr }
 
 Instruction = { Operation ~ Field ~ ("," ~ Field)? }
 
-Operation = ${ Opcode ~ ("." ~ Modifier)? }
+Operation = ${ Opcode  ~ ("." ~ Modifier)? ~ !ASCII_ALPHANUMERIC }
 
-Field = !{ AddressMode? ~ Expression }
+Field = { AddressMode? ~ Expression }
 
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
@@ -33,7 +33,7 @@ AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
 // Substitutions
 
-LabelDeclaration = _{ !(Operation | EquStatement) ~ Label ~ (":")? }
+LabelDeclaration = _{ !(Instruction | EquStatement) ~ Label ~ (":")? }
 
 LabelUsage = _{ Label }
 

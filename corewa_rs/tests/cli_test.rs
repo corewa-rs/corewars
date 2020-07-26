@@ -1,16 +1,10 @@
-extern crate assert_cmd;
-extern crate assert_that;
-extern crate predicates;
-
-extern crate corewa_rs;
-
 use std::process::Command;
 
 use assert_cmd::prelude::*;
 use assert_that::assert_that;
 use predicates::prelude::*;
 
-static EXPECTED_OUT: &str = include_str!("data/basic_loadfile.red");
+static EXPECTED_OUT: &str = include_str!("data/expected_output/simple/basic.red");
 
 #[test]
 fn help() {
@@ -42,7 +36,7 @@ fn dump_stdout() {
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .arg("tests/data/basic.red")
+        .arg("tests/data/input/simple/basic.red")
         .arg("dump")
         .arg("--output-file")
         .arg("-")
@@ -57,7 +51,7 @@ fn dump_file() {
 
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
-        .arg("tests/data/basic.red")
+        .arg("tests/data/input/simple/basic.red")
         .arg("dump")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("--output-file")
