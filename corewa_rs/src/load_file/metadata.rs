@@ -44,7 +44,8 @@ impl Metadata {
                     .map_or_else(String::new, |s| s.trim().to_owned()),
             );
 
-            match split_comment[0] {
+            let directive = split_comment[0].to_lowercase();
+            match directive.as_ref() {
                 "redcode" => self.redcode = value,
                 "name" => self.name = value,
                 "author" => self.author = value,
@@ -83,3 +84,5 @@ impl fmt::Display for Metadata {
         Ok(())
     }
 }
+
+// TODO: test parse_line
