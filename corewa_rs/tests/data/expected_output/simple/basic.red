@@ -17,7 +17,7 @@ SEQ.I   $0,     $0
 SNE.I   $0,     $0
 SLT.B   $0,     $0
 SPL.B   $0,     $0
-NOP.F   $0,     $0
+NOP.B   $0,     $0
 MOV.A   $1,     $2
 MOV.B   $1,     $2
 MOV.AB  $1,     $2
@@ -26,4 +26,3 @@ MOV.F   $1,     $2
 MOV.X   $1,     $2
 MOV.I   $1,     $2
 JMP.B   $-7,    $0
-

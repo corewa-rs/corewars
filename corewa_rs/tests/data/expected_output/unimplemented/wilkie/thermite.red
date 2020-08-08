@@ -2,6 +2,7 @@
 ;author Robert Macrae
 ;strategy Quick-scan -> incendiary bomber.
 ;assert CORESIZE == 8000
+; TODO expected to fail due to lack of FOR support
 ORG     2
 DAT.F   #0,     #95
 JMP.B   @-1,    $0
