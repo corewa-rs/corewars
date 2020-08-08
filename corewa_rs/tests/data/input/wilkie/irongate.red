@@ -5,8 +5,8 @@
 ;assert CORESIZE==8000
 
 dist 	equ 73		; Old scan distance = 98
-scan 	equ dist*2     
-     
+scan 	equ dist*2
+
      	add 	off,	@x
 loc  	cmp 	dist-1,	-1
      	slt 	#14,	@x

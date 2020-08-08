@@ -40,19 +40,10 @@ impl fmt::Display for Warrior {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Field {
     pub address_mode: AddressMode,
     pub value: Value,
-}
-
-impl Default for Field {
-    fn default() -> Self {
-        Self {
-            address_mode: AddressMode::Immediate,
-            value: Default::default(),
-        }
-    }
 }
 
 impl fmt::Display for Field {
@@ -92,20 +83,6 @@ pub struct Instruction {
     pub field_b: Field,
 }
 
-impl fmt::Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!(
-            // Example output:
-            // MOV.AB  $-100,  $1
-            // |----->||----->|
-            "{op:<8}{a:<8}{b}",
-            op = format!("{}.{}", self.opcode, self.modifier),
-            a = format!("{},", self.field_a),
-            b = self.field_b,
-        ))
-    }
-}
-
 impl Instruction {
     pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Self {
         let modifier =
@@ -120,6 +97,20 @@ impl Instruction {
     }
 }
 
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!(
+            // Example output:
+            // MOV.AB  $-100,  $1
+            // |----->||----->|
+            "{op:<8}{a:<8}{b}",
+            op = format!("{}.{}", self.opcode, self.modifier),
+            a = format!("{},", self.field_a),
+            b = self.field_b,
+        ))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -130,11 +121,11 @@ mod test {
             opcode: Opcode::Dat,
             modifier: Modifier::F,
             field_a: Field {
-                address_mode: AddressMode::Immediate,
+                address_mode: AddressMode::Direct,
                 value: Value::Literal(0),
             },
             field_b: Field {
-                address_mode: AddressMode::Immediate,
+                address_mode: AddressMode::Direct,
                 value: Value::Literal(0),
             },
         };

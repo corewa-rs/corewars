@@ -45,7 +45,7 @@ vamp	add.f	$vamp+6,	$(BJUMP-CVAMP)	;; incr will be at vamp+6
 	mov.i	@0,		*(BJUMP-CVAMP)	;; a-field needs to be 0
 target	djn	vamp,		#COUNT
 	jmp	(CCLEAR-CVAMP)
-	
+
 step	jmp	@0,		BPIT-BSTEP	;; a-field needs to be 0
 
 jbomb	jmp	@BSTEP-BJUMP-FIRST,	$FIRST	;; indirect jump to pit
@@ -77,7 +77,7 @@ cboot	mov	$dbomb2+5, BCLEAR+5
 	for	5
 	  mov	{cboot, <cboot
 	rof
-	
+
 	mov	$step, BSTEP
 
 	mov	$jbomb, BJUMP
@@ -87,7 +87,7 @@ vboot	mov	$vamp+5, BVAMP+5
 	for	5
 	  mov	{vboot, <vboot
 	rof
-	
+
 	mov	$0, $cboot
 
 	spl	@vboot
