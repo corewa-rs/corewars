@@ -13,13 +13,13 @@ begin:  add # 1, @ 2
         mul 5, 6
         div 7, 8
         mod 9, 10
-           jmz 0
-        jmn  0
-        djn  0
-        cmp  0
-        seq  0
-        sne  0
-        slt  0
+           jmz 0, 0
+        jmn  0, 0
+        djn  0, 0
+        cmp  0, 0
+        seq  0, 0
+        sne  0, 0
+        slt  0, 0
         spl  0
         nop  0
 

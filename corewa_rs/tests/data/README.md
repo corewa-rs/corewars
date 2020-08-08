@@ -11,6 +11,11 @@ all freely available online.
 
 Within each directory are some subdirectories:
 
+### Unimplemented
+
+This directory matches the main directory structure but acts as a placeholder for
+tests cases that will fail without some feature support (mostly, `FOR` macros).
+
 ### Simple
 
 Some "non-real-world" warriors created to exercise specific codepaths, or perform

@@ -15,7 +15,7 @@
 ; 2.9   2.6 is best yet, so drop to 44 scans.
 ; Time to stop fiddling!
 
-; Q2NEW 
+; Q2NEW
 ;       See q2table.pas for the code to get the table values.
 ;       These [9,5,13,1,2,17,16] give up to 28 distinct targets
 ;       with the greatest at only 34. Easier to use than Probe's,
@@ -70,12 +70,12 @@ CR      EQU (fnd-which)
 datz    EQU (table-3)
 
         dat     9*QS,  1*QS     ; can get 28 values from this table
-table:  dat     5*QS,  2*QS     ;  
-        dat    13*QS, 17*QS     ;  
+table:  dat     5*QS,  2*QS     ;
+        dat    13*QS, 17*QS     ;
 
 P:      add.f  table,table  ; point into table. Nudge with }{>< and djn.f.
-slow:   add.ab *P,fnd       ; adds an element A column (usually)       
-fast:   add.b  @P,@-1       ; adds an element B column (usually)       
+slow:   add.ab *P,fnd       ; adds an element A column (usually)
+fast:   add.b  @P,@-1       ; adds an element B column (usually)
 
 which:  sne.i  datz,@fnd    ; which half of scan hit?
         add.ab #QD,fnd
@@ -101,7 +101,7 @@ qinc:    dat    GAP,-GAP
 
 
 ; ----------------------------------------------
-;                  0/1 cycle 
+;                  0/1 cycle
 ; ----------------------------------------------
 
 start:
@@ -158,18 +158,18 @@ start:
 
         seq.i  QB+QS*4,QB+QS*4+QD
         jmp    }slow, 0                 ; EE
-        seq.i  QB+QS*3,QB+QS*3+QD                  
+        seq.i  QB+QS*3,QB+QS*3+QD
         jmp    }slow, {P                ; DE
         seq.i  QB+QS*19,QB+QS*19+QD
         jmp    }slow, }P                ; FE
 ;        seq.i  QB+QS*2,QB+QS*2+QD               ; Duplicates a faster scan
 ;        djn.f  }slow, P                 ; DD    ; Duplicates a faster scan
-         
+
 ;        seq.i  QB+QS*10,QB+QS*10+QD             ; Duplicates a faster scan
 ;        jmp    <fast, 0                ; BB     ; Duplicates a faster scan
         seq.i  QB+QS*18,QB+QS*18+QD
         djn.f  <fast, P                ; AA
-         
+
         seq.i  QB+QS*36+CR,QB+QS*36+QD+CR         ; CR corrects for the gap
         jmp    }fast, 0                ; BBBBG    ; between fnd and which.
 ;        seq.i  QB+QS*26+CR,QB+QS*26+QD+CR
@@ -182,7 +182,7 @@ start:
 ;        djn.f  }fast, P                ; AAAAG
 ;        seq.i  QB+QS*16+CR,QB+QS*16+QD+CR
 ;        djn.f  }fast, }slow            ; G
-         
+
         jmp    boot ; If you don't spot any, get sad ;-)
 
         end
