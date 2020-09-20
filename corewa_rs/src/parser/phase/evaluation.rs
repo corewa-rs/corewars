@@ -5,9 +5,10 @@ mod expression;
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use crate::error::Error;
 use crate::load_file;
-use crate::parser::grammar;
+
+use super::super::error::Error;
+use super::super::grammar;
 
 /// Convert the text input lines into in-memory data structures
 pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
@@ -17,7 +18,7 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
         if let Some(parse_result) = grammar::parse_line(&line)?.next() {
             match &parse_result.as_rule() {
                 grammar::Rule::Instruction => {
-                    instructions.push(parse_instruction(parse_result.into_inner()));
+                    instructions.push(parse_instruction(parse_result.into_inner())?);
                 }
                 rule => dbgf!("Unexpected rule {:?}", rule),
             }
@@ -34,11 +35,12 @@ pub fn evaluate_origin(expr: String) -> Result<load_file::UOffset, Error> {
 
     let origin = expression::evaluate(expr_pair);
 
-    load_file::UOffset::try_from(origin)
-        .map_err(|_| Error::new(format!("Invalid origin {}", origin)))
+    Ok(load_file::UOffset::try_from(origin)?)
 }
 
-fn parse_instruction(mut instruction_pairs: grammar::Pairs) -> load_file::Instruction {
+fn parse_instruction(
+    mut instruction_pairs: grammar::Pairs,
+) -> Result<load_file::Instruction, Error> {
     let mut operation_pairs = instruction_pairs
         .next()
         .expect("Operation must be first pair after Label in Instruction")
@@ -75,12 +77,12 @@ fn parse_instruction(mut instruction_pairs: grammar::Pairs) -> load_file::Instru
             )
         });
 
-        load_file::Instruction {
+        Ok(load_file::Instruction {
             opcode,
             modifier,
             field_a,
             field_b,
-        }
+        })
     } else {
         // Special cases for only one argument. There's not much documentation
         // about this except for the introductory guide:
@@ -89,22 +91,19 @@ fn parse_instruction(mut instruction_pairs: grammar::Pairs) -> load_file::Instru
         use load_file::Opcode::*;
 
         match opcode {
-            Dat => load_file::Instruction {
+            Dat => Ok(load_file::Instruction {
                 opcode,
                 modifier: maybe_modifier.unwrap_or(load_file::Modifier::F),
                 field_a: load_file::Field::immediate(0),
                 field_b: field_a,
-            },
-            Jmp | Spl | Nop => load_file::Instruction {
+            }),
+            Jmp | Spl | Nop => Ok(load_file::Instruction {
                 opcode,
                 modifier: maybe_modifier.unwrap_or(load_file::Modifier::B),
                 field_a,
                 field_b: load_file::Field::direct(0),
-            },
-            other => {
-                // TODO #25 real error
-                panic!("Expected two arguments for {} but only found one", other)
-            }
+            }),
+            other => Err(Error::InvalidArguments { opcode: other }),
         }
     }
 }
