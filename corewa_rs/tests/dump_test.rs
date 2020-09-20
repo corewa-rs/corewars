@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use assert_that::assert_that;
 use test_generator::test_resources;
 
+use corewa_rs::parser::Result as ParseResult;
+
 #[test_resources("corewa_rs/tests/data/input/simple/*.red")]
 #[test_resources("corewa_rs/tests/data/input/wilkie/*.red")]
 #[test_resources("corewa_rs/tests/data/input/wilmoo/*.red")]
@@ -26,7 +28,10 @@ fn read_dir(input_file: &str) {
         .map(|s| s.trim().to_owned())
         .unwrap_or_else(|err| panic!("Unable to read file {:?}: {:?}", input_file, err));
 
-    let parsed_core = corewa_rs::parse(&input).unwrap_or_else(|e| panic!("Parse error:\n{}", e));
+    let parsed_core = match corewa_rs::parser::parse(&input) {
+        ParseResult::Ok(core, _) => core,
+        ParseResult::Err(e, _) => panic!("Parse error:\n{}", e),
+    };
 
     assert_that!(
         &parsed_core.to_string().trim(),

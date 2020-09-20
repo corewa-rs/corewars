@@ -1,15 +1,15 @@
 //! This module defines the parser state machine. Each phase of the parser
 //! is a submodule within this module.
 
-use std::convert::{Infallible, TryFrom};
-use std::str::FromStr;
+use std::convert::TryFrom;
 
 mod comment;
 mod evaluation;
 mod expansion;
 
-use crate::error::Error;
 use crate::load_file;
+
+use super::error::Error;
 
 /// The data type that is passed through the parser phases. This is a simple state
 /// machine, which transitions to the next state by passing through a parser phase.
@@ -24,14 +24,12 @@ pub struct Phase<PhaseState> {
 /// The initial state of parsing, before any preprocessing has occurred.
 pub struct Raw;
 
-impl FromStr for Phase<Raw> {
-    type Err = Infallible;
-
-    fn from_str(buf: &str) -> Result<Self, Infallible> {
-        Ok(Phase {
+impl From<&str> for Phase<Raw> {
+    fn from(buf: &str) -> Self {
+        Phase {
             buffer: buf.to_string(),
             state: Raw,
-        })
+        }
     }
 }
 

@@ -2,28 +2,32 @@
 //! It operates in multiple phases, which are found in the [phase](phase/index.html)
 //! module. Each phase passes its result to the next phase.
 
+pub mod error;
+pub mod result;
+
+pub use error::Error;
+pub use error::Warning;
+pub use result::Result;
+
 mod grammar;
 mod phase;
 
 use std::convert::TryFrom;
-use std::error::Error;
-use std::str::FromStr;
-
-use err_derive::Error;
 
 use crate::load_file::Warrior;
+
 use phase::{CommentsRemoved, Evaluated, Expanded, Output, Phase, Raw};
 
-/// The main error type that may be returned by the parser.
-#[derive(Debug, Error)]
-pub enum ParseError {}
+/// Parse a given input string into a [`Result`](Result). If successful the
+/// `Result` will contain a `Warrior`, otherwise it will contain an error. In
+/// either case, one or more [`Warning`](error::Warning)s may be generated with
+/// the `Warrior`.
+pub fn parse(input: &str) -> Result<Warrior> {
+    parse_impl(input).into()
+}
 
-// TODO: function for parsing without expansion
-
-/// Parse a given input string into a
-pub fn parse(input: &str) -> Result<Warrior, Box<dyn Error>> {
-    // Unwrap: infallible conversion
-    let raw = Phase::<Raw>::from_str(input).unwrap();
+fn parse_impl(input: &str) -> std::result::Result<Warrior, Error> {
+    let raw = Phase::<Raw>::from(input);
 
     let cleaned = Phase::<CommentsRemoved>::from(raw);
 
@@ -31,7 +35,7 @@ pub fn parse(input: &str) -> Result<Warrior, Box<dyn Error>> {
 
     let evaluated = Phase::<Evaluated>::try_from(expanded)?;
 
-    let output = Phase::<Output>::try_from(evaluated)?;
+    let output = Phase::<Output>::from(evaluated);
 
     Ok(output.state.warrior)
 }

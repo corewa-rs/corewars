@@ -2,16 +2,17 @@
 //! Provides helper function to tokenize strings into span-like tokens.
 
 use pest::{
-    error::Error as PestError,
+    error::{Error as PestError, ErrorVariant::CustomError},
     iterators::{Pair as PestPair, Pairs as PestPairs},
     Parser,
 };
 use pest_derive::Parser;
 
-use crate::error::Error;
-
 pub type Pair<'a> = PestPair<'a, Rule>;
 pub type Pairs<'a> = PestPairs<'a, Rule>;
+pub type SyntaxError = PestError<Rule>;
+
+use super::error::Error;
 
 #[derive(Parser)]
 #[grammar = "parser/grammar/redcode.pest"]
@@ -23,15 +24,24 @@ pub fn tokenize(line: &str) -> Vec<Pair> {
     parse_line(line).map(flatten_pairs).unwrap_or_default()
 }
 
-pub fn parse_line(line: &str) -> Result<Pairs, PestError<Rule>> {
-    Grammar::parse(Rule::Line, line)
+pub fn parse_line(line: &str) -> Result<Pairs, Error> {
+    Ok(Grammar::parse(Rule::Line, line)?)
 }
 
 pub fn parse_expression(line: &str) -> Result<Pair, Error> {
     let mut pairs = Grammar::parse(Rule::Expression, line)?;
+
     pairs
         .find(|pair| pair.as_rule() == Rule::Expression)
-        .ok_or_else(|| Error::new(format!("No expression found in line: {:?}", line)))
+        .ok_or_else(|| {
+            SyntaxError::new_from_span(
+                CustomError {
+                    message: "Invalid expression".into(),
+                },
+                pest::Span::new(line, 0, line.len()).unwrap(),
+            )
+            .into()
+        })
 }
 
 fn flatten_pairs(pairs: Pairs) -> Vec<Pair> {
