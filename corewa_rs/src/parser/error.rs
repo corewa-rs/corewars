@@ -19,9 +19,11 @@ pub enum Error {
     #[error("invalid origin specified")]
     InvalidOrigin(#[from] TryFromIntError),
 
+    /// The input string was ill-formed Redcode syntax.
     #[error("invalid syntax")]
     InvalidSyntax(#[from] super::grammar::SyntaxError),
 
+    /// The given opcode was not given enough arguments.
     #[error("expected additional arguments for {opcode} opcode")]
     InvalidArguments { opcode: Opcode },
 }
@@ -37,7 +39,7 @@ pub enum Warning {
     #[error("right-hand side of substitution for label {0:?} is empty")]
     EmptySubstitution(String),
 
-    /// Offset label declaration with no instruction
+    /// Offset label declaration with no instruction.
     #[error("no instruction offset for label {0:?}, it will not b")]
     EmptyOffset(String),
 }

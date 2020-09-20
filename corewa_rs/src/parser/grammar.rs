@@ -1,18 +1,15 @@
 //! Definition and tests for the grammar that defines a valid line of Redcode.
 //! Provides helper function to tokenize strings into span-like tokens.
 
-use pest::{
-    error::{Error as PestError, ErrorVariant::CustomError},
-    iterators::{Pair as PestPair, Pairs as PestPairs},
-    Parser,
-};
+use pest::error::ErrorVariant::CustomError;
+use pest::Parser as ParserTrait;
 use pest_derive::Parser;
 
-pub type Pair<'a> = PestPair<'a, Rule>;
-pub type Pairs<'a> = PestPairs<'a, Rule>;
-pub type SyntaxError = PestError<Rule>;
-
 use super::error::Error;
+
+pub type Pair<'a> = pest::iterators::Pair<'a, Rule>;
+pub type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
+pub type SyntaxError = pest::error::Error<Rule>;
 
 #[derive(Parser)]
 #[grammar = "parser/grammar/redcode.pest"]

@@ -64,8 +64,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         }
     }?;
 
-    // TODO bring back warnings
-
     match cli_options.command {
         Command::Dump {
             output_file,

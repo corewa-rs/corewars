@@ -2,15 +2,13 @@
 //! It operates in multiple phases, which are found in the [phase](phase/index.html)
 //! module. Each phase passes its result to the next phase.
 
-pub mod error;
-pub mod result;
-
-pub use error::Error;
-pub use error::Warning;
+pub use error::{Error, Warning};
 pub use result::Result;
 
+mod error;
 mod grammar;
 mod phase;
+mod result;
 
 use std::convert::TryFrom;
 
