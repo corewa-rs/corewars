@@ -2,7 +2,7 @@
 
 [![Latest Crates.io Release](https://img.shields.io/crates/v/corewars?label=corewars&logo=rust)](https://crates.io/crates/corewars)
 [![Latest Release](https://img.shields.io/github/v/release/corewa-rs/corewars?label=latest%20release&include_prereleases&logo=github)](https://github.com/corewa-rs/corewars/releases)
-[![Build Status](https://img.shields.io/github/workflow/status/corewa-rs/corewars/corewars/develop)](https://github.com/corewa-rs/corewars/actions)
+[![Build Status](https://img.shields.io/github/workflow/status/corewa-rs/corewars/ci/develop)](https://github.com/corewa-rs/corewars/actions)
 
 A Rust implementation of [Core Wars](http://www.koth.org/index.html).
 
