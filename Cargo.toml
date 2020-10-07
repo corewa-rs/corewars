@@ -1,4 +1,8 @@
 [workspace]
 members = [
     "corewars",
+    "corewars-core",
+    "corewars-parser",
+    "corewars-sim",
+    "corewars-wasm",
 ]

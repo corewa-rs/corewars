@@ -1,7 +1,14 @@
 [package]
-authors = ["Ian Chamberlain <ian.h.chamberlain@gmail.com>"]
+authors = ["Ian Chamberlain <ian@corewa.rs>"]
+categories = ["games", "emulators"]
+description = "The classic programming battle game Core Wars"
+homepage = "https://corewa.rs/"
 edition = "2018"
+keywords = ["corewars", "core", "war", "wars", "redcode"]
+license = "MIT"
 name = "corewars"
+readme = "../README.md"
+repository = "https://github.com/corewa-rs/corewars"
 version = "0.1.0"
 
 [dependencies]
