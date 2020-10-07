@@ -59,7 +59,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Corewa_rs dump load file",
+      "name": "corewars dump load file",
       "cargo": {
         "args": [
           "build",
@@ -69,7 +69,7 @@
         "${input:inputFile}",
         "dump",
       ],
-      "cwd": "${workspaceFolder}/corewa_rs/tests",
+      "cwd": "${workspaceFolder}/corewars/tests",
       "env": {
         "RUST_BACKTRACE": "1",
       },

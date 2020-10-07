@@ -1,4 +1,4 @@
-//! Error handling for the corewa_rs parser.
+//! Error handling for the corewars parser.
 //! [`Result`](Result) matches the `std::result::Result` type, except that it
 //! may also contain warnings alongside either an `Ok` or `Err` type.
 

@@ -1,4 +1,4 @@
-//! Error types for the corewa_rs library
+//! Error types for the corewars library
 
 use std::num::TryFromIntError;
 

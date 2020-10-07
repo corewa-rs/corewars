@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 use assert_that::assert_that;
 use test_generator::test_resources;
 
-use corewa_rs::parser::Result as ParseResult;
+use corewars::parser::Result as ParseResult;
 
-#[test_resources("corewa_rs/tests/data/input/simple/*.red")]
-#[test_resources("corewa_rs/tests/data/input/wilkie/*.red")]
-#[test_resources("corewa_rs/tests/data/input/wilmoo/*.red")]
+#[test_resources("corewars/tests/data/input/simple/*.red")]
+#[test_resources("corewars/tests/data/input/wilkie/*.red")]
+#[test_resources("corewars/tests/data/input/wilmoo/*.red")]
 fn read_dir(input_file: &str) {
     // Workaround for the fact that `test_resources` paths are based on workspace Cargo.toml
     let current_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
@@ -28,7 +28,7 @@ fn read_dir(input_file: &str) {
         .map(|s| s.trim().to_owned())
         .unwrap_or_else(|err| panic!("Unable to read file {:?}: {:?}", input_file, err));
 
-    let parsed_core = match corewa_rs::parser::parse(&input) {
+    let parsed_core = match corewars::parser::parse(&input) {
         ParseResult::Ok(core, _) => core,
         ParseResult::Err(e, _) => panic!("Parse error:\n{}", e),
     };

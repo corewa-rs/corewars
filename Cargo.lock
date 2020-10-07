@@ -141,7 +141,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "corewa_rs"
+name = "corewars"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",

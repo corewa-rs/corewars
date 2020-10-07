@@ -1,4 +1,4 @@
-use corewa_rs::cli;
+use corewars::cli;
 
 fn main() {
     std::process::exit(
