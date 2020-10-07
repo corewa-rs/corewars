@@ -164,19 +164,19 @@ dependencies = [
 
 [[package]]
 name = "corewars-core"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "corewars-parser"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "corewars-sim"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "corewars-wasm"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "crossbeam-utils"
