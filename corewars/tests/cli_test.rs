@@ -2,11 +2,15 @@ use std::fs;
 use std::process::Command;
 
 use assert_cmd::prelude::*;
+use lazy_static::lazy_static;
 use normalize_line_endings::normalized;
 use predicates::prelude::*;
 use pretty_assertions::assert_eq;
 
-static EXPECTED_OUT: &str = include_str!("data/expected_output/simple/basic.red");
+lazy_static! {
+    static ref EXPECTED_OUT: String =
+        normalized(include_str!("data/expected_output/simple/basic.red").chars()).collect();
+}
 
 #[test]
 fn help() {
@@ -48,7 +52,7 @@ fn dump_stdout() {
     let out_text = cmd.get_output().stdout.to_owned();
 
     let file_contents: String = normalized(String::from_utf8(out_text).unwrap().chars()).collect();
-    assert_eq!(file_contents, EXPECTED_OUT);
+    assert_eq!(file_contents, &**EXPECTED_OUT);
 }
 
 #[test]
@@ -68,5 +72,5 @@ fn dump_file() {
     let file_contents: String =
         normalized(fs::read_to_string(out_file.path()).unwrap().chars()).collect();
 
-    assert_eq!(file_contents, EXPECTED_OUT);
+    assert_eq!(file_contents, &**EXPECTED_OUT);
 }
