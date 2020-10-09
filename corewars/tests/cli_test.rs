@@ -42,7 +42,7 @@ fn dump_stdout() {
         .arg("-")
         .assert()
         .success()
-        .stdout(predicate::str::similar(EXPECTED_OUT));
+        .stdout(predicate::str::similar(EXPECTED_OUT).normalize());
 }
 
 #[test]
@@ -61,6 +61,9 @@ fn dump_file() {
 
     assert_that!(
         out_file.path(),
-        str::similar(EXPECTED_OUT).from_utf8().from_file_path(),
+        str::similar(EXPECTED_OUT)
+            .normalize()
+            .from_utf8()
+            .from_file_path()
     );
 }
