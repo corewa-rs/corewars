@@ -65,7 +65,7 @@ jobs:
           - stable
           - beta
           - nightly
-    continue-on-error: ${{ matrix.toolchain != 'stable' || matrix.os == 'windows-latest' }}
+    continue-on-error: ${{ matrix.toolchain != 'stable' }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout branch
