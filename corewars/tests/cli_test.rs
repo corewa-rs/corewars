@@ -1,8 +1,10 @@
+use std::fs;
 use std::process::Command;
 
 use assert_cmd::prelude::*;
-use assert_that::assert_that;
+use normalize_line_endings::normalized;
 use predicates::prelude::*;
+use pretty_assertions::assert_eq;
 
 static EXPECTED_OUT: &str = include_str!("data/expected_output/simple/basic.red");
 
@@ -33,7 +35,7 @@ fn help_dump() {
 
 #[test]
 fn dump_stdout() {
-    Command::cargo_bin(assert_cmd::crate_name!())
+    let cmd = Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("tests/data/input/simple/basic.red")
@@ -41,8 +43,12 @@ fn dump_stdout() {
         .arg("--output-file")
         .arg("-")
         .assert()
-        .success()
-        .stdout(predicate::str::similar(EXPECTED_OUT).normalize());
+        .success();
+
+    let out_text = cmd.get_output().stdout.to_owned();
+
+    let file_contents: String = normalized(String::from_utf8(out_text).unwrap().chars()).collect();
+    assert_eq!(file_contents, EXPECTED_OUT);
 }
 
 #[test]
@@ -59,11 +65,8 @@ fn dump_file() {
         .assert()
         .success();
 
-    assert_that!(
-        out_file.path(),
-        str::similar(EXPECTED_OUT)
-            .normalize()
-            .from_utf8()
-            .from_file_path()
-    );
+    let file_contents: String =
+        normalized(fs::read_to_string(out_file.path()).unwrap().chars()).collect();
+
+    assert_eq!(file_contents, EXPECTED_OUT);
 }

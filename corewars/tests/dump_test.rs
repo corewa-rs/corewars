@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use assert_that::assert_that;
+use pretty_assertions::assert_eq;
 use test_generator::test_resources;
 
 use corewars::parser::Result as ParseResult;
@@ -33,8 +33,5 @@ fn read_dir(input_file: &str) {
         ParseResult::Err(e, _) => panic!("Parse error:\n{}", e),
     };
 
-    assert_that!(
-        &parsed_core.to_string().trim(),
-        str::similar(expected_output)
-    );
+    assert_eq!(parsed_core.to_string().trim(), expected_output);
 }
