@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use normalize_line_endings::normalized;
 use pretty_assertions::assert_eq;
 use test_generator::test_resources;
 
@@ -25,7 +26,7 @@ fn read_dir(input_file: &str) {
     }
 
     let expected_output = fs::read_to_string(&expected_out_file)
-        .map(|s| s.trim().to_owned())
+        .map(|s| normalized(s.trim().chars()).collect::<String>())
         .unwrap_or_else(|err| panic!("Unable to read file {:?}: {:?}", input_file, err));
 
     let parsed_core = match corewars::parser::parse(&input) {
