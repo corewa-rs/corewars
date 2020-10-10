@@ -10,34 +10,8 @@ on:
       - master
       - develop
 
-defaults:
-  run:
-    working-directory: redcode
-
 jobs:
-  build_redcode:
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-    - name: Checkout branch
-      uses: actions/checkout@v2
-    - name: Install Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Install dependencies
-      run: npm install --locked
-    - name: Build extension
-      run: npm run build
-    - name: Verify the build did not modify any files
-      run: git diff --exit-code HEAD -- .
-
-  lint_rust:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -54,7 +28,7 @@ jobs:
           RUSTFLAGS:
             "-D warnings"
 
-  validate_rust:
+  validate:
     strategy:
       matrix:
         os:
