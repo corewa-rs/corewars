@@ -1,7 +1,7 @@
 # corewars
 
-[![Latest Crates.io Release](https://img.shields.io/crates/v/corewars?label=corewars&logo=rust)](https://crates.io/crates/corewars)
-[![Latest Release](https://img.shields.io/github/v/release/corewa-rs/corewars?label=latest%20release&include_prereleases&logo=github)](https://github.com/corewa-rs/corewars/releases)
+[![Latest Crates.io Release](https://img.shields.io/crates/v/corewars?label=crates.io&logo=rust)](https://crates.io/crates/corewars)
+[![Latest Github Release](https://img.shields.io/github/v/release/corewa-rs/corewars?label=github&include_prereleases&logo=github)](https://github.com/corewa-rs/corewars/releases)
 [![Build Status](https://img.shields.io/github/workflow/status/corewa-rs/corewars/ci/develop)](https://github.com/corewa-rs/corewars/actions)
 
 A Rust implementation of the classing programming battle game [Core Wars](http://www.koth.org/index.html).
@@ -10,4 +10,4 @@ The implementation is based on [this introductory guide](http://vyznev.net/corew
 
 ## Cargo crate
 
-* [corewars](https://corewa.rs/crates/corewars) - the main implementation
+* [corewars](https://crates.io/crates/corewars) - the main implementation
