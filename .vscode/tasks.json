@@ -1,75 +1,65 @@
 {
-    "tasks": [
-        {
-            "label": "rust: cargo doc",
-            "detail": "Build and open Cargo documentation for the workspace",
-            "command": "cargo",
-            "args": [
-                "doc",
-                "--document-private-items",
-                "--workspace",
-                "--open"
-            ],
-            "group": "build",
-            "isBackground": true,
-            "presentation": {
-                "clear": true,
-                "reveal": "silent"
-            },
-            "problemMatcher": [],
-            "type": "shell"
-        },
-        {
-            "label": "rust: cargo clippy",
-            "detail": "Check build and run linting on the workspace",
-            "command": "clippy",
-            "args": [
-                "--all-features",
-                "--workspace"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "clear": true
-            },
-            "problemMatcher": [
-                "$rustc"
-            ],
-            "type": "cargo"
-        },
-        {
-            "label": "rust: cargo test",
-            "detail": "Build and run unit and integration tests for the workspace",
-            "command": "test",
-            "args": [
-                "--all-features",
-                "--workspace"
-            ],
-            "group": "test",
-            "env": {
-                "RUST_BACKTRACE": "1"
-            },
-            "presentation": {
-                "clear": true
-            },
-            "problemMatcher": [
-                "$rustc"
-            ],
-            "type": "cargo"
-        },
-        {
-            "type": "npm",
-            "script": "build",
-            "path": "redcode/",
-            "problemMatcher": [
-                "$tsc"
-            ],
-            "group": "build",
-            "label": "npm: build - redcode",
-            "detail": "npx js-yaml syntaxes/redcode.tmLanguage.yaml > syntaxes/redcode.tmLanguage.json"
-        }
-    ],
-    "version": "2.0.0"
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "rust: cargo doc",
+      "detail": "Build and open Cargo documentation for the workspace",
+      "command": "cargo",
+      "args": [
+        "doc",
+        "--document-private-items",
+        "--workspace",
+        "--open"
+      ],
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "clear": true,
+        "reveal": "silent"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "label": "rust: cargo clippy",
+      "detail": "Check build and run linting on the workspace",
+      "command": "clippy",
+      "args": [
+        "--all-features",
+        "--workspace"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "clear": true
+      },
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    },
+    {
+      "label": "rust: cargo test",
+      "detail": "Build and run unit and integration tests for the workspace",
+      "command": "test",
+      "args": [
+        "--all-features",
+        "--workspace"
+      ],
+      "group": "test",
+      "env": {
+        "RUST_BACKTRACE": "1"
+      },
+      "presentation": {
+        "clear": true
+      },
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    },
+
+  ],
 }
