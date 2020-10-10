@@ -9,7 +9,7 @@ use pretty_assertions::assert_eq;
 
 lazy_static! {
     static ref EXPECTED_OUT: String =
-        normalized(include_str!("data/expected_output/simple/basic.red").chars()).collect();
+        normalized(include_str!("data/expected_output/simple/basic.redcode").chars()).collect();
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn dump_stdout() {
     let cmd = Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .arg("tests/data/input/simple/basic.red")
+        .arg("tests/data/input/simple/basic.redcode")
         .arg("dump")
         .arg("--output-file")
         .arg("-")
@@ -57,11 +57,11 @@ fn dump_stdout() {
 
 #[test]
 fn dump_file() {
-    let out_file = assert_fs::NamedTempFile::new("out.red").expect("Failed to create tempfile");
+    let out_file = assert_fs::NamedTempFile::new("out.redcode").expect("Failed to create tempfile");
 
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
-        .arg("tests/data/input/simple/basic.red")
+        .arg("tests/data/input/simple/basic.redcode")
         .arg("dump")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("--output-file")

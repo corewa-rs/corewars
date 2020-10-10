@@ -7,9 +7,9 @@ use test_generator::test_resources;
 
 use corewars::parser::Result as ParseResult;
 
-#[test_resources("corewars/tests/data/input/simple/*.red")]
-#[test_resources("corewars/tests/data/input/wilkie/*.red")]
-#[test_resources("corewars/tests/data/input/wilmoo/*.red")]
+#[test_resources("corewars/tests/data/input/simple/*.redcode")]
+#[test_resources("corewars/tests/data/input/wilkie/*.redcode")]
+#[test_resources("corewars/tests/data/input/wilmoo/*.redcode")]
 fn read_dir(input_file: &str) {
     // Workaround for the fact that `test_resources` paths are based on workspace Cargo.toml
     let current_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
