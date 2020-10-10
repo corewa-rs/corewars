@@ -2,18 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Redcode VSCode Extension",
-      "type": "extensionHost",
-      "request": "launch",
-      "runtimeExecutable": "${execPath}",
-      "preLaunchTask": "npm: build - redcode",
-      "args": [
-        "--disable-extensions",
-        "--extensionDevelopmentPath=${workspaceFolder}/redcode",
-      ],
-      "outFiles": [],
-    },
-    {
       "type": "lldb",
       "request": "launch",
       "name": "Cargo test: all",
