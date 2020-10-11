@@ -1,19 +1,18 @@
 [package]
+name = "corewars"
+version = "0.1.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
-categories = ["games", "emulators"]
-description = "The classic programming battle game Core Wars"
-homepage = "https://corewa.rs/"
+categories = ["command-line-utilities", "games", "emulators"]
 edition = "2018"
+homepage = "https://corewa.rs/"
 keywords = ["corewars", "core", "war", "wars", "redcode"]
 license = "MIT"
-name = "corewars"
-readme = "../README.md"
+readme = "README.md"
 repository = "https://github.com/corewa-rs/corewars"
-version = "0.1.0"
+description = "The classic programming battle game Core Wars"
 
 [dependencies]
 corewars-parser = { path = "../corewars-parser", version = "0.0.0" }
-
 lazy_static = "1.4.0"
 structopt = "0.3.5"
 
