@@ -1,8 +1,8 @@
 # corewars
 
-[![Latest Crates.io Release](https://img.shields.io/crates/v/corewars?label=corewars&logo=rust)](https://crates.io/crates/corewars)
-[![Latest Github Release](https://img.shields.io/github/v/release/corewa-rs/corewars?label=Release&include_prereleases&logo=github)](https://github.com/corewa-rs/corewars/releases)
-[![Build Status](https://img.shields.io/github/workflow/status/corewa-rs/corewars/ci/develop)](https://github.com/corewa-rs/corewars/actions)
+[![Latest crates.io Release](https://img.shields.io/crates/v/corewars?label=corewars&logo=rust)](https://crates.io/crates/corewars)
+[![Latest Github release](https://img.shields.io/github/v/release/corewa-rs/corewars?label=Release&include_prereleases&logo=github)](https://github.com/corewa-rs/corewars/releases)
+[![Build status](https://img.shields.io/github/workflow/status/corewa-rs/corewars/ci/develop)](https://github.com/corewa-rs/corewars/actions)
 
 A CLI interface for playing the classic programming battle game
 [Core Wars](http://www.koth.org/index.html).
