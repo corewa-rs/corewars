@@ -1,8 +1,0 @@
-[package]
-name = "corewars-sim"
-version = "0.0.0"
-authors = ["Ian Chamberlain <ian@corewa.rs>"]
-edition = "2018"
-description = "A placeholder subcrate for corewars"
-license = "MIT"
-repository = "https://github.com/corewa-rs/corewars"

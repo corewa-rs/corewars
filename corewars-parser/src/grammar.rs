@@ -2,7 +2,7 @@
 //! Provides helper function to tokenize strings into span-like tokens.
 
 use pest::error::ErrorVariant::CustomError;
-use pest::Parser as ParserTrait;
+use pest::Parser as _;
 use pest_derive::Parser;
 
 use super::error::Error;
@@ -12,7 +12,7 @@ pub type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
 pub type SyntaxError = pest::error::Error<Rule>;
 
 #[derive(Parser)]
-#[grammar = "parser/grammar/redcode.pest"]
+#[grammar = "grammar/redcode.pest"]
 pub struct Grammar;
 
 /// Parse an input line and return an iterator over

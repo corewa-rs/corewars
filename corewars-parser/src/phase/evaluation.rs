@@ -5,7 +5,7 @@ mod expression;
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use crate::load_file;
+use corewars_core::load_file;
 
 use super::super::error::Error;
 use super::super::grammar;
@@ -20,7 +20,7 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
                 grammar::Rule::Instruction => {
                     instructions.push(parse_instruction(parse_result.into_inner())?);
                 }
-                rule => dbgf!("Unexpected rule {:?}", rule),
+                rule => eprintln!("Unexpected rule {:?}", rule),
             }
         }
     }

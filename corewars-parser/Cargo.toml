@@ -2,7 +2,27 @@
 name = "corewars-parser"
 version = "0.0.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
+categories = ["games", "emulators", "parser-implementations"]
 edition = "2018"
-description = "A placeholder subcrate for corewars"
+homepage = "https://corewa.rs/"
+keywords = ["corewars", "core", "war", "wars", "redcode"]
 license = "MIT"
+readme = "README.md"
 repository = "https://github.com/corewa-rs/corewars"
+description = "A placeholder subcrate for corewars"
+
+[dependencies]
+corewars-core = { path = "../corewars-core", version = "0.0.0" }
+
+pest = "2.1.0"
+pest_derive = "2.1.0"
+thiserror = "1.0.20"
+
+[dev-dependencies]
+maplit = "1.0.2"
+normalize-line-endings = "0.3.0"
+pretty_assertions = "0.6.1"
+test-case = "1.0.0"
+test-generator = "0.3.0"
+textwrap = "0.11.0"
+textwrap-macros = "0.2.2"

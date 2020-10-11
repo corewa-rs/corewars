@@ -4,7 +4,7 @@ use std::num::TryFromIntError;
 
 use thiserror::Error as ThisError;
 
-use crate::load_file::Opcode;
+use corewars_core::load_file::Opcode;
 
 // TODO: use pest spans for error reporting? Or at least line number
 

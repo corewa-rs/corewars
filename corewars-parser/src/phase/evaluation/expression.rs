@@ -3,8 +3,9 @@
 //! Most functions here panic instead of returning Result because at this point
 //! any errors should have been caught earlier during initial parsing.
 
-use crate::load_file::Offset;
-use crate::parser::grammar::*;
+use corewars_core::load_file::Offset;
+
+use crate::grammar::*;
 
 /// Evaluate an Expression. Panics if the expression tree is invalid, which
 /// should only happen due to programmer error (either the grammar or this code

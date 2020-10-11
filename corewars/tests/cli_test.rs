@@ -8,8 +8,14 @@ use predicates::prelude::*;
 use pretty_assertions::assert_eq;
 
 lazy_static! {
-    static ref EXPECTED_OUT: String =
-        normalized(include_str!("data/expected_output/simple/basic.redcode").chars()).collect();
+    static ref EXPECTED_OUT: String = normalized(
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../testdata/expected_output/simple/basic.redcode"
+        ))
+        .chars()
+    )
+    .collect();
 }
 
 #[test]
@@ -42,7 +48,7 @@ fn dump_stdout() {
     let cmd = Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .arg("tests/data/input/simple/basic.redcode")
+        .arg("../testdata/input/simple/basic.redcode")
         .arg("dump")
         .arg("--output-file")
         .arg("-")
@@ -61,7 +67,8 @@ fn dump_file() {
 
     Command::cargo_bin(assert_cmd::crate_name!())
         .unwrap()
-        .arg("tests/data/input/simple/basic.redcode")
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .arg("../testdata/input/simple/basic.redcode")
         .arg("dump")
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .arg("--output-file")
