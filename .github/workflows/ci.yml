@@ -14,12 +14,16 @@ jobs:
     steps:
       - name: Checkout branch
         uses: actions/checkout@v2
+
       - name: Setup default Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           components: clippy,rustfmt
+          toolchain: stable
+
       - name: Check formatting
         run: cargo fmt --all --verbose -- --check
+
       - name: Run clippy linting
         run: cargo clippy --color=always --workspace --verbose --all-targets
         env:
@@ -42,9 +46,11 @@ jobs:
     steps:
       - name: Checkout branch
         uses: actions/checkout@v2
+
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+
       - name: Build and run tests
         run: cargo test --color=always --workspace

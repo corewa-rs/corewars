@@ -1,6 +1,6 @@
 [package]
 name = "corewars-parser"
-version = "0.0.0"
+version = "0.2.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
 categories = ["games", "emulators", "parser-implementations"]
 edition = "2018"
@@ -12,7 +12,7 @@ repository = "https://github.com/corewa-rs/corewars"
 description = "A placeholder subcrate for corewars"
 
 [dependencies]
-corewars-core = { path = "../corewars-core", version = "0.0.0" }
+corewars-core = { path = "../corewars-core", version = "=0.2.0" }
 
 pest = "2.1.0"
 pest_derive = "2.1.0"

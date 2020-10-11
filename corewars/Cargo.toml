@@ -1,6 +1,6 @@
 [package]
 name = "corewars"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
 categories = ["command-line-utilities", "games", "emulators"]
 edition = "2018"
@@ -12,7 +12,7 @@ repository = "https://github.com/corewa-rs/corewars"
 description = "The classic programming battle game Core Wars"
 
 [dependencies]
-corewars-parser = { path = "../corewars-parser", version = "0.0.0" }
+corewars-parser = { path = "../corewars-parser", version = "=0.2.0" }
 lazy_static = "1.4.0"
 structopt = "0.3.5"
 
