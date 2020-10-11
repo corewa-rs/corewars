@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "corewars"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "corewars-core"
-version = "0.0.0"
+version = "0.2.0"
 dependencies = [
  "itertools",
  "lazy_static",
@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "corewars-parser"
-version = "0.0.0"
+version = "0.2.0"
 dependencies = [
  "corewars-core",
  "maplit",

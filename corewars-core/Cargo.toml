@@ -1,6 +1,6 @@
 [package]
 name = "corewars-core"
-version = "0.0.0"
+version = "0.2.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
 categories = ["games", "emulators", "parser-implementations"]
 edition = "2018"
