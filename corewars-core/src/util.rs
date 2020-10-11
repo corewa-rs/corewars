@@ -53,26 +53,6 @@ macro_rules! enum_string {
     };
 }
 
-/// Print a format string like `dbg!` without stringify-ing the input.
-///
-/// # Examples:
-///
-/// ```
-/// dbgf!("Print: {:?}", "123");
-/// ```
-#[cfg(debug_assertions)]
-#[allow(unused)]
-macro_rules! dbgf {
-    ( $fmt:expr $(, $($args:expr),* $(,)? )? ) => {
-        eprintln!(
-            concat!("[{}:{}] ", $fmt),
-            file!(),
-            line!(),
-            $($($args),* )?
-        )
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::str::FromStr;

@@ -5,13 +5,14 @@ use normalize_line_endings::normalized;
 use pretty_assertions::assert_eq;
 use test_generator::test_resources;
 
-use corewars::parser::Result as ParseResult;
+use corewars_parser::Result as ParseResult;
 
-#[test_resources("corewars/tests/data/input/simple/*.redcode")]
-#[test_resources("corewars/tests/data/input/wilkie/*.redcode")]
-#[test_resources("corewars/tests/data/input/wilmoo/*.redcode")]
+#[test_resources("testdata/input/simple/*.redcode")]
+#[test_resources("testdata/input/wilkie/*.redcode")]
+#[test_resources("testdata/input/wilmoo/*.redcode")]
 fn read_dir(input_file: &str) {
     // Workaround for the fact that `test_resources` paths are based on workspace Cargo.toml
+    // https://github.com/frehberg/test-generator/issues/6
     let current_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     std::env::set_current_dir(current_dir).unwrap();
 
@@ -29,7 +30,7 @@ fn read_dir(input_file: &str) {
         .map(|s| normalized(s.trim().chars()).collect::<String>())
         .unwrap_or_else(|err| panic!("Unable to read file {:?}: {:?}", input_file, err));
 
-    let parsed_core = match corewars::parser::parse(&input) {
+    let parsed_core = match corewars_parser::parse(&input) {
         ParseResult::Ok(core, _) => core,
         ParseResult::Err(e, _) => panic!("Parse error:\n{}", e),
     };

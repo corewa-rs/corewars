@@ -8,7 +8,7 @@ use std::{
 use lazy_static::lazy_static;
 use structopt::StructOpt;
 
-use crate::parser;
+use corewars_parser as parser;
 
 lazy_static! {
     static ref IO_SENTINEL: PathBuf = PathBuf::from("-");

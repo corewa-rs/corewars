@@ -9,8 +9,9 @@ use std::collections::{HashMap, HashSet};
 
 use pest::Span;
 
-use crate::load_file::{Offset, UOffset};
-use crate::parser::grammar;
+use corewars_core::load_file::{Offset, UOffset};
+
+use crate::grammar;
 
 /// The result of expansion and substitution
 #[derive(Debug, Default, PartialEq)]

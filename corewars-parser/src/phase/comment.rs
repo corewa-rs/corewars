@@ -4,8 +4,9 @@
 
 use super::CommentsRemoved;
 
-use crate::load_file::Metadata;
-use crate::parser::grammar;
+use corewars_core::load_file::Metadata;
+
+use crate::grammar;
 
 enum OriginInLine {
     NewOrigin(String),

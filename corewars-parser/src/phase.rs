@@ -7,7 +7,7 @@ mod comment;
 mod evaluation;
 mod expansion;
 
-use crate::load_file;
+use corewars_core::load_file;
 
 use super::error::Error;
 
