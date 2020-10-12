@@ -107,6 +107,15 @@ pub enum Value {
     Literal(Offset),
 }
 
+impl Value {
+    pub fn unwrap(&self) -> Offset {
+        match *self {
+            Value::Literal(offset) => offset,
+            _ => panic!("unwrapped value of a Value without a literal offset"),
+        }
+    }
+}
+
 impl Default for Value {
     fn default() -> Self {
         Self::Literal(0)

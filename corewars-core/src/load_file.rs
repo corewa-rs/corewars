@@ -42,8 +42,8 @@ impl fmt::Display for Warrior {
 
 impl Warrior {
     /// The number of instrcutions defined in this Warrior's code
-    pub fn len(&self) -> usize {
-        self.program.instructions.len()
+    pub fn len(&self) -> u32 {
+        self.program.instructions.len() as u32
     }
 
     /// Whether the warrior's program is empty (i.e. 0 instructions)
@@ -84,6 +84,10 @@ impl Field {
             address_mode: AddressMode::Immediate,
             value: Value::Literal(value),
         }
+    }
+
+    pub fn unwrap_value(&self) -> Offset {
+        self.value.unwrap()
     }
 }
 
