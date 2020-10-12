@@ -176,6 +176,7 @@ name = "corewars-sim"
 version = "0.2.0"
 dependencies = [
  "corewars-core",
+ "pretty_assertions",
 ]
 
 [[package]]

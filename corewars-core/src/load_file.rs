@@ -27,7 +27,7 @@ lazy_static! {
 }
 
 /// The main public struct used to represent a Redcode warrior
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Warrior {
     pub program: Program,
     pub metadata: Metadata,
@@ -37,6 +37,18 @@ impl fmt::Display for Warrior {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.metadata)?;
         write!(formatter, "{}", self.program)
+    }
+}
+
+impl Warrior {
+    /// The number of instrcutions defined in this Warrior's code
+    pub fn len(&self) -> usize {
+        self.program.instructions.len()
+    }
+
+    /// Whether the warrior's program is empty (i.e. 0 instructions)
+    pub fn is_empty(&self) -> bool {
+        self.program.instructions.is_empty()
     }
 }
 

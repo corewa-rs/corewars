@@ -13,3 +13,6 @@ description = "Simulation library for a Redcode warrior"
 
 [dependencies]
 corewars-core = { path = "../corewars-core", version = "0.2.0" }
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"
