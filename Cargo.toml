@@ -3,4 +3,5 @@ members = [
     "corewars",
     "corewars-core",
     "corewars-parser",
+    "corewars-sim",
 ]

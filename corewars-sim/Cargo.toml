@@ -1,5 +1,5 @@
 [package]
-name = "corewars-core"
+name = "corewars-sim"
 version = "0.2.0"
 authors = ["Ian Chamberlain <ian@corewa.rs>"]
 categories = ["games", "emulators"]
@@ -9,8 +9,7 @@ keywords = ["corewars", "core", "war", "wars", "redcode"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/corewa-rs/corewars"
-description = "Data structures and common utilities for the corewars crate"
+description = "Simulation library for a Redcode warrior"
 
 [dependencies]
-itertools = "0.9.0"
-lazy_static = "1.4.0"
+corewars-core = { path = "../corewars-core", version = "0.2.0" }

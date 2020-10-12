@@ -172,6 +172,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "corewars-sim"
+version = "0.2.0"
+dependencies = [
+ "corewars-core",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
