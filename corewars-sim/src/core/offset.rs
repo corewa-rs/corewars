@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-/// An offset from the beginning of a core
+/// A non-negative offset from the beginning of a core.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Offset {
     value: u32,
@@ -8,17 +8,12 @@ pub struct Offset {
 }
 
 impl Offset {
-    /// Create a new Offset. Panics if `core_size` is invalid. Both 0 and
-    /// [`u32::MAX`](u32::MAX) are disallowed.
-    pub fn new<T, U>(value: T, core_size: U) -> Self
-    where
-        T: Into<i32>,
-        U: Into<u32>,
-    {
-        let core_size = core_size.into();
-
-        let core_isize = core_size as i32;
+    /// Create a new Offset. The value will be adjusted to be within bounds of the core.
+    ///
+    /// Panics if `core_size` is invalid. Both 0 and [`u32::MAX`](u32::MAX) are disallowed.
+    pub fn new(value: i32, core_size: u32) -> Self {
         // TODO: should there be a minimum allowed core size?
+        let core_isize = core_size as i32;
         if !core_isize.is_positive() {
             panic!(
                 "Attempt to create offset with invalid core_size {}",
@@ -26,23 +21,23 @@ impl Offset {
             )
         }
 
-        let value = value.into().rem_euclid(core_isize);
-        Self {
-            value: value as u32,
+        let mut result = Self {
+            value: 0,
             core_size,
-        }
+        };
+        result.set_value(value.rem_euclid(core_isize));
+        result
     }
 
+    /// Get the value of the offset. This will always be less than the core size.
     pub fn value(&self) -> u32 {
         self.value
     }
 
-    pub fn set_value(&mut self, value: u32) {
-        self.value = value.rem_euclid(self.core_size)
-    }
-
-    pub fn core_size(&self) -> u32 {
-        self.core_size
+    /// Set the value of the offset. The value will be adjusted to be within
+    /// bounds of the core size.
+    pub fn set_value(&mut self, value: i32) {
+        self.value = value.rem_euclid(self.core_size as i32) as u32
     }
 }
 
@@ -74,7 +69,7 @@ impl AddAssign<Offset> for Offset {
             )
         }
 
-        self.set_value(self.value + rhs.value)
+        *self = *self + rhs
     }
 }
 
@@ -91,7 +86,7 @@ macro_rules! impl_op {
 
         impl $assign_trait<$rhs> for Offset {
             fn $assign(&mut self, rhs: $rhs) {
-                self.set_value((self.$op(rhs)).value)
+                self.set_value((self.$op(rhs)).value as _)
             }
         }
     };

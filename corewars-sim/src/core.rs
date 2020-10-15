@@ -1,8 +1,6 @@
 //! A [`Core`](Core) is a block of "memory" in which Redcode programs reside.
 //! This is where all simulation of a Core Wars battle takes place.
 
-use std::fmt;
-
 use thiserror::Error as ThisError;
 
 use corewars_core::load_file;
@@ -12,11 +10,10 @@ mod offset;
 
 use offset::Offset;
 
-#[derive(Debug)]
-pub struct LoadError;
+const DEFAULT_MAX_STEPS: usize = 10_000;
 
 /// An error occurred during loading or core creation
-#[derive(ThisError, Debug)]
+#[derive(ThisError, Debug, PartialEq)]
 pub enum Error {
     /// The warrior was longer than the core size
     #[error("warrior has too many instructions to fit in the core")]
@@ -27,13 +24,16 @@ pub enum Error {
     InvalidCoreSize(u32),
 }
 
-#[derive(Debug)]
-pub struct WarriorTerminated;
+/// An error occurred while executing the core
+#[derive(ThisError, Debug, PartialEq)]
+pub enum ExecutionError {
+    /// The warrior terminated execution
+    #[error("warrior was terminated")]
+    Terminated,
 
-impl fmt::Display for LoadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error loading warrior")
-    }
+    /// The maximum number of execution steps was reached
+    #[error("max number of steps executed")]
+    StepLimitReached,
 }
 
 /// The full memory core at a given point in time
@@ -42,6 +42,7 @@ pub struct Core {
     instructions: Box<[load_file::Instruction]>,
     entry_point: Offset,
     pointer: Offset,
+    steps_taken: usize,
 }
 
 impl Default for Core {
@@ -62,11 +63,13 @@ impl Core {
                 .into_boxed_slice(),
             entry_point: Offset::new(0, core_size),
             pointer: Offset::new(0, core_size),
+            steps_taken: 0,
         })
     }
 
-    pub fn current_instruction(&self) -> Offset {
-        self.pointer
+    /// Clone and returns the next instruction to be executed.
+    pub fn next_instruction(&self) -> load_file::Instruction {
+        self.instructions[self.pointer.value() as usize].clone()
     }
 
     /// Get the number of instructions in the core (available to programs via the `CORESIZE` label)
@@ -76,9 +79,9 @@ impl Core {
 
     /// Load a [`Warrior`](Warrior) into the core starting at the front (first instruction of the core).
     /// Returns an error if the Warrior was too long to fit in the core, or had unresolved labels
-    fn load_warrior(&mut self, warrior: &Warrior) -> Result<(), LoadError> {
+    fn load_warrior(&mut self, warrior: &Warrior) -> Result<(), Error> {
         if warrior.len() > self.size() {
-            return Err(LoadError);
+            return Err(Error::WarriorTooLong);
         }
 
         // TODO check that all instructions are fully resolved? Or require a type
@@ -89,7 +92,7 @@ impl Core {
         }
 
         self.entry_point.set_value(match warrior.program.origin {
-            Some(entry_point) => entry_point,
+            Some(entry_point) => entry_point as _,
             None => 0,
         });
 
@@ -99,21 +102,27 @@ impl Core {
     }
 
     /// Run a single cycle of simulation.
-    pub fn step(&mut self) -> Result<(), WarriorTerminated> {
+    pub fn step(&mut self) -> Result<(), ExecutionError> {
         use load_file::Opcode::*;
-        // See docs/icws94.txt:918 for detailed description
 
-        let current_instruction = self.instructions[self.pointer.value() as usize].clone();
-        // TODO: Complicated logic for resolving which part of the instruction
-        // gets used, see docs/icws94.txt:1025
+        if self.steps_taken > DEFAULT_MAX_STEPS {
+            return Err(ExecutionError::StepLimitReached);
+        }
 
-        match current_instruction.opcode {
+        let instruction = self.next_instruction();
+
+        // TODO: Use modifier for resolving which part of the instruction gets used, see docs/icws94.txt:1025
+        let lhs = instruction.field_a;
+        let rhs = instruction.field_b;
+
+        // See docs/icws94.txt:918 for detailed description of each opcode
+        match instruction.opcode {
             Mov => {
-                self.mov(current_instruction.field_a, current_instruction.field_b);
+                self.mov(lhs, rhs);
             }
-            Dat => return Err(WarriorTerminated),
+            Dat => return Err(ExecutionError::Terminated),
             Jmp => {
-                self.pointer += current_instruction.field_a.unwrap_value();
+                self.pointer += lhs.unwrap_value();
                 // Return early to avoid an extra increment of the program counter
                 return Ok(());
             }
@@ -121,14 +130,14 @@ impl Core {
         }
 
         self.pointer += 1;
-        // Always normalize the instruction pointer to modulo CORESIZE after an operation
-        // TODO safety?
-
+        self.steps_taken += 1;
         Ok(())
     }
 
-    fn mov(&mut self, _field_a: load_file::Field, _field_b: load_file::Field) {
-        // TODO: for now copy the whole A instruction to the B instruction
+    fn mov(&mut self, lhs: load_file::Field, rhs: load_file::Field) {
+        let src = self.pointer + lhs.unwrap_value();
+        let dest = self.pointer + rhs.unwrap_value();
+        self.instructions[dest.value() as usize] = self.instructions[src.value() as usize].clone();
     }
 }
 
@@ -187,5 +196,81 @@ mod tests {
             .expect_err("Should have failed to load warrior: too long");
 
         assert_eq!(core.size(), 128);
+    }
+
+    #[test]
+    fn execute_dat() {
+        let mut core = Core::new(4).unwrap();
+        // Default instruction is DAT, so expect a termination error immediately
+        assert_eq!(core.step().unwrap_err(), ExecutionError::Terminated);
+    }
+
+    fn core_with_imp() -> Core {
+        let mut core = Core::new(4).unwrap();
+
+        let instruction = Instruction::new(Opcode::Mov, Field::direct(0), Field::direct(1));
+
+        let warrior = Warrior {
+            program: Program {
+                instructions: vec![instruction],
+                origin: None,
+            },
+            ..Default::default()
+        };
+        core.load_warrior(&warrior).expect("Failed to load warrior");
+        core
+    }
+
+    #[test]
+    fn wrap_pointer_on_overflow() {
+        let mut core = core_with_imp();
+
+        assert_eq!(core.pointer.value(), 0);
+        assert!(core.step().is_ok());
+        assert_eq!(core.pointer.value(), 1);
+        assert!(core.step().is_ok());
+        assert_eq!(core.pointer.value(), 2);
+        assert!(core.step().is_ok());
+        assert_eq!(core.pointer.value(), 3);
+        assert!(core.step().is_ok());
+        assert_eq!(core.pointer.value(), 0);
+    }
+
+    #[test]
+    fn execute_mov() {
+        let mut core = core_with_imp();
+        let instruction = Instruction::new(Opcode::Mov, Field::direct(0), Field::direct(1));
+
+        assert!(core.step().is_ok());
+        assert_eq!(core.next_instruction(), instruction);
+        assert!(core.step().is_ok());
+        assert_eq!(core.next_instruction(), instruction);
+    }
+
+    #[test]
+    fn execute_jmp() {
+        let instruction = Instruction::new(Opcode::Jmp, Field::immediate(2), Field::immediate(0));
+        let mut core = Core::new(4).unwrap();
+        let warrior = Warrior {
+            program: Program {
+                instructions: vec![instruction.clone()],
+                origin: None,
+            },
+            ..Default::default()
+        };
+        core.load_warrior(&warrior).expect("Failed to load warrior");
+
+        assert!(core.step().is_ok());
+
+        assert_eq!(core.pointer.value(), 2);
+        assert_eq!(
+            &core.instructions[..],
+            &vec![
+                instruction,
+                Default::default(),
+                Default::default(),
+                Default::default()
+            ][..]
+        );
     }
 }
