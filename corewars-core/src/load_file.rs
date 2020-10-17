@@ -3,10 +3,12 @@ use std::fmt;
 use lazy_static::lazy_static;
 
 mod metadata;
+mod offset;
 mod program;
 mod types;
 
 pub use metadata::Metadata;
+pub use offset::Offset;
 pub use program::{Instructions, LabelMap, Program};
 pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
 

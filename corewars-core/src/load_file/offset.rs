@@ -96,3 +96,36 @@ impl_op! { i32, Add::add, AddAssign::add_assign }
 impl_op! { u32, Add::add, AddAssign::add_assign }
 impl_op! { i32, Sub::sub, SubAssign::sub_assign }
 impl_op! { u32, Sub::sub, SubAssign::sub_assign }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn create_offset() {
+        let offset = Offset::new(1234, 12);
+        assert_eq!(offset.value(), 10);
+    }
+
+    #[test]
+    fn set_offset_value() {
+        let mut offset = Offset::new(1234, 12);
+        offset.set_value(20);
+        assert_eq!(offset.value(), 8);
+    }
+
+    #[test]
+    fn add_to_offset() {
+        let mut offset = Offset::new(0, 12);
+
+        assert_eq!(offset + 20i32, Offset::new(8, 12));
+        assert_eq!(offset + 20u32, Offset::new(8, 12));
+
+        offset += 20i32;
+        assert_eq!(offset, Offset::new(8, 12));
+        offset += 20u32;
+        assert_eq!(offset, Offset::new(4, 12));
+    }
+}
