@@ -9,23 +9,23 @@ pub type Offset = i32;
 pub type UOffset = u32;
 
 enum_string!(pub Opcode {
-    Dat => "DAT",
-    Mov => "MOV",
     Add => "ADD",
-    Sub => "SUB",
-    Mul => "MUL",
+    Cmp => "CMP",
+    Dat => "DAT",
     Div => "DIV",
-    Mod => "MOD",
+    Djn => "DJN",
+    Jmn => "JMN",
     Jmp => "JMP",
     Jmz => "JMZ",
-    Jmn => "JMN",
-    Djn => "DJN",
-    Cmp => "CMP",
-    Seq => "SEQ",
-    Sne => "SNE",
-    Slt => "SLT",
-    Spl => "SPL",
+    Mod => "MOD",
+    Mov => "MOV",
+    Mul => "MUL",
     Nop => "NOP",
+    Seq => "SEQ",
+    Slt => "SLT",
+    Sne => "SNE",
+    Spl => "SPL",
+    Sub => "SUB",
 });
 
 enum_string!(pub PseudoOpcode {

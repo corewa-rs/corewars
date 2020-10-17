@@ -57,31 +57,31 @@ fn parse_instruction(
         .filter(|pair| pair.as_rule() == grammar::Rule::Modifier)
         .map(|pair| parse_modifier(&pair));
 
-    let field_a = parse_field(
+    let a_field = parse_field(
         instruction_pairs
             .next()
             .expect("Field must appear after Opcode"),
     );
 
-    let field_b = instruction_pairs
+    let b_field = instruction_pairs
         .next()
         .filter(|pair| pair.as_rule() == grammar::Rule::Field)
         .map(parse_field);
 
-    if let Some(field_b) = field_b {
+    if let Some(b_field) = b_field {
         let modifier = maybe_modifier.unwrap_or_else(|| {
             load_file::Modifier::default_88_to_94(
                 opcode,
-                field_a.address_mode,
-                field_b.address_mode,
+                a_field.address_mode,
+                b_field.address_mode,
             )
         });
 
         Ok(load_file::Instruction {
             opcode,
             modifier,
-            field_a,
-            field_b,
+            a_field,
+            b_field,
         })
     } else {
         // Special cases for only one argument. There's not much documentation
@@ -94,14 +94,14 @@ fn parse_instruction(
             Dat => Ok(load_file::Instruction {
                 opcode,
                 modifier: maybe_modifier.unwrap_or(load_file::Modifier::F),
-                field_a: load_file::Field::immediate(0),
-                field_b: field_a,
+                a_field: load_file::Field::immediate(0),
+                b_field: a_field,
             }),
             Jmp | Spl | Nop => Ok(load_file::Instruction {
                 opcode,
                 modifier: maybe_modifier.unwrap_or(load_file::Modifier::B),
-                field_a,
-                field_b: load_file::Field::direct(0),
+                a_field,
+                b_field: load_file::Field::direct(0),
             }),
             other => Err(Error::InvalidArguments { opcode: other }),
         }

@@ -52,6 +52,10 @@ impl Warrior {
     }
 }
 
+// It might be useful to have a "target" vs  a "value" function,
+// based on the address mode I guess...
+//
+// See docs/icws94.txt:891
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Field {
     pub address_mode: AddressMode,
@@ -95,20 +99,20 @@ impl Field {
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
-    pub field_a: Field,
-    pub field_b: Field,
+    pub a_field: Field,
+    pub b_field: Field,
 }
 
 impl Instruction {
-    pub fn new(opcode: Opcode, field_a: Field, field_b: Field) -> Self {
+    pub fn new(opcode: Opcode, a_field: Field, b_field: Field) -> Self {
         let modifier =
-            Modifier::default_88_to_94(opcode, field_a.address_mode, field_b.address_mode);
+            Modifier::default_88_to_94(opcode, a_field.address_mode, b_field.address_mode);
 
         Instruction {
             opcode,
             modifier,
-            field_a,
-            field_b,
+            a_field,
+            b_field,
         }
     }
 }
@@ -121,8 +125,8 @@ impl fmt::Display for Instruction {
             // |----->||----->|
             "{op:<8}{a:<8}{b}",
             op = format!("{}.{}", self.opcode, self.modifier),
-            a = format!("{},", self.field_a),
-            b = self.field_b,
+            a = format!("{},", self.a_field),
+            b = self.b_field,
         ))
     }
 }
@@ -136,11 +140,11 @@ mod test {
         let expected_instruction = Instruction {
             opcode: Opcode::Dat,
             modifier: Modifier::F,
-            field_a: Field {
+            a_field: Field {
                 address_mode: AddressMode::Direct,
                 value: Value::Literal(0),
             },
-            field_b: Field {
+            b_field: Field {
                 address_mode: AddressMode::Direct,
                 value: Value::Literal(0),
             },
