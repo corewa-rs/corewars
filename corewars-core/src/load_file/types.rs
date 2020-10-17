@@ -1,13 +1,5 @@
 use std::fmt;
 
-/// Type alias for signed integer offset. Even though all offsets are modulo
-/// `CORESIZE`, they may be larger before `CORESIZE` is known.
-pub type Offset = i32;
-
-/// Type alias for unsigned integer offset. Even though all offsets are modulo
-/// `CORESIZE`, they may be larger before `CORESIZE` is known.
-pub type UOffset = u32;
-
 enum_string!(pub Opcode {
     Add => "ADD",
     Cmp => "CMP",
@@ -104,15 +96,21 @@ impl Default for AddressMode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Label(String),
-    Literal(Offset),
+    Literal(i32),
 }
 
 impl Value {
-    pub fn unwrap(&self) -> Offset {
+    pub fn unwrap(&self) -> i32 {
         match *self {
-            Value::Literal(offset) => offset,
-            _ => panic!("unwrapped value of a Value without a literal offset"),
+            Value::Literal(i32) => i32,
+            _ => panic!("unwrapped value of a Value without a literal i32"),
         }
+    }
+}
+
+impl From<i32> for Value {
+    fn from(i32: i32) -> Self {
+        Self::Literal(i32)
     }
 }
 

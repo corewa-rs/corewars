@@ -30,12 +30,12 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
 
 /// Parse and evaluate a single expression string to find the entry point to
 /// a warrior.
-pub fn evaluate_origin(expr: String) -> Result<load_file::UOffset, Error> {
+pub fn evaluate_origin(expr: String) -> Result<u32, Error> {
     let expr_pair = grammar::parse_expression(&expr)?;
 
     let origin = expression::evaluate(expr_pair);
 
-    Ok(load_file::UOffset::try_from(origin)?)
+    Ok(u32::try_from(origin)?)
 }
 
 fn parse_instruction(

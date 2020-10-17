@@ -8,7 +8,7 @@ mod types;
 
 pub use metadata::Metadata;
 pub use program::{Instructions, LabelMap, Program};
-pub use types::{AddressMode, Modifier, Offset, Opcode, PseudoOpcode, UOffset, Value};
+pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
 
 lazy_static! {
     pub static ref DEFAULT_CONSTANTS: LabelMap = {
@@ -69,7 +69,7 @@ impl fmt::Display for Field {
 }
 
 impl Field {
-    pub fn direct(value: Offset) -> Self {
+    pub fn direct(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Direct,
             value: Value::Literal(value),
@@ -83,14 +83,14 @@ impl Field {
         }
     }
 
-    pub fn immediate(value: Offset) -> Self {
+    pub fn immediate(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Immediate,
             value: Value::Literal(value),
         }
     }
 
-    pub fn unwrap_value(&self) -> Offset {
+    pub fn unwrap_value(&self) -> i32 {
         self.value.unwrap()
     }
 }
