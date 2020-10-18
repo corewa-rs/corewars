@@ -3,14 +3,10 @@
 
 use thiserror::Error as ThisError;
 
-use corewars_core::load_file;
+use corewars_core::load_file::{self, Instruction, Offset, Opcode};
 use corewars_core::Warrior;
 
-mod offset;
-
-use offset::Offset;
-
-const DEFAULT_MAX_STEPS: usize = 10_000;
+const DEFAULT_MAXCYCLES: usize = 10_000;
 
 /// An error occurred during loading or core creation
 #[derive(ThisError, Debug, PartialEq)]
@@ -37,13 +33,13 @@ pub enum ExecutionError {
 
     /// The maximum number of execution steps was reached
     #[error("max number of steps executed")]
-    StepLimitReached,
+    MaxCyclesReached,
 }
 
 /// The full memory core at a given point in time
 #[derive(Debug)]
 pub struct Core {
-    instructions: Box<[load_file::Instruction]>,
+    instructions: Box<[Instruction]>,
     entry_point: Offset,
     pointer: Offset,
     steps_taken: usize,
@@ -63,8 +59,7 @@ impl Core {
         }
 
         Ok(Self {
-            instructions: vec![load_file::Instruction::default(); core_size as usize]
-                .into_boxed_slice(),
+            instructions: vec![Instruction::default(); core_size as usize].into_boxed_slice(),
             entry_point: Offset::new(0, core_size),
             pointer: Offset::new(0, core_size),
             steps_taken: 0,
@@ -72,7 +67,7 @@ impl Core {
     }
 
     /// Clone and returns the next instruction to be executed.
-    fn next_instruction(&self) -> load_file::Instruction {
+    fn next_instruction(&self) -> Instruction {
         self.get_offset(self.pointer).clone()
     }
 
@@ -85,23 +80,33 @@ impl Core {
         self.instructions.len() as _
     }
 
-    /// Get an instruction from a given offset in the core
-    fn get(&self, index: i32) -> &load_file::Instruction {
+    /// Get an instruction from a given index in the core
+    fn get(&self, index: i32) -> &Instruction {
         &self.get_offset(self.offset(index))
     }
 
+    /// Get a mutable instruction from a given index in the core
+    fn get_mut(&mut self, index: i32) -> &mut Instruction {
+        self.get_offset_mut(self.offset(index))
+    }
+
     /// Get an instruction from a given offset in the core
-    fn get_offset(&self, offset: Offset) -> &load_file::Instruction {
+    fn get_offset(&self, offset: Offset) -> &Instruction {
         &self.instructions[offset.value() as usize]
     }
 
-    /// Write an instruction at a given offset into the core
-    fn set(&mut self, index: i32, value: load_file::Instruction) {
+    /// Get a mutable from a given offset in the core
+    fn get_offset_mut(&mut self, offset: Offset) -> &mut Instruction {
+        &mut self.instructions[offset.value() as usize]
+    }
+
+    /// Write an instruction at a given index into the core
+    fn set(&mut self, index: i32, value: Instruction) {
         self.set_offset(self.offset(index), value)
     }
 
     /// Write an instruction at a given offset into the core
-    fn set_offset(&mut self, index: Offset, value: load_file::Instruction) {
+    fn set_offset(&mut self, index: Offset, value: Instruction) {
         self.instructions[index.value() as usize] = value;
     }
 
@@ -131,10 +136,8 @@ impl Core {
 
     /// Run a single cycle of simulation.
     pub fn step(&mut self) -> Result<(), ExecutionError> {
-        use load_file::Opcode::*;
-
-        if self.steps_taken > DEFAULT_MAX_STEPS {
-            return Err(ExecutionError::StepLimitReached);
+        if self.steps_taken > DEFAULT_MAXCYCLES {
+            return Err(ExecutionError::MaxCyclesReached);
         }
 
         let instruction = self.next_instruction();
@@ -144,31 +147,53 @@ impl Core {
         // For now, we just treat everything as I modifier
         let a_field = instruction.a_field;
         let a_pointer = a_field.unwrap_value();
-        let a_instruction = self.get(a_pointer).clone();
-        let a_value = a_instruction;
+        let a_instruction = self.get(a_pointer);
+        let a_value = a_instruction.clone();
 
         let b_field = instruction.b_field;
         let b_pointer = b_field.unwrap_value();
-        let b_instruction = self.get(b_pointer).clone();
-        let b_value = b_instruction;
+        let b_instruction = self.get(b_pointer);
+        let b_value = b_instruction.clone();
+
+        // let mut write_to_dest = |to_write: WriteInstruction| {
+        //     if let Some(opcode) = to_write.opcode {
+        //         b_instruction.opcode = opcode
+        //     }
+        //     if let Some(value) = to_write.a_field {
+        //         b_instruction.a_field.set_value(value)
+        //     }
+        //     if let Some(value) = to_write.b_field {
+        //         b_instruction.b_field.set_value(value)
+        //     }
+        // };
 
         // See docs/icws94.txt:1113 for detailed description of each opcode
         match instruction.opcode {
-            Cmp | Seq => {
+            Opcode::Add => self.add(a_value, b_value, b_pointer),
+            Opcode::Cmp | Opcode::Seq => {
                 if a_value == b_value {
                     self.pointer += 1;
                 }
             }
-            Div => self.div(a_value, b_value, b_pointer)?,
-            Dat => return Err(ExecutionError::ExecuteDat),
-            Jmp => {
+            Opcode::Dat => return Err(ExecutionError::ExecuteDat),
+            Opcode::Div => self.div(a_value, b_value, b_pointer)?,
+            Opcode::Djn => self.djn(a_value, b_value),
+            Opcode::Jmn => todo!(),
+            Opcode::Jmp => {
                 self.pointer += a_pointer;
                 self.steps_taken += 1;
                 // Return early to avoid an extra increment of the program counter
                 return Ok(());
             }
-            Mov => self.mov(a_value, b_pointer),
-            _ => todo!("Opcode not yet implemented"),
+            Opcode::Jmz => todo!(),
+            Opcode::Mod => todo!(),
+            Opcode::Mov => self.mov(a_value, b_pointer),
+            Opcode::Mul => todo!(),
+            Opcode::Nop => todo!(),
+            Opcode::Slt => todo!(),
+            Opcode::Sne => todo!(),
+            Opcode::Spl => todo!(),
+            Opcode::Sub => todo!(),
         }
 
         self.pointer += 1;
@@ -176,27 +201,34 @@ impl Core {
         Ok(())
     }
 
+    fn add(&mut self, lhs: Instruction, rhs: Instruction, dest_index: i32) {
+        let a_field = self.offset(lhs.a_field.unwrap_value()) + rhs.a_field.unwrap_value();
+        let b_field = self.offset(lhs.b_field.unwrap_value()) + rhs.b_field.unwrap_value();
+        let dest = self.get_mut(dest_index);
+        dest.a_field.set_value(a_field);
+        dest.b_field.set_value(b_field);
+    }
+
     fn div(
         &mut self,
-        dividend: load_file::Instruction,
-        divisor: load_file::Instruction,
-        dest: i32,
+        dividend: Instruction,
+        divisor: Instruction,
+        dest_index: i32,
     ) -> Result<(), ExecutionError> {
-        let mut result = self.get(dest).clone();
-
-        let a_dividend = dividend.a_field.unwrap_value();
+        let a_dividend = self.offset(dividend.a_field.unwrap_value());
         let a_divisor = divisor.a_field.unwrap_value();
-        if a_divisor != 0 {
-            result.a_field.value = load_file::Value::Literal(a_dividend / a_divisor);
-        }
 
-        let b_dividend = dividend.b_field.unwrap_value();
+        let b_dividend = self.offset(dividend.b_field.unwrap_value());
         let b_divisor = divisor.b_field.unwrap_value();
-        if b_divisor != 0 {
-            result.b_field.value = load_file::Value::Literal(b_dividend / b_divisor);
-        }
 
-        self.set(dest, result);
+        let dest = self.get_mut(dest_index);
+
+        if a_divisor != 0 {
+            dest.a_field.set_value(a_dividend / a_divisor);
+        }
+        if b_divisor != 0 {
+            dest.b_field.set_value(b_dividend / b_divisor);
+        }
 
         if a_divisor == 0 || b_divisor == 0 {
             Err(ExecutionError::DivideByZero)
@@ -205,9 +237,15 @@ impl Core {
         }
     }
 
-    fn mov(&mut self, value: load_file::Instruction, dest: i32) {
-        let dest = self.pointer + dest;
-        self.set_offset(dest, value)
+    fn djn(&mut self, a_value: Instruction, b_value: Instruction) {
+        todo!()
+    }
+
+    fn mov(&mut self, value: Instruction, dest_index: i32) {
+        let dest = self.get_mut(dest_index);
+        dest.opcode = value.opcode;
+        dest.a_field = value.a_field;
+        dest.b_field = value.b_field;
     }
 }
 
@@ -216,7 +254,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use test_case::test_case;
 
-    use corewars_core::load_file::{Field, Instruction, Opcode, Program};
+    use corewars_core::load_file::{Field, Program};
 
     use super::*;
 
