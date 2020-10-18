@@ -95,6 +95,14 @@ impl Field {
     pub fn unwrap_value(&self) -> i32 {
         self.value.unwrap()
     }
+
+    pub fn as_offset(&self, core_size: u32) -> Offset {
+        Offset::new(self.unwrap_value(), core_size)
+    }
+
+    pub fn set_value(&mut self, offset: Offset) {
+        self.value = Value::Literal(offset.value() as i32)
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
