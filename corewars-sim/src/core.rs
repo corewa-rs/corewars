@@ -1,9 +1,11 @@
 //! A [`Core`](Core) is a block of "memory" in which Redcode programs reside.
 //! This is where all simulation of a Core Wars battle takes place.
 
+use std::cell::Cell;
+
 use thiserror::Error as ThisError;
 
-use corewars_core::load_file::{self, Instruction, Offset, Opcode};
+use corewars_core::load_file::{self, Instruction, Modifier, Offset, Opcode};
 use corewars_core::Warrior;
 
 const DEFAULT_MAXCYCLES: usize = 10_000;
@@ -41,7 +43,7 @@ pub enum ExecutionError {
 pub struct Core {
     instructions: Box<[Instruction]>,
     entry_point: Offset,
-    pointer: Offset,
+    program_counter: Offset,
     steps_taken: usize,
 }
 
@@ -61,14 +63,14 @@ impl Core {
         Ok(Self {
             instructions: vec![Instruction::default(); core_size as usize].into_boxed_slice(),
             entry_point: Offset::new(0, core_size),
-            pointer: Offset::new(0, core_size),
+            program_counter: Offset::new(0, core_size),
             steps_taken: 0,
         })
     }
 
     /// Clone and returns the next instruction to be executed.
     fn next_instruction(&self) -> Instruction {
-        self.get_offset(self.pointer).clone()
+        self.get_offset(self.program_counter).clone()
     }
 
     fn offset<T: Into<i32>>(&self, value: T) -> Offset {
@@ -129,9 +131,88 @@ impl Core {
             None => 0,
         });
 
-        self.pointer = self.entry_point;
+        self.program_counter = self.entry_point;
 
         Ok(())
+    }
+
+    fn perform_opcode<F>(&mut self, instruction: Instruction, field_op: F)
+    where
+        F: FnMut(Offset, Offset) -> Option<Offset>,
+    {
+        self.perform_instruction(instruction, field_op, Option::<fn(_, &mut _)>::None)
+    }
+
+    fn perform_instruction<F, I>(
+        &mut self,
+        instruction: Instruction,
+        mut field_op: F,
+        instruction_op: Option<I>,
+    ) where
+        F: FnMut(Offset, Offset) -> Option<Offset>,
+        I: FnMut(Instruction, &mut Instruction),
+    {
+        // TODO handle address modes during deref of these "pointer"s
+        // For now it's just direct addressing mode
+
+        let a_pointer = instruction.a_field.unwrap_value();
+        let a_value = self.get_offset(self.program_counter + a_pointer).clone();
+        let a_value_a_offset = self.offset(a_value.a_field.unwrap_value());
+        let a_value_b_offset = self.offset(a_value.b_field.unwrap_value());
+
+        let b_pointer = instruction.b_field.unwrap_value();
+        let b_value = self.get_offset(self.program_counter + b_pointer).clone();
+        let b_value_a_offset = self.offset(b_value.a_field.unwrap_value());
+        let b_value_b_offset = self.offset(b_value.b_field.unwrap_value());
+
+        let b_instruction = self.get_mut(b_pointer);
+
+        match instruction.modifier {
+            Modifier::A => {
+                if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
+                    b_instruction.a_field.set_value(res);
+                }
+            }
+            Modifier::B => {
+                if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
+                    b_instruction.b_field.set_value(res);
+                }
+            }
+            Modifier::AB => {
+                if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
+                    b_instruction.b_field.set_value(res);
+                }
+            }
+            Modifier::BA => {
+                if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
+                    b_instruction.a_field.set_value(res);
+                }
+            }
+            Modifier::F | Modifier::I => {
+                if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
+                    b_instruction.a_field.set_value(a_res);
+                }
+                if let Some(b_res) = field_op(a_value_b_offset, b_value_b_offset) {
+                    b_instruction.b_field.set_value(b_res);
+                }
+
+                if instruction.modifier == Modifier::I {
+                    if let Some(mut instruction_op) = instruction_op {
+                        {
+                            instruction_op(instruction, b_instruction);
+                        }
+                    }
+                }
+            }
+            Modifier::X => {
+                if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
+                    b_instruction.a_field.set_value(a_res);
+                }
+                if let Some(b_res) = field_op(a_value_a_offset, b_value_b_offset) {
+                    b_instruction.b_field.set_value(b_res);
+                }
+            }
+        }
     }
 
     /// Run a single cycle of simulation.
@@ -141,53 +222,62 @@ impl Core {
         }
 
         let instruction = self.next_instruction();
-
-        // TODO: Use modifier for resolving which part of the instruction gets used
-        // for _value see docs/icws94.txt:891 for definitions of {A,B}-{value,target}
-        // For now, we just treat everything as I modifier
-        let a_field = instruction.a_field;
-        let a_pointer = a_field.unwrap_value();
-        let a_instruction = self.get(a_pointer);
-        let a_value = a_instruction.clone();
-
-        let b_field = instruction.b_field;
-        let b_pointer = b_field.unwrap_value();
-        let b_instruction = self.get(b_pointer);
-        let b_value = b_instruction.clone();
-
-        // let mut write_to_dest = |to_write: WriteInstruction| {
-        //     if let Some(opcode) = to_write.opcode {
-        //         b_instruction.opcode = opcode
-        //     }
-        //     if let Some(value) = to_write.a_field {
-        //         b_instruction.a_field.set_value(value)
-        //     }
-        //     if let Some(value) = to_write.b_field {
-        //         b_instruction.b_field.set_value(value)
-        //     }
-        // };
+        let zero_offset = self.offset(0);
+        let extra_increment = Cell::new(zero_offset);
 
         // See docs/icws94.txt:1113 for detailed description of each opcode
         match instruction.opcode {
-            Opcode::Add => self.add(a_value, b_value, b_pointer),
+            Opcode::Add => self.perform_opcode(instruction, |a, b| Some(a + b)),
             Opcode::Cmp | Opcode::Seq => {
-                if a_value == b_value {
-                    self.pointer += 1;
-                }
+                extra_increment.set(self.offset(1));
+                // For e.g. F and I, all fields must match
+                self.perform_instruction(
+                    instruction,
+                    |a, b| {
+                        if a != b {
+                            extra_increment.set(zero_offset)
+                        }
+                        None
+                    },
+                    Some(|a_instruction, b_instruction: &mut _| {
+                        if a_instruction != *b_instruction {
+                            extra_increment.set(zero_offset);
+                        }
+                    }),
+                )
             }
             Opcode::Dat => return Err(ExecutionError::ExecuteDat),
-            Opcode::Div => self.div(a_value, b_value, b_pointer)?,
-            Opcode::Djn => self.djn(a_value, b_value),
+            Opcode::Div => {
+                let mut div_result = Ok(());
+                self.perform_opcode(instruction, |a, b| {
+                    if b.value() == 0 {
+                        div_result = Err(ExecutionError::DivideByZero);
+                        None
+                    } else {
+                        Some(a / b)
+                    }
+                });
+                div_result?;
+            }
+            Opcode::Djn => todo!(),
             Opcode::Jmn => todo!(),
             Opcode::Jmp => {
-                self.pointer += a_pointer;
-                self.steps_taken += 1;
-                // Return early to avoid an extra increment of the program counter
-                return Ok(());
+                // Subtract one since we always increment by one anyway
+                self.program_counter += instruction.a_field.unwrap_value() - 1;
             }
+
             Opcode::Jmz => todo!(),
             Opcode::Mod => todo!(),
-            Opcode::Mov => self.mov(a_value, b_pointer),
+            Opcode::Mov => self.perform_instruction(
+                instruction,
+                |a_value, _b_value| Some(a_value),
+                Some(
+                    |a_instruction: Instruction, b_instruction: &mut Instruction| {
+                        b_instruction.modifier = a_instruction.modifier;
+                        b_instruction.opcode = a_instruction.opcode;
+                    },
+                ),
+            ),
             Opcode::Mul => todo!(),
             Opcode::Nop => todo!(),
             Opcode::Slt => todo!(),
@@ -196,56 +286,10 @@ impl Core {
             Opcode::Sub => todo!(),
         }
 
-        self.pointer += 1;
+        self.program_counter += 1;
+        self.program_counter += extra_increment.get();
         self.steps_taken += 1;
         Ok(())
-    }
-
-    fn add(&mut self, lhs: Instruction, rhs: Instruction, dest_index: i32) {
-        let a_field = self.offset(lhs.a_field.unwrap_value()) + rhs.a_field.unwrap_value();
-        let b_field = self.offset(lhs.b_field.unwrap_value()) + rhs.b_field.unwrap_value();
-        let dest = self.get_mut(dest_index);
-        dest.a_field.set_value(a_field);
-        dest.b_field.set_value(b_field);
-    }
-
-    fn div(
-        &mut self,
-        dividend: Instruction,
-        divisor: Instruction,
-        dest_index: i32,
-    ) -> Result<(), ExecutionError> {
-        let a_dividend = self.offset(dividend.a_field.unwrap_value());
-        let a_divisor = divisor.a_field.unwrap_value();
-
-        let b_dividend = self.offset(dividend.b_field.unwrap_value());
-        let b_divisor = divisor.b_field.unwrap_value();
-
-        let dest = self.get_mut(dest_index);
-
-        if a_divisor != 0 {
-            dest.a_field.set_value(a_dividend / a_divisor);
-        }
-        if b_divisor != 0 {
-            dest.b_field.set_value(b_dividend / b_divisor);
-        }
-
-        if a_divisor == 0 || b_divisor == 0 {
-            Err(ExecutionError::DivideByZero)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn djn(&mut self, a_value: Instruction, b_value: Instruction) {
-        todo!()
-    }
-
-    fn mov(&mut self, value: Instruction, dest_index: i32) {
-        let dest = self.get_mut(dest_index);
-        dest.opcode = value.opcode;
-        dest.a_field = value.a_field;
-        dest.b_field = value.b_field;
     }
 }
 
@@ -258,15 +302,12 @@ mod tests {
 
     use super::*;
 
-    fn build_core(opcode: Opcode, a_direct: i32, b_direct: i32) -> Core {
-        let mut core = Core::new(4).unwrap();
-
-        let instruction =
-            Instruction::new(opcode, Field::direct(a_direct), Field::direct(b_direct));
+    fn build_core(first_instruction: Instruction) -> Core {
+        let mut core = Core::new(12).unwrap();
 
         let warrior = Warrior {
             program: Program {
-                instructions: vec![instruction],
+                instructions: vec![first_instruction],
                 origin: None,
             },
             ..Default::default()
@@ -325,18 +366,20 @@ mod tests {
     }
 
     #[test]
-    fn wrap_pointer_on_overflow() {
-        let mut core = build_core(Opcode::Mov, 0, 1);
+    fn wrap_program_counter_on_overflow() {
+        let mut core = build_core(Instruction::new(
+            Opcode::Mov,
+            Field::direct(0),
+            Field::direct(1),
+        ));
 
-        assert_eq!(core.pointer.value(), 0);
-        assert!(core.step().is_ok());
-        assert_eq!(core.pointer.value(), 1);
-        assert!(core.step().is_ok());
-        assert_eq!(core.pointer.value(), 2);
-        assert!(core.step().is_ok());
-        assert_eq!(core.pointer.value(), 3);
-        assert!(core.step().is_ok());
-        assert_eq!(core.pointer.value(), 0);
+        for i in 0..core.size() {
+            assert_eq!(core.program_counter.value(), i);
+            core.step().unwrap();
+        }
+
+        core.step().unwrap();
+        assert_eq!(core.program_counter.value(), 0);
     }
 
     // =========================================================================
@@ -352,7 +395,11 @@ mod tests {
 
     #[test]
     fn execute_div() {
-        let mut core = build_core(Opcode::Div, 1, 2);
+        let mut core = build_core(Instruction::new(
+            Opcode::Div,
+            Field::direct(1),
+            Field::direct(2),
+        ));
         core.set(
             1,
             Instruction::new(Opcode::Dat, Field::direct(8), Field::direct(7)),
@@ -362,7 +409,7 @@ mod tests {
             Instruction::new(Opcode::Dat, Field::direct(4), Field::direct(2)),
         );
 
-        assert!(core.step().is_ok());
+        core.step().unwrap();
         assert_eq!(
             *core.get(2),
             Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(3)),
@@ -370,70 +417,71 @@ mod tests {
     }
 
     #[test_case(
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(3))
-            ;
-            "a_zero"
-        )]
+        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2)),
+        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(3))
+        ; "a_zero"
+    )]
     #[test_case(
-            Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0))
-            ;
-            "b_zero"
-        )]
+        Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0)),
+        Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0))
+        ; "b_zero"
+    )]
     #[test_case(
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
-            ;
-            "both_zero"
-        )]
+        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
+        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
+        ; "both_zero"
+    )]
     fn execute_div_by_zero(divisor: Instruction, result: Instruction) {
         use pretty_assertions::assert_eq;
 
-        let mut core = build_core(Opcode::Div, 4, 6);
+        let mut core = build_core(Instruction {
+            opcode: Opcode::Div,
+            modifier: Modifier::F,
+            a_field: Field::direct(1),
+            b_field: Field::direct(2),
+        });
+
         core.set(
             1,
-            Instruction::new(Opcode::Dat, Field::direct(1), Field::direct(1)),
+            Instruction::new(Opcode::Dat, Field::direct(4), Field::direct(6)),
         );
         core.set(2, divisor);
 
         assert_eq!(core.step().unwrap_err(), ExecutionError::DivideByZero);
-        assert_eq!(*core.get(2), result)
+        assert_eq!(core.get(2), &result)
     }
 
     #[test]
     fn execute_mov() {
-        let instruction = Instruction::new(Opcode::Mov, Field::direct(0), Field::direct(1));
-        let mut core = build_core(
-            instruction.opcode,
-            instruction.a_field.unwrap_value(),
-            instruction.b_field.unwrap_value(),
-        );
+        // TODO
 
-        assert!(core.step().is_ok());
+        let instruction = Instruction {
+            opcode: Opcode::Mov,
+            modifier: Modifier::I,
+            a_field: Field::direct(0),
+            b_field: Field::direct(1),
+        };
+        let mut core = build_core(instruction.clone());
+
+        dbg!(&core);
+
+        core.step().unwrap();
         assert_eq!(core.next_instruction(), instruction);
-        assert!(core.step().is_ok());
+        core.step().unwrap();
+        dbg!(&core);
         assert_eq!(core.next_instruction(), instruction);
     }
 
     #[test]
     fn execute_jmp() {
-        let instruction = Instruction::new(Opcode::Jmp, Field::immediate(2), Field::immediate(0));
-        let mut core = Core::new(4).unwrap();
-        let warrior = Warrior {
-            program: Program {
-                instructions: vec![instruction.clone()],
-                origin: None,
-            },
-            ..Default::default()
-        };
-        core.load_warrior(&warrior).expect("Failed to load warrior");
+        let instruction = Instruction::new(Opcode::Jmp, Field::immediate(3), Field::immediate(0));
+        let mut core = build_core(instruction.clone());
 
-        assert!(core.step().is_ok());
+        core.step().unwrap();
 
-        assert_eq!(core.pointer.value(), 2);
+        assert_eq!(core.program_counter.value(), 3);
         assert_eq!(
-            &core.instructions[..],
+            &core.instructions[..4],
             &vec![
                 instruction,
                 Default::default(),
