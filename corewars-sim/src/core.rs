@@ -178,7 +178,7 @@ impl Core {
         OptionalInstructionOp: Into<Option<InstructionOp>>,
     {
         // TODO handle address modes during deref of these "pointer"s
-        // For now it's just direct addressing mode
+        // For now it's always treated as direct addressing mode
 
         let a_value_a_offset = self.offset(self.a_instruction(&instruction).a_field.unwrap_value());
         let a_value_b_offset = self.offset(self.a_instruction(&instruction).b_field.unwrap_value());
@@ -391,12 +391,13 @@ mod tests {
             core.step().unwrap();
         }
 
-        core.step().unwrap();
         assert_eq!(core.program_counter.value(), 0);
+        core.step().unwrap();
+        assert_eq!(core.program_counter.value(), 1);
     }
 
     // =========================================================================
-    // Begin opcode tests
+    // Begin opcode-specific tests
     // =========================================================================
 
     #[test]
@@ -464,15 +465,12 @@ mod tests {
         };
         let mut core = build_core("mov.i $0, $1");
 
-        dbg!(&core.instructions[..4]);
         assert_eq!(core.current_instruction(), instruction);
 
         core.step().unwrap();
-        dbg!(&core.instructions[..4]);
         assert_eq!(core.current_instruction(), instruction);
 
         core.step().unwrap();
-        dbg!(&core.instructions[..4]);
         assert_eq!(core.current_instruction(), instruction);
     }
 
@@ -492,5 +490,49 @@ mod tests {
                 Default::default()
             ][..]
         );
+    }
+
+    #[test_case(
+        "
+        cmp.f $1, $2
+        dat #0, #1
+        dat #0, #1
+        ",
+        2
+        ; "cmp_equal"
+    )]
+    #[test_case(
+        "
+        seq.f $1, $2
+        dat #0, #1
+        dat #0, #1
+        ",
+        2
+        ; "seq_equal"
+    )]
+    #[test_case(
+        "
+        cmp.f $1, $2
+        dat #0, #1
+        dat #1, #1
+        ",
+        1
+        ; "cmp_unequal"
+    )]
+    #[test_case(
+        "
+        seq.f $1, $2
+        dat #0, #1
+        dat #2, #0
+        ",
+        1
+        ; "seq_unequal"
+    )]
+    fn execute_seq(program: &str, expected_program_counter: u32) {
+        let mut core = build_core(program);
+
+        core.step().unwrap();
+
+        pretty_assertions::assert_eq!(core.program_counter.value(), expected_program_counter);
     }
 }
