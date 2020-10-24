@@ -16,7 +16,7 @@ macro_rules! enum_string {
     ($vis:vis $name:ident {
         $($variant:ident => $value:expr),* $(,)?
     }) => {
-        #[derive(Copy, Clone, Debug, PartialEq)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         $vis enum $name {
             $($variant,)*
         }

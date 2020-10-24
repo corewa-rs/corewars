@@ -37,3 +37,28 @@ fn parse_impl(input: &str) -> std::result::Result<Warrior, Error> {
 
     Ok(output.state.warrior)
 }
+
+/// Parse a warrior inline (no strings needed) and return the result. of `parse`.
+/// You may find it helpful to write comments with `; //` for syntax highlighting.
+///
+/// # Examples
+///
+/// ```
+/// use corewars_parser::inline_warrior;
+///
+/// let warrior = inline_warrior! {
+///     begin:  add # 1, @ 2 ;// okay hmm doesn't work because newlines
+///     sub 3, 4
+/// };
+///
+/// dbg!(&warrior);
+/// assert_eq!(warrior.unwrap().len(), 2);
+/// ```
+// TODO make a proc-macro like `inline_python` so it can fail at compile time
+// https://blog.m-ou.se/writing-python-inside-rust-1/ for details on how
+#[macro_export]
+macro_rules! inline_warrior {
+    ($($code:tt)*) => {
+        $crate::parse(stringify!($($code)*));
+    }
+}
