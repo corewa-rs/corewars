@@ -1,31 +1,23 @@
 use std::fmt;
 
-/// Type alias for signed integer offset. Even though all offsets are modulo
-/// `CORESIZE`, they may be larger before `CORESIZE` is known.
-pub type Offset = i32;
-
-/// Type alias for unsigned integer offset. Even though all offsets are modulo
-/// `CORESIZE`, they may be larger before `CORESIZE` is known.
-pub type UOffset = u32;
-
 enum_string!(pub Opcode {
-    Dat => "DAT",
-    Mov => "MOV",
     Add => "ADD",
-    Sub => "SUB",
-    Mul => "MUL",
+    Cmp => "CMP",
+    Dat => "DAT",
     Div => "DIV",
-    Mod => "MOD",
+    Djn => "DJN",
+    Jmn => "JMN",
     Jmp => "JMP",
     Jmz => "JMZ",
-    Jmn => "JMN",
-    Djn => "DJN",
-    Cmp => "CMP",
-    Seq => "SEQ",
-    Sne => "SNE",
-    Slt => "SLT",
-    Spl => "SPL",
+    Mod => "MOD",
+    Mov => "MOV",
+    Mul => "MUL",
     Nop => "NOP",
+    Seq => "SEQ",
+    Slt => "SLT",
+    Sne => "SNE",
+    Spl => "SPL",
+    Sub => "SUB",
 });
 
 enum_string!(pub PseudoOpcode {
@@ -104,7 +96,22 @@ impl Default for AddressMode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Label(String),
-    Literal(Offset),
+    Literal(i32),
+}
+
+impl Value {
+    pub fn unwrap(&self) -> i32 {
+        match *self {
+            Value::Literal(i32) => i32,
+            _ => panic!("unwrapped value of a Value without a literal i32"),
+        }
+    }
+}
+
+impl From<i32> for Value {
+    fn from(i32: i32) -> Self {
+        Self::Literal(i32)
+    }
 }
 
 impl Default for Value {

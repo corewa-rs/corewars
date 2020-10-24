@@ -3,16 +3,14 @@
 //! Most functions here panic instead of returning Result because at this point
 //! any errors should have been caught earlier during initial parsing.
 
-use corewars_core::load_file::Offset;
-
 use crate::grammar::*;
 
 /// Evaluate an Expression. Panics if the expression tree is invalid, which
 /// should only happen due to programmer error (either the grammar or this code
 /// is incorrect).
-pub fn evaluate(pair: Pair) -> Offset {
+pub fn evaluate(pair: Pair) -> i32 {
     let mut result = None;
-    let mut boolean_op: fn(Offset, Offset) -> Offset =
+    let mut boolean_op: fn(i32, i32) -> i32 =
         |_, _| unreachable!("BooleanOp called before first operand");
 
     for inner_pair in pair.into_inner() {
@@ -23,8 +21,8 @@ pub fn evaluate(pair: Pair) -> Offset {
             }
             Rule::BooleanOp => {
                 boolean_op = match inner_pair.as_str() {
-                    "&&" => |a, b| (a != 0 && b != 0) as Offset,
-                    "||" => |a, b| (a != 0 || b != 0) as Offset,
+                    "&&" => |a, b| (a != 0 && b != 0) as i32,
+                    "||" => |a, b| (a != 0 || b != 0) as i32,
                     op => unreachable!("Invalid BooleanOp {:?}", op),
                 }
             }
@@ -35,9 +33,9 @@ pub fn evaluate(pair: Pair) -> Offset {
     result.unwrap_or_else(|| panic!("Invalid Expression"))
 }
 
-fn evaluate_value(pair: Pair) -> Offset {
+fn evaluate_value(pair: Pair) -> i32 {
     let mut result = None;
-    let mut compare_op: fn(Offset, Offset) -> Offset =
+    let mut compare_op: fn(i32, i32) -> i32 =
         |_, _| unreachable!("CompareOp called before first operand");
 
     for inner_pair in pair.into_inner() {
@@ -49,12 +47,12 @@ fn evaluate_value(pair: Pair) -> Offset {
             Rule::CompareOp => {
                 // Casting bool to integer is always 0 or 1
                 compare_op = match inner_pair.as_str() {
-                    ">" => |a, b| (a > b) as Offset,
-                    ">=" => |a, b| (a >= b) as Offset,
-                    "<" => |a, b| (a < b) as Offset,
-                    "<=" => |a, b| (a <= b) as Offset,
-                    "==" => |a, b| (a == b) as Offset,
-                    "!=" => |a, b| (a != b) as Offset,
+                    ">" => |a, b| (a > b) as i32,
+                    ">=" => |a, b| (a >= b) as i32,
+                    "<" => |a, b| (a < b) as i32,
+                    "<=" => |a, b| (a <= b) as i32,
+                    "==" => |a, b| (a == b) as i32,
+                    "!=" => |a, b| (a != b) as i32,
                     op => unreachable!("Invalid CompareOp {:?}", op),
                 };
             }
@@ -65,10 +63,9 @@ fn evaluate_value(pair: Pair) -> Offset {
     result.unwrap_or_else(|| panic!("Invalid Value"))
 }
 
-fn evaluate_sum(pair: Pair) -> Offset {
+fn evaluate_sum(pair: Pair) -> i32 {
     let mut result = None;
-    let mut add_op: fn(Offset, Offset) -> Offset =
-        |_, _| unreachable!("AddOp called before first operand");
+    let mut add_op: fn(i32, i32) -> i32 = |_, _| unreachable!("AddOp called before first operand");
 
     for inner_pair in pair.into_inner() {
         match inner_pair.as_rule() {
@@ -90,9 +87,9 @@ fn evaluate_sum(pair: Pair) -> Offset {
     result.unwrap_or_else(|| panic!("Invalid Sum"))
 }
 
-fn evaluate_product(pair: Pair) -> Offset {
+fn evaluate_product(pair: Pair) -> i32 {
     let mut result = None;
-    let mut mul_op: fn(Offset, Offset) -> Offset =
+    let mut mul_op: fn(i32, i32) -> i32 =
         |_, _| unreachable!("MultiplyOp called before first operand");
 
     for inner_pair in pair.into_inner() {
@@ -120,9 +117,9 @@ fn evaluate_product(pair: Pair) -> Offset {
     result.unwrap_or_else(|| panic!("Invalid Product"))
 }
 
-fn evaluate_unary(pair: Pair) -> Offset {
+fn evaluate_unary(pair: Pair) -> i32 {
     let mut result = None;
-    let mut unary_ops: Vec<fn(Offset) -> Offset> = Vec::new();
+    let mut unary_ops: Vec<fn(i32) -> i32> = Vec::new();
 
     for inner_pair in pair.into_inner() {
         match inner_pair.as_rule() {
@@ -131,7 +128,7 @@ fn evaluate_unary(pair: Pair) -> Offset {
             Rule::UnaryOp => match inner_pair.as_str() {
                 "-" => unary_ops.push(|x| -x),
                 "+" => (), // Identity function
-                "!" => unary_ops.push(|x| (x == 0) as Offset),
+                "!" => unary_ops.push(|x| (x == 0) as i32),
                 other => unreachable!("Invalid unary operator {:?}", other),
             },
             other => unreachable!(
@@ -149,9 +146,9 @@ fn evaluate_unary(pair: Pair) -> Offset {
     result.unwrap_or_else(|| panic!("UnaryExpr did not contain a value"))
 }
 
-fn evaluate_number(pair: Pair) -> Offset {
+fn evaluate_number(pair: Pair) -> i32 {
     assert!(pair.as_rule() == Rule::Number);
-    Offset::from_str_radix(pair.as_str(), 10)
+    i32::from_str_radix(pair.as_str(), 10)
         .unwrap_or_else(|_| panic!("Invalid Number: {:?}", pair.as_str()))
 }
 
@@ -188,7 +185,7 @@ mod test {
     // Boolean
     #[test_case("0 && 1" => 0; "boolean and")]
     #[test_case("0 || 1" => 1; "boolean or")]
-    fn evaluates_expressions(input: &str) -> Offset {
+    fn evaluates_expressions(input: &str) -> i32 {
         let pair = parse_expression(input).expect("Failed to parse as Expression");
 
         evaluate(pair)

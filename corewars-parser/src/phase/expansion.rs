@@ -9,8 +9,6 @@ use std::collections::{HashMap, HashSet};
 
 use pest::Span;
 
-use corewars_core::load_file::{Offset, UOffset};
-
 use crate::grammar;
 
 /// The result of expansion and substitution
@@ -179,7 +177,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
     }
 }
 
-fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: UOffset) {
+fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u32) {
     let tokenized_line = grammar::tokenize(&line);
 
     for token in tokenized_line.iter() {
@@ -189,7 +187,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: U
             match label_value {
                 Some(&LabelValue::Offset(offset)) => {
                     // FIXME: off by one error here for substitution within an expression
-                    let relative_offset = (offset as Offset) - (from_offset as Offset);
+                    let relative_offset = (offset as i32) - (from_offset as i32);
                     let span = token.as_span();
 
                     let range = span.start()..span.end();
@@ -213,7 +211,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: U
 
 #[derive(Debug, Eq, PartialEq)]
 enum LabelValue {
-    Offset(UOffset),
+    Offset(u32),
     Substitution(Vec<String>),
 }
 
@@ -260,7 +258,7 @@ impl Collector {
         self.pending_labels.insert(label.to_owned());
     }
 
-    fn resolve_pending_labels(&mut self, offset: UOffset) {
+    fn resolve_pending_labels(&mut self, offset: u32) {
         let mut result = HashMap::new();
 
         let pending_labels = std::mem::take(&mut self.pending_labels);

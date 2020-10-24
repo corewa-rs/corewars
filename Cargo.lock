@@ -152,6 +152,7 @@ version = "0.2.0"
 dependencies = [
  "itertools",
  "lazy_static",
+ "pretty_assertions",
 ]
 
 [[package]]
@@ -168,6 +169,17 @@ dependencies = [
  "test-generator",
  "textwrap 0.11.0",
  "textwrap-macros",
+ "thiserror",
+]
+
+[[package]]
+name = "corewars-sim"
+version = "0.2.0"
+dependencies = [
+ "corewars-core",
+ "corewars-parser",
+ "pretty_assertions",
+ "test-case",
  "thiserror",
 ]
 

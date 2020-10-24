@@ -3,10 +3,10 @@
 
 use std::{collections::HashMap, fmt};
 
-use super::{Instruction, PseudoOpcode, UOffset};
+use super::{Instruction, PseudoOpcode};
 
 pub type Instructions = Vec<Instruction>;
-pub type LabelMap = HashMap<String, usize>;
+pub type LabelMap = HashMap<String, u32>;
 
 /// A parsed Redcode program, which can be loaded into a core for execution
 #[derive(Default, PartialEq)]
@@ -16,7 +16,7 @@ pub struct Program {
     pub instructions: Instructions,
 
     /// The program's entry point as an instruction index
-    pub origin: Option<UOffset>,
+    pub origin: Option<u32>,
 }
 
 impl Program {

@@ -9,6 +9,7 @@ use std::result::Result as StdResult;
 /// `Result` mimics the `std::result::Result` type, but each variant also carries
 /// zero or more [`Warning`](Warning)s with it.
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Result<T> {
     /// Contains the success value and zero or more warnings
     Ok(T, Vec<Warning>),
@@ -26,6 +27,22 @@ impl<T> Result<T> {
     /// Create an `Err` variant from an error.
     pub fn err(err: Error) -> Self {
         Self::Err(err, Vec::new())
+    }
+
+    /// Unwrap the parse result, panicking if it was not an `Ok`.
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::Ok(value, _) => value,
+            Self::Err(err, _) => panic!("called `Result::unwrap()` on an `Err` value: {:?}", &err),
+        }
+    }
+
+    /// Unwrap the parse result, panicking with the given mesasge if it was not an `Ok`.
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Self::Ok(value, _) => value,
+            Self::Err(err, _) => panic!("{}: {:?}", msg, &err),
+        }
     }
 }
 
