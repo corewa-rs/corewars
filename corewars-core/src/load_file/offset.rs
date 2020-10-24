@@ -90,6 +90,7 @@ impl_offset_op! { Sub::sub, SubAssign::sub_assign }
 impl_offset_op! { Mul::mul, MulAssign::mul_assign }
 impl_offset_op! { Div::div, DivAssign::div_assign }
 
+/// Implement a `std::ops` operation for `Offset` and another type
 macro_rules! impl_op {
     ($rhs:ty, $op_trait:ident :: $op:ident , $assign_trait:ident :: $assign:ident ) => {
         impl $op_trait<$rhs> for Offset {

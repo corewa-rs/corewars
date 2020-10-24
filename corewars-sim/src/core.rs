@@ -1,6 +1,9 @@
 //! A [`Core`](Core) is a block of "memory" in which Redcode programs reside.
 //! This is where all simulation of a Core Wars battle takes place.
 
+// TODO remove this once this lib is hooked up the CLI
+#![allow(dead_code)]
+
 use std::cell::Cell;
 
 use thiserror::Error as ThisError;
