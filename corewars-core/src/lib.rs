@@ -6,4 +6,4 @@ mod util;
 pub mod load_file;
 
 // Re-exports
-pub use crate::load_file::Warrior;
+pub use load_file::Warrior;
