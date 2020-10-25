@@ -2,24 +2,8 @@
 
 use corewars_core::load_file::{Instruction, Modifier, Offset};
 
+use super::address;
 use super::Core;
-
-// These helper functions are based on definitions in docs/icws94.txt:891
-
-fn a_instruction(core: &Core, instruction: &Instruction) -> Instruction {
-    let a_pointer = instruction.a_field.unwrap_value();
-    core.get_offset(core.program_counter + a_pointer).clone()
-}
-
-fn b_instruction(core: &Core, instruction: &Instruction) -> Instruction {
-    let b_pointer = instruction.b_field.unwrap_value();
-    core.get_offset(core.program_counter + b_pointer).clone()
-}
-
-fn b_target<'a>(core: &'a mut Core, instruction: &Instruction) -> &'a mut Instruction {
-    let b_pointer = instruction.b_field.unwrap_value();
-    core.get_offset_mut(core.program_counter + b_pointer)
-}
 
 /// Execute a given operation (`FieldOp`) on a given instruction. This is just a convenience
 /// shortcut for `execute_on_instruction` without an `InstructionOp`
@@ -44,40 +28,40 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
 {
     let instruction = core.current_instruction();
 
-    // TODO handle address modes during deref of these "pointer"s
-    // For now it's always treated as direct addressing mode
+    let a_instruction = address::a_instruction(core, &instruction);
+    let b_instruction = address::b_instruction(core, &instruction);
 
-    let a_value_a_offset = core.offset(a_instruction(core, &instruction).a_field.unwrap_value());
-    let a_value_b_offset = core.offset(a_instruction(core, &instruction).b_field.unwrap_value());
-    let b_value_a_offset = core.offset(b_instruction(core, &instruction).a_field.unwrap_value());
-    let b_value_b_offset = core.offset(b_instruction(core, &instruction).b_field.unwrap_value());
+    let a_value_a_offset = core.offset(a_instruction.a_field.unwrap_value());
+    let a_value_b_offset = core.offset(a_instruction.b_field.unwrap_value());
+    let b_value_a_offset = core.offset(b_instruction.a_field.unwrap_value());
+    let b_value_b_offset = core.offset(b_instruction.b_field.unwrap_value());
 
-    let a_instruction = a_instruction(core, &instruction);
+    let a_instruction = address::a_instruction(core, &instruction);
 
     match instruction.modifier {
         Modifier::A => {
             if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
-                b_target(core, &instruction).a_field.set_value(res);
+                address::b_target(core, &instruction).a_field.set_value(res);
             }
         }
         Modifier::B => {
             if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
-                b_target(core, &instruction).b_field.set_value(res);
+                address::b_target(core, &instruction).b_field.set_value(res);
             }
         }
         Modifier::AB => {
             if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
-                b_target(core, &instruction).b_field.set_value(res);
+                address::b_target(core, &instruction).b_field.set_value(res);
             }
         }
         Modifier::BA => {
             if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
-                b_target(core, &instruction).a_field.set_value(res);
+                address::b_target(core, &instruction).a_field.set_value(res);
             }
         }
         Modifier::F | Modifier::I => {
-            let b_instruction = b_instruction(core, &instruction);
-            let b_target = b_target(core, &instruction);
+            let b_instruction = address::b_instruction(core, &instruction);
+            let b_target = address::b_target(core, &instruction);
 
             if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
                 b_target.a_field.set_value(a_res);
@@ -96,7 +80,7 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
             }
         }
         Modifier::X => {
-            let b_target = b_target(core, &instruction);
+            let b_target = address::b_target(core, &instruction);
 
             if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
                 b_target.a_field.set_value(a_res);

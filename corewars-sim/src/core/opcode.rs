@@ -129,7 +129,7 @@ mod tests {
 
         let mut core = build_core(
             "
-            div.f   #1, #2
+            div.f   $1, $2
             dat     #4, #6
             ",
         );

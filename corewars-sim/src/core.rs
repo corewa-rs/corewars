@@ -9,6 +9,7 @@ use thiserror::Error as ThisError;
 use corewars_core::load_file::{self, Instruction, Offset};
 use corewars_core::Warrior;
 
+mod address;
 mod modifier;
 mod opcode;
 
