@@ -28,41 +28,41 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
 {
     let instruction = core.current_instruction();
 
-    let a_instruction = address::a_instruction(core, &instruction);
-    let b_instruction = address::b_instruction(core, &instruction);
+    let a_pointer = address::a_pointer(core, &instruction);
+    let a_instruction = core.get_offset(a_pointer).clone();
+
+    let b_pointer = address::b_pointer(core, &instruction);
+    let b_instruction = core.get_offset(b_pointer).clone();
 
     let a_value_a_offset = core.offset(a_instruction.a_field.unwrap_value());
     let a_value_b_offset = core.offset(a_instruction.b_field.unwrap_value());
     let b_value_a_offset = core.offset(b_instruction.a_field.unwrap_value());
     let b_value_b_offset = core.offset(b_instruction.b_field.unwrap_value());
 
-    let a_instruction = address::a_instruction(core, &instruction);
+    let b_target = core.get_offset_mut(b_pointer);
 
     match instruction.modifier {
         Modifier::A => {
             if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
-                address::b_target(core, &instruction).a_field.set_value(res);
+                b_target.a_field.set_value(res);
             }
         }
         Modifier::B => {
             if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
-                address::b_target(core, &instruction).b_field.set_value(res);
+                b_target.b_field.set_value(res);
             }
         }
         Modifier::AB => {
             if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
-                address::b_target(core, &instruction).b_field.set_value(res);
+                b_target.b_field.set_value(res);
             }
         }
         Modifier::BA => {
             if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
-                address::b_target(core, &instruction).a_field.set_value(res);
+                b_target.a_field.set_value(res);
             }
         }
         Modifier::F | Modifier::I => {
-            let b_instruction = address::b_instruction(core, &instruction);
-            let b_target = address::b_target(core, &instruction);
-
             if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
                 b_target.a_field.set_value(a_res);
             }
@@ -80,8 +80,6 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
             }
         }
         Modifier::X => {
-            let b_target = address::b_target(core, &instruction);
-
             if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
                 b_target.a_field.set_value(a_res);
             }
