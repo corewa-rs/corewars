@@ -4,12 +4,13 @@
 // TODO remove this once this lib is hooked up the CLI
 #![allow(dead_code)]
 
-use std::cell::Cell;
-
 use thiserror::Error as ThisError;
 
-use corewars_core::load_file::{self, Instruction, Modifier, Offset, Opcode};
+use corewars_core::load_file::{self, Instruction, Offset};
 use corewars_core::Warrior;
+
+mod modifier;
+mod opcode;
 
 const DEFAULT_MAXCYCLES: usize = 10_000;
 
@@ -141,176 +142,16 @@ impl Core {
         Ok(())
     }
 
-    // These methods are based on definitions in docs/icws94.txt:891
-
-    fn a_pointer(&self, instruction: &Instruction) -> i32 {
-        instruction.a_field.unwrap_value()
-    }
-
-    fn a_instruction(&self, instruction: &Instruction) -> Instruction {
-        self.get_offset(self.program_counter + self.a_pointer(instruction))
-            .clone()
-    }
-
-    fn b_pointer(&self, instruction: &Instruction) -> i32 {
-        instruction.b_field.unwrap_value()
-    }
-
-    fn b_instruction(&self, instruction: &Instruction) -> Instruction {
-        self.get_offset(self.program_counter + self.b_pointer(instruction))
-            .clone()
-    }
-
-    fn b_target(&mut self, instruction: &Instruction) -> &mut Instruction {
-        self.get_offset_mut(self.program_counter + self.b_pointer(instruction))
-    }
-
-    fn perform_opcode<FieldOp>(&mut self, instruction: Instruction, field_op: FieldOp)
-    where
-        FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
-    {
-        self.perform_instruction::<_, fn(_, _) -> _, _>(instruction, field_op, None)
-    }
-
-    fn perform_instruction<FieldOp, InstructionOp, OptionalInstructionOp>(
-        &mut self,
-        instruction: Instruction,
-        mut field_op: FieldOp,
-        instruction_op: OptionalInstructionOp,
-    ) where
-        FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
-        InstructionOp: FnMut(Instruction, Instruction) -> Option<Instruction>,
-        OptionalInstructionOp: Into<Option<InstructionOp>>,
-    {
-        // TODO handle address modes during deref of these "pointer"s
-        // For now it's always treated as direct addressing mode
-
-        let a_value_a_offset = self.offset(self.a_instruction(&instruction).a_field.unwrap_value());
-        let a_value_b_offset = self.offset(self.a_instruction(&instruction).b_field.unwrap_value());
-        let b_value_a_offset = self.offset(self.b_instruction(&instruction).a_field.unwrap_value());
-        let b_value_b_offset = self.offset(self.b_instruction(&instruction).b_field.unwrap_value());
-
-        match instruction.modifier {
-            Modifier::A => {
-                if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
-                    self.b_target(&instruction).a_field.set_value(res);
-                }
-            }
-            Modifier::B => {
-                if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
-                    self.b_target(&instruction).b_field.set_value(res);
-                }
-            }
-            Modifier::AB => {
-                if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
-                    self.b_target(&instruction).b_field.set_value(res);
-                }
-            }
-            Modifier::BA => {
-                if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
-                    self.b_target(&instruction).a_field.set_value(res);
-                }
-            }
-            Modifier::F | Modifier::I => {
-                let b_instruction = self.b_instruction(&instruction);
-                let b_target = self.b_target(&instruction);
-
-                if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
-                    b_target.a_field.set_value(a_res);
-                }
-                if let Some(b_res) = field_op(a_value_b_offset, b_value_b_offset) {
-                    b_target.b_field.set_value(b_res);
-                }
-
-                if instruction.modifier == Modifier::I {
-                    if let Some(mut instruction_op) = instruction_op.into() {
-                        if let Some(res) = instruction_op(instruction, b_instruction) {
-                            b_target.opcode = res.opcode;
-                            b_target.modifier = res.modifier;
-                        }
-                    }
-                }
-            }
-            Modifier::X => {
-                let b_target = self.b_target(&instruction);
-
-                if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
-                    b_target.a_field.set_value(a_res);
-                }
-                if let Some(b_res) = field_op(a_value_a_offset, b_value_b_offset) {
-                    b_target.b_field.set_value(b_res);
-                }
-            }
-        }
-    }
-
     /// Run a single cycle of simulation.
     pub fn step(&mut self) -> Result<(), ExecutionError> {
         if self.steps_taken > DEFAULT_MAXCYCLES {
             return Err(ExecutionError::MaxCyclesReached);
         }
 
-        let instruction = self.current_instruction();
-        let zero_offset = self.offset(0);
-        let extra_increment = Cell::new(zero_offset);
-
-        // See docs/icws94.txt:1113 for detailed description of each opcode
-        match instruction.opcode {
-            Opcode::Add => self.perform_opcode(instruction, |a, b| Some(a + b)),
-            Opcode::Cmp | Opcode::Seq => {
-                extra_increment.set(self.offset(1));
-                // For e.g. F and I, all fields must match
-                self.perform_instruction(
-                    instruction,
-                    |a, b| {
-                        if a != b {
-                            extra_increment.set(zero_offset)
-                        }
-                        None
-                    },
-                    |a, b| {
-                        if a != b {
-                            extra_increment.set(zero_offset);
-                        }
-                        None
-                    },
-                )
-            }
-            Opcode::Dat => return Err(ExecutionError::ExecuteDat),
-            Opcode::Div => {
-                let mut div_result = Ok(());
-                self.perform_opcode(instruction, |a, b| {
-                    if b.value() == 0 {
-                        div_result = Err(ExecutionError::DivideByZero);
-                        None
-                    } else {
-                        Some(a / b)
-                    }
-                });
-                div_result?;
-            }
-            Opcode::Djn => todo!(),
-            Opcode::Jmn => todo!(),
-            Opcode::Jmp => {
-                // Subtract one since we always increment by one anyway
-                self.program_counter += instruction.a_field.unwrap_value() - 1;
-            }
-
-            Opcode::Jmz => todo!(),
-            Opcode::Mod => todo!(),
-            Opcode::Mov => {
-                self.perform_instruction(instruction, |a, _b| Some(a), |a: Instruction, _b| Some(a))
-            }
-            Opcode::Mul => todo!(),
-            Opcode::Nop => todo!(),
-            Opcode::Slt => todo!(),
-            Opcode::Sne => todo!(),
-            Opcode::Spl => todo!(),
-            Opcode::Sub => todo!(),
-        }
+        let result = opcode::execute(self)?;
 
         self.program_counter += 1;
-        self.program_counter += extra_increment.get();
+        self.program_counter += result.program_counter_offset;
         self.steps_taken += 1;
         Ok(())
     }
@@ -319,17 +160,16 @@ impl Core {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
-    use test_case::test_case;
 
-    use corewars_core::load_file::{Field, Program};
+    use corewars_core::load_file::{Field, Opcode, Program};
 
     use super::*;
 
-    fn build_core(program: &str) -> Core {
+    /// Create a core from a string. Public since it is used by submodules' tests as well
+    pub fn build_core(program: &str) -> Core {
         let warrior = corewars_parser::parse(program).expect("Failed to parse warrior");
 
-        let coresize = std::cmp::max(12, warrior.len());
-        let mut core = Core::new(coresize).unwrap();
+        let mut core = Core::new(8000).unwrap();
         core.load_warrior(&warrior).expect("Failed to load warrior");
         core
     }
@@ -399,145 +239,5 @@ mod tests {
         assert_eq!(core.program_counter.value(), 0);
         core.step().unwrap();
         assert_eq!(core.program_counter.value(), 1);
-    }
-
-    // =========================================================================
-    // Begin opcode-specific tests
-    // =========================================================================
-
-    #[test]
-    fn execute_dat() {
-        let mut core = Core::new(4).unwrap();
-        // Default instruction is DAT, so expect a termination error immediately
-        assert_eq!(core.step().unwrap_err(), ExecutionError::ExecuteDat);
-    }
-
-    #[test]
-    fn execute_div() {
-        let mut core = build_core(
-            "
-            div $1, $2
-            dat #8, #7
-            dat #4, #2
-            ",
-        );
-
-        core.step().unwrap();
-        assert_eq!(
-            *core.get(2),
-            Instruction::new(Opcode::Dat, Field::immediate(2), Field::immediate(3)),
-        )
-    }
-
-    #[test_case(
-        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2)),
-        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(3))
-        ; "a_zero"
-    )]
-    #[test_case(
-        Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0)),
-        Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0))
-        ; "b_zero"
-    )]
-    #[test_case(
-        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
-        Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
-        ; "both_zero"
-    )]
-    fn execute_div_by_zero(divisor: Instruction, result: Instruction) {
-        use pretty_assertions::assert_eq;
-
-        let mut core = build_core(
-            "
-            div.f   #1, #2
-            dat     #4, #6
-            ",
-        );
-
-        core.set(2, divisor);
-
-        assert_eq!(core.step().unwrap_err(), ExecutionError::DivideByZero);
-        assert_eq!(core.get(2), &result)
-    }
-
-    #[test]
-    fn execute_mov() {
-        let instruction = Instruction {
-            opcode: Opcode::Mov,
-            modifier: Modifier::I,
-            a_field: Field::direct(0),
-            b_field: Field::direct(1),
-        };
-        let mut core = build_core("mov.i $0, $1");
-
-        assert_eq!(core.current_instruction(), instruction);
-
-        core.step().unwrap();
-        assert_eq!(core.current_instruction(), instruction);
-
-        core.step().unwrap();
-        assert_eq!(core.current_instruction(), instruction);
-    }
-
-    #[test]
-    fn execute_jmp() {
-        let mut core = build_core("jmp $3, #0");
-
-        core.step().unwrap();
-
-        assert_eq!(core.program_counter.value(), 3);
-        assert_eq!(
-            &core.instructions[..4],
-            &vec![
-                Instruction::new(Opcode::Jmp, Field::direct(3), Field::immediate(0)),
-                Default::default(),
-                Default::default(),
-                Default::default()
-            ][..]
-        );
-    }
-
-    #[test_case(
-        "
-        cmp.f $1, $2
-        dat #0, #1
-        dat #0, #1
-        ",
-        2
-        ; "cmp_equal"
-    )]
-    #[test_case(
-        "
-        seq.f $1, $2
-        dat #0, #1
-        dat #0, #1
-        ",
-        2
-        ; "seq_equal"
-    )]
-    #[test_case(
-        "
-        cmp.f $1, $2
-        dat #0, #1
-        dat #1, #1
-        ",
-        1
-        ; "cmp_unequal"
-    )]
-    #[test_case(
-        "
-        seq.f $1, $2
-        dat #0, #1
-        dat #2, #0
-        ",
-        1
-        ; "seq_unequal"
-    )]
-    fn execute_seq(program: &str, expected_program_counter: u32) {
-        let mut core = build_core(program);
-
-        core.step().unwrap();
-
-        pretty_assertions::assert_eq!(core.program_counter.value(), expected_program_counter);
     }
 }
