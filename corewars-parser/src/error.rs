@@ -10,6 +10,7 @@ use corewars_core::load_file::Opcode;
 
 /// An error that occurred while parsing a warrior.
 #[derive(ThisError, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     /// The warrior contained a reference to a label that doesn't exist.
     #[error("no such label {label:?}")]
@@ -30,6 +31,7 @@ pub enum Error {
 
 /// A warning that occurred while parsing a warrior.
 #[derive(ThisError, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Warning {
     /// Attempt to define the warrior origin more than once.
     #[error("origin already defined as {old:?}, new definition {new:?} will be ignored")]

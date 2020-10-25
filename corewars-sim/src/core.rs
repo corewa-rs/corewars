@@ -15,6 +15,7 @@ const DEFAULT_MAXCYCLES: usize = 10_000;
 
 /// An error occurred during loading or core creation
 #[derive(ThisError, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
     /// The warrior was longer than the core size
     #[error("warrior has too many instructions to fit in the core")]
@@ -27,6 +28,7 @@ pub enum Error {
 
 /// An error occurred while executing the core
 #[derive(ThisError, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ExecutionError {
     /// The warrior attempted to execute a DAT instruction
     #[error("warrior was terminated due to reaching a DAT")]
