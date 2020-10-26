@@ -2,23 +2,30 @@
 
 use corewars_core::load_file::{Instruction, Modifier, Offset};
 
-use super::address;
 use super::Core;
 
 /// Execute a given operation (`FieldOp`) on a given instruction. This is just a convenience
 /// shortcut for `execute_on_instruction` without an `InstructionOp`
-pub fn execute_on_fields<FieldOp>(core: &mut Core, field_op: FieldOp)
-where
+pub fn execute_on_fields<FieldOp>(
+    core: &mut Core,
+    a_pointer: Offset,
+    b_pointer: Offset,
+    field_op: FieldOp,
+) where
     FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
 {
-    execute_on_instructions::<_, fn(_, _) -> _, _>(core, field_op, None)
+    execute_on_instructions::<_, fn(_, _) -> _, _>(core, a_pointer, b_pointer, field_op, None)
 }
 
 /// Execute a given operation (`FieldOp`) on a given instruction. The `field_op`
 /// and `instruction_op` arguments are expected to be closures taking an `a` and `b`
 /// argument and returning the new value to set in the `b` instruction, if any.
+/// This "overload" takes the a_pointer and b_pointer as args so they can be
+/// pre-computed and used directly in the closures, if necessary.
 pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
     core: &mut Core,
+    a_pointer: Offset,
+    b_pointer: Offset,
     mut field_op: FieldOp,
     instruction_op: OptionalInstructionOp,
 ) where
@@ -28,10 +35,7 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
 {
     let instruction = core.current_instruction();
 
-    let a_pointer = address::a_pointer(core, &instruction);
     let a_instruction = core.get_offset(a_pointer).clone();
-
-    let b_pointer = address::b_pointer(core, &instruction);
     let b_instruction = core.get_offset(b_pointer).clone();
 
     let a_value_a_offset = core.offset(a_instruction.a_field.unwrap_value());
@@ -120,7 +124,9 @@ mod tests {
         ));
 
         let zero = core.offset(0);
-        execute_on_fields(&mut core, |a, b| {
+        let a_pointer = core.offset(1);
+        let b_pointer = core.offset(2);
+        execute_on_fields(&mut core, a_pointer, b_pointer, |a, b| {
             // kinda hacky way to verify exact outputs but I guess it works...
             let string_ans = a.value().to_string() + &b.value().to_string();
             Some(zero + string_ans.parse::<i32>().unwrap())
@@ -148,8 +154,12 @@ mod tests {
         );
 
         let output = core.offset(0);
+        let a_pointer = core.offset(1);
+        let b_pointer = core.offset(2);
         execute_on_instructions(
             &mut core,
+            a_pointer,
+            b_pointer,
             |a, b| {
                 let string_ans = a.value().to_string() + &b.value().to_string();
                 Some(output + string_ans.parse::<i32>().unwrap())

@@ -1,7 +1,7 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign};
 
 /// A non-negative offset from the beginning of a core.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Offset {
     value: u32,
     core_size: u32,
@@ -89,6 +89,7 @@ impl_offset_op! { Add::add, AddAssign::add_assign }
 impl_offset_op! { Sub::sub, SubAssign::sub_assign }
 impl_offset_op! { Mul::mul, MulAssign::mul_assign }
 impl_offset_op! { Div::div, DivAssign::div_assign }
+impl_offset_op! { Rem::rem, RemAssign::rem_assign }
 
 /// Implement a `std::ops` operation for `Offset` and another type
 macro_rules! impl_op {
@@ -111,12 +112,14 @@ macro_rules! impl_op {
 
 impl_op! { i32, Add::add, AddAssign::add_assign }
 impl_op! { u32, Add::add, AddAssign::add_assign }
-impl_op! { i32, Sub::sub, SubAssign::sub_assign }
-impl_op! { u32, Sub::sub, SubAssign::sub_assign }
-impl_op! { i32, Mul::mul, MulAssign::mul_assign }
-impl_op! { u32, Mul::mul, MulAssign::mul_assign }
 impl_op! { i32, Div::div, DivAssign::div_assign }
 impl_op! { u32, Div::div, DivAssign::div_assign }
+impl_op! { i32, Mul::mul, MulAssign::mul_assign }
+impl_op! { u32, Mul::mul, MulAssign::mul_assign }
+impl_op! { i32, Rem::rem, RemAssign::rem_assign }
+impl_op! { u32, Rem::rem, RemAssign::rem_assign }
+impl_op! { i32, Sub::sub, SubAssign::sub_assign }
+impl_op! { u32, Sub::sub, SubAssign::sub_assign }
 
 #[cfg(test)]
 mod tests {
@@ -255,5 +258,35 @@ mod tests {
         offset = Offset::new(10, 12);
         offset /= 5u32;
         assert_eq!(offset, Offset::new(2, 12));
+    }
+
+    #[test]
+    fn rem_offset() {
+        let mut offset = Offset::new(8, 12);
+
+        assert_eq!(offset % 5i32, Offset::new(3, 12));
+        assert_eq!(offset % -5i32, Offset::new(1, 12));
+        assert_eq!(offset % Offset::new(5, 12), Offset::new(3, 12));
+        assert_eq!(offset % Offset::new(-5, 12), Offset::new(1, 12));
+        assert_eq!(offset % 5u32, Offset::new(3, 12));
+
+        offset %= 5i32;
+        assert_eq!(offset, Offset::new(3, 12));
+
+        offset = Offset::new(8, 12);
+        offset %= -5i32;
+        assert_eq!(offset, Offset::new(1, 12));
+
+        offset = Offset::new(8, 12);
+        offset %= Offset::new(5, 12);
+        assert_eq!(offset, Offset::new(3, 12));
+
+        offset = Offset::new(8, 12);
+        offset %= Offset::new(-5, 12);
+        assert_eq!(offset, Offset::new(1, 12));
+
+        offset = Offset::new(8, 12);
+        offset %= 5u32;
+        assert_eq!(offset, Offset::new(3, 12));
     }
 }
