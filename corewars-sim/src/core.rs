@@ -151,8 +151,13 @@ impl Core {
 
         let result = opcode::execute(self)?;
 
-        self.program_counter += 1;
-        self.program_counter += result.program_counter_offset;
+        // If the opcode affected the program counter, avoid incrementing it an extra time
+        if let Some(offset) = result.program_counter_offset {
+            self.program_counter += offset;
+        } else {
+            self.program_counter += 1;
+        }
+
         self.steps_taken += 1;
         Ok(())
     }
