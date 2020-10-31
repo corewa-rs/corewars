@@ -21,6 +21,8 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
     let a_pointer = address::a_pointer(core, &instruction);
     let b_pointer = address::b_pointer(core, &instruction);
 
+    let program_counter = core.program_counter;
+
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match instruction.opcode {
         // Process control/miscellaneous opcodes
@@ -125,25 +127,29 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
         Opcode::Djn => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
             let decremented = b - 1i32;
             if decremented != zero {
-                program_counter_offset.set(a_pointer.into());
+                program_counter_offset.set((a_pointer - program_counter).into());
             }
             Some(decremented)
         }),
         Opcode::Jmn => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
             if b != zero {
-                program_counter_offset.set(a_pointer.into());
+                program_counter_offset.set((a_pointer - program_counter).into());
             }
             None
         }),
         Opcode::Jmp => {
-            program_counter_offset.set(a_pointer.into());
+            // Subtract the current program counter since this offset will be added to it later
+            program_counter_offset.set((a_pointer - program_counter).into());
         }
-        Opcode::Jmz => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
-            if b == zero {
-                program_counter_offset.set(a_pointer.into());
-            }
-            None
-        }),
+        Opcode::Jmz => {
+            modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
+                if b == zero {
+                    // Subtract the current program counter since this offset will be added to it later
+                    program_counter_offset.set((a_pointer - program_counter).into());
+                }
+                None
+            });
+        }
     }
 
     Ok(Executed {
@@ -457,17 +463,19 @@ mod tests {
         fn execute_djn_no_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 djn.a $2, $1
                 dat #1, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
             assert_eq!(result.program_counter_offset, None);
             assert_eq!(
-                &core.instructions[..3],
+                &core.instructions[1..4],
                 &vec![
                     Instruction {
                         opcode: Opcode::Djn,
@@ -485,17 +493,19 @@ mod tests {
         fn execute_djn_with_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 djn.a $2, $1
                 dat #3, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
             assert_eq!(result.program_counter_offset, Some(core.offset(2)));
             assert_eq!(
-                &core.instructions[..3],
+                &core.instructions[1..4],
                 &vec![
                     Instruction {
                         opcode: Opcode::Djn,
@@ -513,11 +523,13 @@ mod tests {
         fn execute_jmn_no_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 jmn.a $2, $1
                 dat #0, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
@@ -528,11 +540,13 @@ mod tests {
         fn execute_jmn_with_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 jmn.a $2, $1
                 dat #1, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
@@ -541,13 +555,19 @@ mod tests {
 
         #[test]
         fn execute_jmp() {
-            let mut core = build_core("jmp $3, #0");
+            let mut core = build_core(
+                "
+                dat #0, #0
+                jmp $3, #0
+                ",
+            );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).expect("Failed to execute");
 
             assert_eq!(result.program_counter_offset, Some(core.offset(3)));
             assert_eq!(
-                &core.instructions[..4],
+                &core.instructions[1..5],
                 &vec![
                     Instruction::new(Opcode::Jmp, Field::direct(3), Field::immediate(0)),
                     Default::default(),
@@ -561,11 +581,13 @@ mod tests {
         fn execute_jmz_no_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 jmz.a $2, $1
                 dat #1, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
@@ -576,11 +598,13 @@ mod tests {
         fn execute_jmz_with_jump() {
             let mut core = build_core(
                 "
+                dat #0, #0
                 jmz.a $2, $1
                 dat #0, #1
                 nop #0, #0
                 ",
             );
+            core.program_counter = core.offset(1);
 
             let result = execute(&mut core).unwrap();
 
