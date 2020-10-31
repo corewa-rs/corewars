@@ -1,8 +1,7 @@
 //! A [`Core`](Core) is a block of "memory" in which Redcode programs reside.
 //! This is where all simulation of a Core Wars battle takes place.
 
-// TODO remove this once this lib is hooked up the CLI
-#![allow(dead_code)]
+use std::fmt;
 
 use thiserror::Error as ThisError;
 
@@ -33,16 +32,12 @@ pub enum Error {
 #[non_exhaustive]
 pub enum ExecutionError {
     /// The warrior attempted to execute a DAT instruction
-    #[error("warrior was terminated due to reaching a DAT")]
+    #[error("terminated due to reaching a DAT")]
     ExecuteDat,
 
     /// The warrior attempted to execute a division by zero
-    #[error("warrior was terminated due to division by 0")]
+    #[error("terminated due to division by 0")]
     DivideByZero,
-
-    /// The maximum number of execution steps was reached
-    #[error("max number of steps executed")]
-    MaxCyclesReached,
 }
 
 /// The full memory core at a given point in time
@@ -75,6 +70,10 @@ impl Core {
         })
     }
 
+    pub fn steps_taken(&self) -> usize {
+        self.steps_taken
+    }
+
     /// Clone and returns the next instruction to be executed.
     fn current_instruction(&self) -> Instruction {
         self.get_offset(self.program_counter).clone()
@@ -90,13 +89,9 @@ impl Core {
     }
 
     /// Get an instruction from a given index in the core
+    #[cfg(test)]
     fn get(&self, index: i32) -> &Instruction {
         &self.get_offset(self.offset(index))
-    }
-
-    /// Get a mutable instruction from a given index in the core
-    fn get_mut(&mut self, index: i32) -> &mut Instruction {
-        self.get_offset_mut(self.offset(index))
     }
 
     /// Get an instruction from a given offset in the core
@@ -110,18 +105,20 @@ impl Core {
     }
 
     /// Write an instruction at a given index into the core
+    #[cfg(test)]
     fn set(&mut self, index: i32, value: Instruction) {
         self.set_offset(self.offset(index), value)
     }
 
     /// Write an instruction at a given offset into the core
+    #[cfg(test)]
     fn set_offset(&mut self, index: Offset, value: Instruction) {
         self.instructions[index.value() as usize] = value;
     }
 
     /// Load a [`Warrior`](Warrior) into the core starting at the front (first instruction of the core).
     /// Returns an error if the Warrior was too long to fit in the core, or had unresolved labels
-    fn load_warrior(&mut self, warrior: &Warrior) -> Result<(), Error> {
+    pub fn load_warrior(&mut self, warrior: &Warrior) -> Result<(), Error> {
         if warrior.len() > self.size() {
             return Err(Error::WarriorTooLong);
         }
@@ -133,22 +130,17 @@ impl Core {
             self.instructions[i] = instruction.clone();
         }
 
-        self.entry_point.set_value(match warrior.program.origin {
-            Some(entry_point) => entry_point as _,
-            None => 0,
-        });
-
+        self.entry_point
+            .set_value(warrior.program.origin.unwrap_or(0) as _);
         self.program_counter = self.entry_point;
 
         Ok(())
     }
 
-    /// Run a single cycle of simulation.
+    /// Run a single cycle of simulation. This will continue to execute even
+    /// after MAXCYCLES has been reached
     pub fn step(&mut self) -> Result<(), ExecutionError> {
-        if self.steps_taken > DEFAULT_MAXCYCLES {
-            return Err(ExecutionError::MaxCyclesReached);
-        }
-
+        self.steps_taken += 1;
         let result = opcode::execute(self)?;
 
         // If the opcode affected the program counter, avoid incrementing it an extra time
@@ -158,8 +150,63 @@ impl Core {
             self.program_counter += 1;
         }
 
-        self.steps_taken += 1;
         Ok(())
+    }
+
+    /// Run a core to completion. Return value determines whether the core resulted
+    /// in a tie (Ok) or something cause the warrior to stop executing (ExecutionError)
+    pub fn run<T: Into<Option<usize>>>(&mut self, max_cycles: T) -> Result<(), ExecutionError> {
+        let max_cycles = max_cycles.into().unwrap_or(DEFAULT_MAXCYCLES);
+
+        loop {
+            if self.steps_taken >= max_cycles {
+                break;
+            }
+
+            let result = self.step();
+            if result.is_err() {
+                return result;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let mut lines = Vec::new();
+        let mut iter = self.instructions.iter().enumerate().peekable();
+
+        while let Some((i, instruction)) = iter.next() {
+            if i as u32 == self.program_counter.value() {
+                lines.push(format!("{}{:>8}", instruction, "<= PC"));
+            } else if instruction != &Instruction::default() {
+                lines.push(instruction.to_string());
+            } else {
+                // Skip large chunks of defaulted instructions with a counter instead
+                let mut skipped_count = 0;
+                while let Some(&(_, inst)) = iter.peek() {
+                    if inst != &Instruction::default() {
+                        break;
+                    }
+                    skipped_count += 1;
+                    iter.next();
+                }
+
+                if skipped_count > 5 {
+                    lines.push(Instruction::default().to_string());
+                    lines.push(format!("{:<8}({} more)", "...", skipped_count - 2));
+                    lines.push(Instruction::default().to_string());
+                } else {
+                    for _ in 0..skipped_count {
+                        lines.push(Instruction::default().to_string());
+                    }
+                }
+            }
+        }
+
+        write!(formatter, "{}", lines.join("\n"))
     }
 }
 
@@ -235,7 +282,7 @@ mod tests {
 
     #[test]
     fn wrap_program_counter_on_overflow() {
-        let mut core = build_core("mov $0, $1");
+        let mut core = build_core("mov , $1");
 
         for i in 0..core.size() {
             assert_eq!(core.program_counter.value(), i);
