@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use structopt::StructOpt;
 
 use corewars_parser as parser;
+use corewars_sim::Core;
 
 lazy_static! {
     static ref IO_SENTINEL: PathBuf = PathBuf::from("-");
@@ -18,12 +19,18 @@ lazy_static! {
 #[structopt(rename_all = "kebab")]
 /// Parse, assemble, and save Redcode files
 struct CliOptions {
+    /// The corewars subcommand to perform
+    #[structopt(subcommand)]
+    command: Command,
+
+    /// Print additional details while running
+    // TODO(#26) hook this up to a log level
+    #[structopt(long, short)]
+    verbose: bool,
+
     /// Input file; use "-" to read from stdin
     #[structopt(parse(from_os_str))]
     input_file: PathBuf,
-
-    #[structopt(subcommand)]
-    command: Command,
 }
 
 #[derive(Debug, StructOpt)]
@@ -39,6 +46,14 @@ enum Command {
         /// expanded in the output
         #[structopt(long, short = "E")]
         no_expand: bool,
+    },
+
+    /// Run a warrior to completion
+    #[structopt(name = "run")]
+    Run {
+        /// The max number of cycles to run. Defaults to
+        #[structopt(long, short)]
+        max_cycles: Option<usize>,
     },
 }
 
@@ -78,6 +93,27 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             } else {
                 fs::write(output_file, format!("{}\n", parsed_core))?;
             };
+        }
+        Command::Run { max_cycles } => {
+            let mut core = Core::default();
+            core.load_warrior(&parsed_core)?;
+
+            match core.run(max_cycles) {
+                Ok(_) => println!(
+                    "Warrior stopped after {}max of {} cycles",
+                    if max_cycles.is_some() {
+                        "specified "
+                    } else {
+                        ""
+                    },
+                    core.steps_taken()
+                ),
+                Err(err) => println!("Warrior failed after {} steps: {}", core.steps_taken(), err),
+            }
+
+            if cli_options.verbose {
+                println!("Core after execution:\n{}", core);
+            }
         }
     };
 

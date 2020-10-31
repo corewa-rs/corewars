@@ -137,6 +137,7 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "corewars-parser",
+ "corewars-sim",
  "lazy_static",
  "normalize-line-endings",
  "predicates",
