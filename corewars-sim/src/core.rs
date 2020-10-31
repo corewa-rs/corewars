@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn wrap_program_counter_on_overflow() {
-        let mut core = build_core("mov , $1");
+        let mut core = build_core("mov $0, $1");
 
         for i in 0..core.size() {
             assert_eq!(core.program_counter.value(), i);

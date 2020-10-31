@@ -124,6 +124,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
         }
 
         // Jumping control flow opcodes
+        // These subtract the current program counter since this offset will be added to it later
         Opcode::Djn => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
             let decremented = b - 1i32;
             if decremented != zero {
@@ -138,13 +139,11 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
             None
         }),
         Opcode::Jmp => {
-            // Subtract the current program counter since this offset will be added to it later
             program_counter_offset.set((a_pointer - program_counter).into());
         }
         Opcode::Jmz => {
             modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
                 if b == zero {
-                    // Subtract the current program counter since this offset will be added to it later
                     program_counter_offset.set((a_pointer - program_counter).into());
                 }
                 None
