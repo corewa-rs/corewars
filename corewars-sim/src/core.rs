@@ -11,6 +11,7 @@ use corewars_core::Warrior;
 mod address;
 mod modifier;
 mod opcode;
+mod process;
 
 const DEFAULT_MAXCYCLES: usize = 10_000;
 
@@ -25,27 +26,16 @@ pub enum Error {
     /// The specified core size was larger than the allowed max
     #[error("cannot create a core with size {0}; must be less than {}", u32::MAX)]
     InvalidCoreSize(u32),
-}
 
-/// An error occurred while executing the core
-#[derive(ThisError, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum ExecutionError {
-    /// The warrior attempted to execute a DAT instruction
-    #[error("terminated due to reaching a DAT")]
-    ExecuteDat,
-
-    /// The warrior attempted to execute a division by zero
-    #[error("terminated due to division by 0")]
-    DivideByZero,
+    #[error("{0}")]
+    WarriorAlreadyLoaded(#[from] process::Error),
 }
 
 /// The full memory core at a given point in time
 #[derive(Debug)]
 pub struct Core {
     instructions: Box<[Instruction]>,
-    entry_point: Offset,
-    program_counter: Offset,
+    process_queue: process::Queue,
     steps_taken: usize,
 }
 
@@ -64,8 +54,7 @@ impl Core {
 
         Ok(Self {
             instructions: vec![Instruction::default(); core_size as usize].into_boxed_slice(),
-            entry_point: Offset::new(0, core_size),
-            program_counter: Offset::new(0, core_size),
+            process_queue: process::Queue::new(),
             steps_taken: 0,
         })
     }
@@ -74,9 +63,13 @@ impl Core {
         self.steps_taken
     }
 
+    fn program_counter(&self) -> Offset {
+        self.process_queue.current_offset().unwrap()
+    }
+
     /// Clone and returns the next instruction to be executed.
     fn current_instruction(&self) -> Instruction {
-        self.get_offset(self.program_counter).clone()
+        self.get_offset(self.program_counter()).clone()
     }
 
     fn offset<T: Into<i32>>(&self, value: T) -> Offset {
@@ -130,32 +123,51 @@ impl Core {
             self.instructions[i] = instruction.clone();
         }
 
-        self.entry_point
-            .set_value(warrior.program.origin.unwrap_or(0) as _);
-        self.program_counter = self.entry_point;
+        // TODO: Maybe some kinda increasing counter for warrior names
+        let warrior_name = warrior
+            .metadata
+            .name
+            .clone()
+            .unwrap_or_else(|| String::from("Warrior0"));
+
+        self.process_queue.add_process(
+            &warrior_name,
+            self.offset(warrior.program.origin.unwrap_or(0) as i32),
+        )?;
 
         Ok(())
     }
 
     /// Run a single cycle of simulation. This will continue to execute even
     /// after MAXCYCLES has been reached
-    pub fn step(&mut self) -> Result<(), ExecutionError> {
+    pub fn step(&mut self) -> Result<(), process::Error> {
         self.steps_taken += 1;
-        let result = opcode::execute(self)?;
 
-        // If the opcode affected the program counter, avoid incrementing it an extra time
-        if let Some(offset) = result.program_counter_offset {
-            self.program_counter += offset;
-        } else {
-            self.program_counter += 1;
+        let result = opcode::execute(self);
+        match result {
+            Err(err) => match err {
+                process::Error::DivideByZero | process::Error::ExecuteDat => {
+                    self.process_queue.stop_thread()
+                }
+                _ => panic!("Unexpected error {}", err),
+            },
+            Ok(result) => {
+                self.process_queue.advance()?;
+                // If the opcode affected the program counter, avoid incrementing it an extra time
+                if let Some(offset) = result.program_counter_offset {
+                    self.process_queue.add_offset(offset)
+                } else {
+                    self.process_queue.add_offset(self.offset(1));
+                }
+
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 
     /// Run a core to completion. Return value determines whether the core resulted
     /// in a tie (Ok) or something cause the warrior to stop executing (ExecutionError)
-    pub fn run<T: Into<Option<usize>>>(&mut self, max_cycles: T) -> Result<(), ExecutionError> {
+    pub fn run<T: Into<Option<usize>>>(&mut self, max_cycles: T) -> Result<(), process::Error> {
         let max_cycles = max_cycles.into().unwrap_or(DEFAULT_MAXCYCLES);
 
         loop {
@@ -179,7 +191,7 @@ impl fmt::Display for Core {
         let mut iter = self.instructions.iter().enumerate().peekable();
 
         while let Some((i, instruction)) = iter.next() {
-            if i as u32 == self.program_counter.value() {
+            if i as u32 == self.program_counter().value() {
                 lines.push(format!("{}{:>8}", instruction, "<= PC"));
             } else if instruction != &Instruction::default() {
                 lines.push(instruction.to_string());
@@ -285,12 +297,12 @@ mod tests {
         let mut core = build_core("mov $0, $1");
 
         for i in 0..core.size() {
-            assert_eq!(core.program_counter.value(), i);
+            assert_eq!(core.program_counter().value(), i);
             core.step().unwrap();
         }
 
-        assert_eq!(core.program_counter.value(), 0);
+        assert_eq!(core.program_counter().value(), 0);
         core.step().unwrap();
-        assert_eq!(core.program_counter.value(), 1);
+        assert_eq!(core.program_counter().value(), 1);
     }
 }

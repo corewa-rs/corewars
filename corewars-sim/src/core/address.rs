@@ -33,10 +33,10 @@ fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
     let address_mode = field.address_mode;
 
     match address_mode {
-        Immediate => core.program_counter,
-        Direct => core.program_counter + field.unwrap_value(),
+        Immediate => core.program_counter(),
+        Direct => core.program_counter() + field.unwrap_value(),
         IndirectA | IndirectB => {
-            let pointer_location = core.program_counter + field.unwrap_value();
+            let pointer_location = core.program_counter() + field.unwrap_value();
 
             let pointer_value = if address_mode == IndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()
@@ -47,7 +47,7 @@ fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
             pointer_location + pointer_value
         }
         PreDecIndirectA | PreDecIndirectB => {
-            let pointer_location = core.program_counter + field.unwrap_value();
+            let pointer_location = core.program_counter() + field.unwrap_value();
 
             let pointer_value = if address_mode == PreDecIndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()
@@ -70,7 +70,7 @@ fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
             pointer_location + decremented
         }
         PostIncIndirectA | PostIncIndirectB => {
-            let pointer_location = core.program_counter + field.unwrap_value();
+            let pointer_location = core.program_counter() + field.unwrap_value();
 
             let pointer_value = if address_mode == PostIncIndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()

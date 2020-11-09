@@ -186,7 +186,6 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
 
             match label_value {
                 Some(&LabelValue::Offset(offset)) => {
-                    // FIXME: off by one error here for substitution within an expression
                     let relative_offset = (offset as i32) - (from_offset as i32);
                     let span = token.as_span();
 

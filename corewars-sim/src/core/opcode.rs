@@ -6,14 +6,15 @@ use corewars_core::load_file::{Offset, Opcode};
 
 use super::address;
 use super::modifier;
-use super::{Core, ExecutionError};
+use super::process;
+use super::Core;
 
 #[derive(Debug)]
 pub struct Executed {
     pub program_counter_offset: Option<Offset>,
 }
 
-pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
+pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
     let instruction = core.current_instruction();
     let zero = core.offset(0);
     let program_counter_offset = Cell::new(None);
@@ -21,12 +22,12 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
     let a_pointer = address::a_pointer(core, &instruction);
     let b_pointer = address::b_pointer(core, &instruction);
 
-    let program_counter = core.program_counter;
+    let program_counter = core.program_counter();
 
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match instruction.opcode {
         // Process control/miscellaneous opcodes
-        Opcode::Dat => return Err(ExecutionError::ExecuteDat),
+        Opcode::Dat => return Err(process::Error::ExecuteDat),
         Opcode::Mov => modifier::execute_on_instructions(
             core,
             a_pointer,
@@ -50,7 +51,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
             let mut div_result = Ok(());
             modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| {
                 if b.value() == 0 {
-                    div_result = Err(ExecutionError::DivideByZero);
+                    div_result = Err(process::Error::DivideByZero);
                     None
                 } else {
                     Some(a / b)
@@ -62,7 +63,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
             let mut rem_result = Ok(());
             modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| {
                 if b.value() == 0 {
-                    rem_result = Err(ExecutionError::DivideByZero);
+                    rem_result = Err(process::Error::DivideByZero);
                     None
                 } else {
                     Some(a % b)
@@ -160,6 +161,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, ExecutionError> {
 mod tests {
     use super::*;
 
+    use super::super::process::Error;
     use super::super::tests::build_core;
 
     use corewars_core::load_file::{Field, Instruction, Modifier, Opcode};
@@ -168,13 +170,14 @@ mod tests {
 
     mod process {
         use super::*;
+
         use pretty_assertions::assert_eq;
 
         #[test]
         fn execute_dat() {
             let mut core = build_core("dat #0, #0");
             let err = execute(&mut core).unwrap_err();
-            assert_eq!(err, ExecutionError::ExecuteDat);
+            assert_eq!(err, Error::ExecuteDat);
         }
 
         #[test]
@@ -292,7 +295,7 @@ mod tests {
 
             let err = execute(&mut core).unwrap_err();
 
-            assert_eq!(err, ExecutionError::DivideByZero);
+            assert_eq!(err, Error::DivideByZero);
             assert_eq!(core.get(2), &result)
         }
 
@@ -344,7 +347,7 @@ mod tests {
 
             let err = execute(&mut core).unwrap_err();
 
-            assert_eq!(err, ExecutionError::DivideByZero);
+            assert_eq!(err, Error::DivideByZero);
             assert_eq!(core.get(2), &result)
         }
     }
@@ -468,7 +471,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
@@ -498,7 +501,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
@@ -528,7 +531,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
@@ -545,7 +548,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
@@ -560,7 +563,7 @@ mod tests {
                 jmp $3, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).expect("Failed to execute");
 
@@ -586,7 +589,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
@@ -603,7 +606,7 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.program_counter = core.offset(1);
+            core.process_queue.advance().unwrap();
 
             let result = execute(&mut core).unwrap();
 
