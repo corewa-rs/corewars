@@ -146,8 +146,8 @@ impl Core {
     pub fn step(&mut self) -> Result<(), process::Error> {
         self.steps_taken += 1;
 
-        let current_process = self.process_queue.pop()?;
         let result = opcode::execute(self);
+        let current_process = self.process_queue.pop()?;
 
         match result {
             Err(err) => match err {

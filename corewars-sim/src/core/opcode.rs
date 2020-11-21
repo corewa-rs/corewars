@@ -583,6 +583,32 @@ mod tests {
         }
 
         #[test]
+        fn execute_spl() {
+            let mut core = build_core(
+                "
+                dat #0, #0
+                spl $3, #0
+                ",
+            );
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
+
+            let result = execute(&mut core).expect("Failed to execute");
+
+            assert_eq!(result.program_counter_offset, Some(core.offset(3)));
+            assert!(result.should_split);
+            assert_eq!(
+                &core.instructions[1..5],
+                &vec![
+                    Instruction::new(Opcode::Spl, Field::direct(3), Field::immediate(0)),
+                    Default::default(),
+                    Default::default(),
+                    Default::default()
+                ][..]
+            );
+        }
+
+        #[test]
         fn execute_jmz_no_jump() {
             let mut core = build_core(
                 "
