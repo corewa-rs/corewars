@@ -1,71 +1,76 @@
 /// Container for managing the process queue of warriors. A given core has
 /// a single queue, but the queue itself may have numerous "threads" of execution
 /// and determines what process is scheduled when.
-use std::collections::hash_map::{Entry, HashMap};
+use std::collections::{BTreeMap, VecDeque};
 
 use thiserror::Error as ThisError;
 
 use super::Offset;
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct ProcessEntry {
+    pub name: String,
+    pub offset: Offset,
+}
+
+/// A representation of the process queue. This is effectively a simple FIFO queue.
+// TODO enforce size limits based on MAXPROCESSES
 #[derive(Debug)]
 pub struct Queue {
-    processes: Vec<Process>,
-    process_names: HashMap<String, usize>,
-    current_process: usize,
+    /// The actual offsets enqueued to be executed
+    queue: VecDeque<ProcessEntry>,
+    /// A map of process names to the number of tasks each has in the queue.
+    /// This is updated whenever instructions are added to/removed from the queue,
+    /// and can be used to determine whether a process is alive or not.
+    processes: BTreeMap<String, usize>,
 }
 
 impl Queue {
+    /// Create an empty queue
     pub fn new() -> Self {
         Self {
-            processes: Vec::new(),
-            process_names: HashMap::new(),
-            current_process: 0,
+            queue: VecDeque::new(),
+            processes: BTreeMap::new(),
         }
     }
 
-    pub fn add_process<T: ToString>(
-        &mut self,
-        name: T,
-        starting_offset: Offset,
-    ) -> Result<(), Error> {
-        match self.process_names.entry(name.to_string()) {
-            Entry::Occupied(_) => Err(Error::ProcessNameExists(name.to_string())),
-            Entry::Vacant(entry) => {
-                entry.insert(self.processes.len());
-                self.processes
-                    .push(Process::new(name.to_string(), starting_offset));
-                Ok(())
-            }
+    /// Get the next offset for execution, removing it from the queue.
+    pub fn pop(&mut self) -> Result<ProcessEntry, Error> {
+        if let Some(entry) = self.queue.pop_front() {
+            let decremented = self.processes[&entry.name].saturating_sub(1);
+            self.processes
+                .entry(entry.name.clone())
+                .and_modify(|count| *count = decremented);
+
+            Ok(entry)
+        } else {
+            Err(Error::NoRemainingProcesses)
         }
     }
 
-    pub fn current_offset(&self) -> Result<Offset, Error> {
-        if self.processes.is_empty() {
-            return Err(Error::NoRemainingProcesses);
+    /// Get the next offset for execution without modifying the queue.
+    pub fn peek(&self) -> Result<&ProcessEntry, Error> {
+        if let Some(entry) = self.queue.get(0) {
+            Ok(entry)
+        } else {
+            Err(Error::NoRemainingProcesses)
         }
-
-        Ok(self.processes[self.current_process].current_offset())
     }
 
-    pub fn advance(&mut self) -> Result<(), Error> {
-        if self.processes.is_empty() {
-            return Err(Error::NoRemainingProcesses);
-        }
+    /// Add an entry to the process queue.
+    pub fn push(&mut self, process_name: String, offset: Offset) {
+        self.queue.push_back(ProcessEntry {
+            name: process_name.clone(),
+            offset,
+        });
 
-        self.processes[self.current_process].advance();
-
-        self.current_process += 1;
-        self.current_process %= self.processes.len();
-        Ok(())
+        *self.processes.entry(process_name).or_insert(0) += 1;
     }
 
-    pub fn stop_thread(&mut self) -> Result<(), Error> {
-        self.processes[self.current_process].stop_thread()?;
-        Ok(())
-    }
-
-    pub fn add_offset(&mut self, offset: Offset) {
-        self.processes[self.current_process].add_offset(offset);
+    /// Check the status of a process in the queue. Panics if the process was
+    /// never added to the queue.
+    pub fn is_process_alive(&self, name: &str) -> bool {
+        self.processes[name] > 0
     }
 }
 
@@ -94,42 +99,63 @@ pub enum Error {
     DivideByZero,
 }
 
-/// Representation of a single process in the core.
-#[derive(Debug)]
-struct Process {
-    name: String,
-    threads: Vec<Offset>,
-    current_thread: usize,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl Process {
-    fn new(name: String, start: Offset) -> Self {
-        Self {
-            name,
-            threads: vec![start],
-            current_thread: 0,
-        }
-    }
+    #[test]
+    fn test_queue() {
+        let mut queue = Queue::new();
 
-    fn advance(&mut self) {
-        self.current_thread += 1;
-        self.current_thread %= self.threads.len();
-    }
+        assert_eq!(queue.peek().unwrap_err(), Error::NoRemainingProcesses);
+        assert_eq!(queue.pop().unwrap_err(), Error::NoRemainingProcesses);
 
-    fn add_offset(&mut self, offset: Offset) {
-        self.threads[self.current_thread] += offset;
-    }
+        let starting_offset = Offset::new(10, 8000);
 
-    fn current_offset(&self) -> Offset {
-        self.threads[self.current_thread]
-    }
+        queue.push("p1".into(), starting_offset);
+        assert_eq!(
+            queue.peek().unwrap(),
+            &ProcessEntry {
+                name: "p1".into(),
+                offset: starting_offset
+            }
+        );
+        assert!(queue.is_process_alive("p1"));
 
-    fn stop_thread(&mut self) -> Result<(), Error> {
-        self.threads.remove(self.current_thread);
-        if self.threads.is_empty() {
-            return Err(Error::NoRemainingThreads(self.name.clone()));
-        }
-        self.advance();
-        Ok(())
+        queue.push("p2".into(), starting_offset + 5);
+        assert!(queue.is_process_alive("p2"));
+
+        assert_eq!(
+            queue.pop().unwrap(),
+            ProcessEntry {
+                name: "p1".into(),
+                offset: starting_offset
+            }
+        );
+        assert_eq!(
+            queue.peek().unwrap(),
+            &ProcessEntry {
+                name: "p2".into(),
+                offset: starting_offset + 5
+            }
+        );
+        assert!(!queue.is_process_alive("p1"));
+        assert!(queue.is_process_alive("p2"));
+
+        assert_eq!(
+            queue.pop().unwrap(),
+            ProcessEntry {
+                name: "p2".into(),
+                offset: starting_offset + 5
+            }
+        );
+        assert!(!queue.is_process_alive("p1"));
+        assert!(!queue.is_process_alive("p2"));
+
+        assert_eq!(queue.peek().unwrap_err(), Error::NoRemainingProcesses);
+        assert_eq!(queue.pop().unwrap_err(), Error::NoRemainingProcesses);
+
+        assert!(!queue.is_process_alive("p1"));
+        assert!(!queue.is_process_alive("p2"));
     }
 }

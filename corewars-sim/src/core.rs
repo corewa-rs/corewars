@@ -27,7 +27,7 @@ pub enum Error {
     #[error("cannot create a core with size {0}; must be less than {}", u32::MAX)]
     InvalidCoreSize(u32),
 
-    #[error("{0}")]
+    #[error(transparent)]
     WarriorAlreadyLoaded(#[from] process::Error),
 }
 
@@ -64,7 +64,10 @@ impl Core {
     }
 
     fn program_counter(&self) -> Offset {
-        self.process_queue.current_offset().unwrap()
+        self.process_queue
+            .peek()
+            .expect("process queue was empty")
+            .offset
     }
 
     /// Clone and returns the next instruction to be executed.
@@ -130,10 +133,10 @@ impl Core {
             .clone()
             .unwrap_or_else(|| String::from("Warrior0"));
 
-        self.process_queue.add_process(
-            &warrior_name,
+        self.process_queue.push(
+            warrior_name,
             self.offset(warrior.program.origin.unwrap_or(0) as i32),
-        )?;
+        );
 
         Ok(())
     }
@@ -143,22 +146,35 @@ impl Core {
     pub fn step(&mut self) -> Result<(), process::Error> {
         self.steps_taken += 1;
 
+        let current_process = self.process_queue.pop()?;
         let result = opcode::execute(self);
+
         match result {
             Err(err) => match err {
                 process::Error::DivideByZero | process::Error::ExecuteDat => {
-                    self.process_queue.stop_thread()
+                    if !self.process_queue.is_process_alive(&current_process.name) {
+                        Err(err)
+                    } else {
+                        // This is fine, the task terminated but the process is still alive
+                        Ok(())
+                    }
                 }
                 _ => panic!("Unexpected error {}", err),
             },
             Ok(result) => {
-                self.process_queue.advance()?;
-                // If the opcode affected the program counter, avoid incrementing it an extra time
-                if let Some(offset) = result.program_counter_offset {
-                    self.process_queue.add_offset(offset)
-                } else {
-                    self.process_queue.add_offset(self.offset(1));
+                // In the special case of a split, enqueue PC+1 before also enqueueing the other offset
+                if result.should_split {
+                    self.process_queue
+                        .push(current_process.name.clone(), current_process.offset + 1);
                 }
+
+                // Either the opcode changed the program counter, or we should just enqueue PC+1
+                let offset = result
+                    .program_counter_offset
+                    .unwrap_or_else(|| self.offset(1));
+
+                self.process_queue
+                    .push(current_process.name, current_process.offset + offset);
 
                 Ok(())
             }

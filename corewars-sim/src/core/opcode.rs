@@ -12,6 +12,7 @@ use super::Core;
 #[derive(Debug)]
 pub struct Executed {
     pub program_counter_offset: Option<Offset>,
+    pub should_split: bool,
 }
 
 pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
@@ -36,10 +37,6 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
             |a, _b| Some(a),
         ),
         Opcode::Nop => {}
-        Opcode::Spl => unimplemented!(
-            "This instruction will be complex to implement, as its behavior \
-             does not really match other opcodes'"
-        ),
 
         // Infallible arithmetic
         Opcode::Add => modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| Some(a + b)),
@@ -139,7 +136,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
             }
             None
         }),
-        Opcode::Jmp => {
+        Opcode::Jmp | Opcode::Spl => {
             program_counter_offset.set((a_pointer - program_counter).into());
         }
         Opcode::Jmz => {
@@ -154,6 +151,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
 
     Ok(Executed {
         program_counter_offset: program_counter_offset.get(),
+        should_split: instruction.opcode == Opcode::Spl,
     })
 }
 
@@ -471,7 +469,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
@@ -501,7 +500,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
@@ -531,7 +531,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
@@ -548,7 +549,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
@@ -563,7 +565,8 @@ mod tests {
                 jmp $3, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).expect("Failed to execute");
 
@@ -589,7 +592,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
@@ -606,7 +610,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.advance().unwrap();
+            core.process_queue.pop().unwrap();
+            core.process_queue.push("process".into(), core.offset(1));
 
             let result = execute(&mut core).unwrap();
 
