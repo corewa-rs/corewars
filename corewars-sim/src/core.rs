@@ -80,8 +80,7 @@ impl Core {
     }
 
     /// Get an instruction from a given index in the core
-    #[cfg(test)]
-    fn get(&self, index: i32) -> &Instruction {
+    pub fn get(&self, index: i32) -> &Instruction {
         &self.get_offset(self.offset(index))
     }
 
@@ -219,7 +218,7 @@ impl fmt::Display for Core {
 
                 if skipped_count > 5 {
                     lines.push(Instruction::default().to_string());
-                    lines.push(format!("{:<8}({} more)", "...", skipped_count - 2));
+                    lines.push(format!("; {:<6}({} more)", "...", skipped_count - 2));
                     lines.push(Instruction::default().to_string());
                 } else {
                     for _ in 0..skipped_count {

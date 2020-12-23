@@ -4,7 +4,7 @@
 //! All calls require a `&mut Core` because of the addressing modes which have
 //! pre- and post-increment side effects.
 
-use corewars_core::load_file::{AddressMode, Field, Instruction, Offset};
+use corewars_core::load_file::{AddressMode, Field, Offset};
 
 use super::Core;
 
@@ -100,7 +100,7 @@ fn resolve_pointer(core: &mut Core, program_counter: Offset, field: &Field) -> O
 
 #[cfg(test)]
 mod tests {
-    use corewars_core::load_file::Opcode;
+    use corewars_core::load_file::{Instruction, Opcode};
 
     use test_case::test_case;
 
