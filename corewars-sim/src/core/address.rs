@@ -8,35 +8,38 @@ use corewars_core::load_file::{AddressMode, Field, Instruction, Offset};
 
 use super::Core;
 
-/// Get a clone of the instruction pointed to by the A-field of the given instruction.
-/// The core may be modified as a result of this lookup due to the increment/decrement
-/// addressing modes.
+/// Get the *relative* offset of the instruction pointed to by the A-field of the
+/// given instruction. The core may be modified as a result of this lookup due
+/// to the increment/decrement addressing modes.
 ///
-/// As a result, calling code should only call this function once per step.
-pub fn a_pointer(core: &mut Core, instruction: &Instruction) -> Offset {
-    resolve_pointer(core, &instruction.a_field)
+/// As a result, calling code should only call this function once per step,
+/// and get a clone/reference to the actual instruction as needed.
+pub fn a_pointer(core: &mut Core, program_counter: Offset) -> Offset {
+    let a_field = core.get_offset(program_counter).a_field.clone();
+    resolve_pointer(core, program_counter, &a_field)
 }
 
-/// Get an offset to the instruction pointed to by the B-field of the
+/// Get the *relative* offset of the instruction pointed to by the B-field of the
 /// given instruction. The core may be modified as a result of this lookup due
 /// to the increment/decrement addressing modes.
 ///
 /// For this reason, calling code should only call this function once per step,
 /// and get a clone/reference to the actual instruction as needed.
-pub fn b_pointer(core: &mut Core, instruction: &Instruction) -> Offset {
-    resolve_pointer(core, &instruction.b_field)
+pub fn b_pointer(core: &mut Core, program_counter: Offset) -> Offset {
+    let b_field = core.get_offset(program_counter).b_field.clone();
+    resolve_pointer(core, program_counter, &b_field)
 }
 
-fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
+fn resolve_pointer(core: &mut Core, program_counter: Offset, field: &Field) -> Offset {
     use AddressMode::*;
 
     let address_mode = field.address_mode;
 
     match address_mode {
-        Immediate => core.program_counter(),
-        Direct => core.program_counter() + field.unwrap_value(),
+        Immediate => program_counter,
+        Direct => program_counter + field.unwrap_value(),
         IndirectA | IndirectB => {
-            let pointer_location = core.program_counter() + field.unwrap_value();
+            let pointer_location = program_counter + field.unwrap_value();
 
             let pointer_value = if address_mode == IndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()
@@ -47,7 +50,7 @@ fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
             pointer_location + pointer_value
         }
         PreDecIndirectA | PreDecIndirectB => {
-            let pointer_location = core.program_counter() + field.unwrap_value();
+            let pointer_location = program_counter + field.unwrap_value();
 
             let pointer_value = if address_mode == PreDecIndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()
@@ -70,7 +73,7 @@ fn resolve_pointer(core: &mut Core, field: &Field) -> Offset {
             pointer_location + decremented
         }
         PostIncIndirectA | PostIncIndirectB => {
-            let pointer_location = core.program_counter() + field.unwrap_value();
+            let pointer_location = program_counter + field.unwrap_value();
 
             let pointer_value = if address_mode == PostIncIndirectA {
                 core.get_offset(pointer_location).a_field.unwrap_value()
@@ -108,20 +111,22 @@ mod tests {
     #[test]
     fn immediate_mode() {
         let mut core = build_core("dat #1, #2");
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(0));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(0));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(0));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(0));
         assert_eq!(core.get(0), &instruction);
     }
 
     #[test]
     fn direct_mode() {
         let mut core = build_core("dat $1, $2");
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(1));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(2));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(1));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(2));
 
         assert_eq!(core.get(0), &instruction);
     }
@@ -138,10 +143,11 @@ mod tests {
             modifier
         ));
 
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(expected_a));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(expected_b));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(expected_a));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(expected_b));
 
         assert_eq!(core.get(0), &instruction);
         assert_eq!(
@@ -164,10 +170,11 @@ mod tests {
             ",
         );
 
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(3));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(6));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(3));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(6));
 
         assert_eq!(core.get(0), &instruction);
         assert_eq!(
@@ -190,10 +197,11 @@ mod tests {
             ",
         );
 
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(4));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(7));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(4));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(7));
 
         assert_eq!(core.get(0), &instruction);
         assert_eq!(
@@ -216,10 +224,11 @@ mod tests {
             ",
         );
 
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(4));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(7));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(4));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(7));
 
         assert_eq!(core.get(0), &instruction);
         assert_eq!(
@@ -242,10 +251,11 @@ mod tests {
             ",
         );
 
-        let instruction = core.get(0).clone();
+        let pc = core.offset(0);
+        let instruction = core.get_offset(pc).clone();
 
-        assert_eq!(a_pointer(&mut core, &instruction), core.offset(5));
-        assert_eq!(b_pointer(&mut core, &instruction), core.offset(8));
+        assert_eq!(a_pointer(&mut core, pc), core.offset(5));
+        assert_eq!(b_pointer(&mut core, pc), core.offset(8));
 
         assert_eq!(core.get(0), &instruction);
         assert_eq!(

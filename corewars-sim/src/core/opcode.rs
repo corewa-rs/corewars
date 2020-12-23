@@ -15,15 +15,14 @@ pub struct Executed {
     pub should_split: bool,
 }
 
-pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
-    let instruction = core.current_instruction();
+pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, process::Error> {
+    let instruction = core.get_offset(program_counter).clone();
+
     let zero = core.offset(0);
     let program_counter_offset = Cell::new(None);
 
-    let a_pointer = address::a_pointer(core, &instruction);
-    let b_pointer = address::b_pointer(core, &instruction);
-
-    let program_counter = core.program_counter();
+    let a_pointer = address::a_pointer(core, program_counter);
+    let b_pointer = address::b_pointer(core, program_counter);
 
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match instruction.opcode {
@@ -31,6 +30,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
         Opcode::Dat => return Err(process::Error::ExecuteDat),
         Opcode::Mov => modifier::execute_on_instructions(
             core,
+            program_counter,
             a_pointer,
             b_pointer,
             |a, _b| Some(a),
@@ -39,14 +39,26 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
         Opcode::Nop => {}
 
         // Infallible arithmetic
-        Opcode::Add => modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| Some(a + b)),
-        Opcode::Mul => modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| Some(a * b)),
-        Opcode::Sub => modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| Some(a - b)),
+        Opcode::Add => {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+                Some(a + b)
+            })
+        }
+        Opcode::Mul => {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+                Some(a * b)
+            })
+        }
+        Opcode::Sub => {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+                Some(a - b)
+            })
+        }
 
         // Fallible arithmetic
         Opcode::Div => {
             let mut div_result = Ok(());
-            modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
                 if b.value() == 0 {
                     div_result = Err(process::Error::DivideByZero);
                     None
@@ -58,7 +70,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
         }
         Opcode::Mod => {
             let mut rem_result = Ok(());
-            modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
                 if b.value() == 0 {
                     rem_result = Err(process::Error::DivideByZero);
                     None
@@ -74,6 +86,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
             program_counter_offset.set(core.offset(1).into());
             modifier::execute_on_instructions(
                 core,
+                program_counter,
                 a_pointer,
                 b_pointer,
                 |a, b| {
@@ -93,7 +106,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
         }
         Opcode::Slt => {
             program_counter_offset.set(core.offset(1).into());
-            modifier::execute_on_fields(core, a_pointer, b_pointer, |a, b| {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
                 if a.value() >= b.value() {
                     program_counter_offset.set(None);
                 }
@@ -104,6 +117,7 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
             let next_instruction = Some(core.offset(1));
             modifier::execute_on_instructions(
                 core,
+                program_counter,
                 a_pointer,
                 b_pointer,
                 |a, b| {
@@ -123,24 +137,28 @@ pub fn execute(core: &mut Core) -> Result<Executed, process::Error> {
 
         // Jumping control flow opcodes
         // These subtract the current program counter since this offset will be added to it later
-        Opcode::Djn => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
-            let decremented = b - 1i32;
-            if decremented != zero {
-                program_counter_offset.set((a_pointer - program_counter).into());
-            }
-            Some(decremented)
-        }),
-        Opcode::Jmn => modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
-            if b != zero {
-                program_counter_offset.set((a_pointer - program_counter).into());
-            }
-            None
-        }),
+        Opcode::Djn => {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
+                let decremented = b - 1_i32;
+                if decremented != zero {
+                    program_counter_offset.set((a_pointer - program_counter).into());
+                }
+                Some(decremented)
+            })
+        }
+        Opcode::Jmn => {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
+                if b != zero {
+                    program_counter_offset.set((a_pointer - program_counter).into());
+                }
+                None
+            })
+        }
         Opcode::Jmp | Opcode::Spl => {
             program_counter_offset.set((a_pointer - program_counter).into());
         }
         Opcode::Jmz => {
-            modifier::execute_on_fields(core, a_pointer, b_pointer, |_a, b| {
+            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
                 if b == zero {
                     program_counter_offset.set((a_pointer - program_counter).into());
                 }
@@ -174,7 +192,8 @@ mod tests {
         #[test]
         fn execute_dat() {
             let mut core = build_core("dat #0, #0");
-            let err = execute(&mut core).unwrap_err();
+            let pc = core.offset(0);
+            let err = execute(&mut core, pc).unwrap_err();
             assert_eq!(err, Error::ExecuteDat);
         }
 
@@ -187,8 +206,8 @@ mod tests {
                 b_field: Field::direct(1),
             };
             let mut core = build_core("mov.i $0, $1");
-
-            let result = execute(&mut core).expect("Failed to execute");
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).expect("Failed to execute");
             assert!(result.program_counter_offset.is_none());
 
             assert_eq!(
@@ -205,7 +224,8 @@ mod tests {
         #[test]
         fn execute_nop() {
             let mut core = build_core("nop #0, #0");
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
             assert!(result.program_counter_offset.is_none());
         }
     }
@@ -225,7 +245,9 @@ mod tests {
             opcode
         ));
 
-        let result = execute(&mut core).unwrap();
+        let pc = core.offset(0);
+        let result = execute(&mut core, pc).unwrap();
+
         assert!(result.program_counter_offset.is_none());
 
         assert_eq!(
@@ -254,8 +276,8 @@ mod tests {
                 dat #4, #2
                 ",
             );
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
             assert!(result.program_counter_offset.is_none());
 
             assert_eq!(
@@ -290,8 +312,8 @@ mod tests {
             );
 
             core.set(2, divisor);
-
-            let err = execute(&mut core).unwrap_err();
+            let pc = core.offset(0);
+            let err = execute(&mut core, pc).unwrap_err();
 
             assert_eq!(err, Error::DivideByZero);
             assert_eq!(core.get(2), &result)
@@ -306,8 +328,8 @@ mod tests {
                 dat #4, #2
                 ",
             );
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
             assert!(result.program_counter_offset.is_none());
 
             assert_eq!(
@@ -342,8 +364,8 @@ mod tests {
             );
 
             core.set(2, divisor);
-
-            let err = execute(&mut core).unwrap_err();
+            let pc = core.offset(0);
+            let err = execute(&mut core, pc).unwrap_err();
 
             assert_eq!(err, Error::DivideByZero);
             assert_eq!(core.get(2), &result)
@@ -413,8 +435,9 @@ mod tests {
             use pretty_assertions::assert_eq;
 
             let mut core = build_core(program);
+            let pc = core.offset(0);
             let expected_offset = expected_offset.map(|o| core.offset(o));
-            let result = execute(&mut core).expect("Error executing opcode");
+            let result = execute(&mut core, pc).expect("Error executing opcode");
 
             assert_eq!(result.program_counter_offset, expected_offset);
         }
@@ -437,7 +460,8 @@ mod tests {
         )]
         fn execute_slt_no_skip(program: &str) {
             let mut core = build_core(program);
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
             assert!(result.program_counter_offset.is_none());
         }
 
@@ -450,7 +474,8 @@ mod tests {
                 dat     #2, #0
                 ",
             );
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
             assert_eq!(result.program_counter_offset, Some(core.offset(1)));
         }
     }
@@ -469,10 +494,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, None);
             assert_eq!(
@@ -500,10 +523,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, Some(core.offset(2)));
             assert_eq!(
@@ -531,10 +552,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, None);
         }
@@ -549,10 +568,8 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, Some(core.offset(2)));
         }
@@ -565,10 +582,8 @@ mod tests {
                 jmp $3, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).expect("Failed to execute");
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).expect("Failed to execute");
 
             assert_eq!(result.program_counter_offset, Some(core.offset(3)));
             assert_eq!(
@@ -590,10 +605,8 @@ mod tests {
                 spl $3, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
-
-            let result = execute(&mut core).expect("Failed to execute");
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).expect("Failed to execute");
 
             assert_eq!(result.program_counter_offset, Some(core.offset(3)));
             assert!(result.should_split);
@@ -618,10 +631,9 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
 
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, None);
         }
@@ -636,10 +648,9 @@ mod tests {
                 nop #0, #0
                 ",
             );
-            core.process_queue.pop().unwrap();
-            core.process_queue.push("process".into(), core.offset(1));
 
-            let result = execute(&mut core).unwrap();
+            let pc = core.offset(1);
+            let result = execute(&mut core, pc).unwrap();
 
             assert_eq!(result.program_counter_offset, Some(core.offset(2)));
         }

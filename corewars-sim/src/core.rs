@@ -70,11 +70,6 @@ impl Core {
             .offset
     }
 
-    /// Clone and returns the next instruction to be executed.
-    fn current_instruction(&self) -> Instruction {
-        self.get_offset(self.program_counter()).clone()
-    }
-
     fn offset<T: Into<i32>>(&self, value: T) -> Offset {
         Offset::new(value.into(), self.size())
     }
@@ -146,8 +141,8 @@ impl Core {
     pub fn step(&mut self) -> Result<(), process::Error> {
         self.steps_taken += 1;
 
-        let result = opcode::execute(self);
         let current_process = self.process_queue.pop()?;
+        let result = opcode::execute(self, current_process.offset);
 
         match result {
             Err(err) => match err {

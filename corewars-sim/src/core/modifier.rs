@@ -8,13 +8,21 @@ use super::Core;
 /// shortcut for `execute_on_instruction` without an `InstructionOp`
 pub fn execute_on_fields<FieldOp>(
     core: &mut Core,
+    from_offset: Offset,
     a_pointer: Offset,
     b_pointer: Offset,
     field_op: FieldOp,
 ) where
     FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
 {
-    execute_on_instructions::<_, fn(_, _) -> _, _>(core, a_pointer, b_pointer, field_op, None)
+    execute_on_instructions::<_, fn(_, _) -> _, _>(
+        core,
+        from_offset,
+        a_pointer,
+        b_pointer,
+        field_op,
+        None,
+    )
 }
 
 /// Execute a given operation (`FieldOp`) on a given instruction. The `field_op`
@@ -24,6 +32,7 @@ pub fn execute_on_fields<FieldOp>(
 /// pre-computed and used directly in the closures, if necessary.
 pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
     core: &mut Core,
+    from_offset: Offset,
     a_pointer: Offset,
     b_pointer: Offset,
     mut field_op: FieldOp,
@@ -33,7 +42,7 @@ pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
     InstructionOp: FnMut(Instruction, Instruction) -> Option<Instruction>,
     OptionalInstructionOp: Into<Option<InstructionOp>>,
 {
-    let instruction = core.current_instruction();
+    let instruction = core.get_offset(from_offset).clone();
 
     let a_instruction = core.get_offset(a_pointer).clone();
     let b_instruction = core.get_offset(b_pointer).clone();
@@ -126,7 +135,7 @@ mod tests {
         let zero = core.offset(0);
         let a_pointer = core.offset(1);
         let b_pointer = core.offset(2);
-        execute_on_fields(&mut core, a_pointer, b_pointer, |a, b| {
+        execute_on_fields(&mut core, zero, a_pointer, b_pointer, |a, b| {
             // kinda hacky way to verify exact outputs but I guess it works...
             let string_ans = a.value().to_string() + &b.value().to_string();
             Some(zero + string_ans.parse::<i32>().unwrap())
@@ -154,10 +163,12 @@ mod tests {
         );
 
         let output = core.offset(0);
+        let zero = core.offset(0);
         let a_pointer = core.offset(1);
         let b_pointer = core.offset(2);
         execute_on_instructions(
             &mut core,
+            zero,
             a_pointer,
             b_pointer,
             |a, b| {
