@@ -32,17 +32,10 @@ pub enum Error {
 }
 
 /// The full memory core at a given point in time
-#[derive(Debug)]
 pub struct Core {
     instructions: Box<[Instruction]>,
     process_queue: process::Queue,
     steps_taken: usize,
-}
-
-impl Default for Core {
-    fn default() -> Self {
-        Self::new(load_file::DEFAULT_CONSTANTS["CORESIZE"]).unwrap()
-    }
 }
 
 impl Core {
@@ -63,6 +56,7 @@ impl Core {
         self.steps_taken
     }
 
+    #[cfg(test)]
     fn program_counter(&self) -> Offset {
         self.process_queue
             .peek()
@@ -145,7 +139,7 @@ impl Core {
 
         match result {
             Err(err) => match err {
-                process::Error::DivideByZero | process::Error::ExecuteDat => {
+                process::Error::DivideByZero | process::Error::ExecuteDat(_) => {
                     if !self.process_queue.is_process_alive(&current_process.name) {
                         Err(err)
                     } else {
@@ -185,6 +179,9 @@ impl Core {
                 break;
             }
 
+            // TODO: add a way to just print current line instead of entire core
+            eprintln!("{:?}\n============================================", &self);
+
             let result = self.step();
             if result.is_err() {
                 return result;
@@ -193,19 +190,26 @@ impl Core {
 
         Ok(())
     }
-}
 
-impl fmt::Display for Core {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn format_lines<F: Fn(usize, &Instruction) -> String, G: Fn(usize, &Instruction) -> String>(
+        &self,
+        formatter: &mut fmt::Formatter,
+        instruction_prefix: F,
+        instruction_suffix: G,
+    ) -> fmt::Result {
         let mut lines = Vec::new();
         let mut iter = self.instructions.iter().enumerate().peekable();
 
         while let Some((i, instruction)) = iter.next() {
-            if i as u32 == self.program_counter().value() {
-                lines.push(format!("{}{:>8}", instruction, "<= PC"));
-            } else if instruction != &Instruction::default() {
-                lines.push(instruction.to_string());
-            } else {
+            let add_line = |line_vec: &mut Vec<String>, j| {
+                line_vec.push(
+                    instruction_prefix(j, instruction)
+                        + &instruction.to_string()
+                        + &instruction_suffix(j, instruction),
+                )
+            };
+
+            if *instruction == Instruction::default() {
                 // Skip large chunks of defaulted instructions with a counter instead
                 let mut skipped_count = 0;
                 while let Some(&(_, inst)) = iter.peek() {
@@ -217,18 +221,50 @@ impl fmt::Display for Core {
                 }
 
                 if skipped_count > 5 {
-                    lines.push(Instruction::default().to_string());
+                    add_line(&mut lines, i);
                     lines.push(format!("; {:<6}({} more)", "...", skipped_count - 2));
-                    lines.push(Instruction::default().to_string());
+                    add_line(&mut lines, i + skipped_count);
                 } else {
                     for _ in 0..skipped_count {
-                        lines.push(Instruction::default().to_string());
+                        add_line(&mut lines, i);
                     }
                 }
+            } else {
+                add_line(&mut lines, i);
             }
         }
 
         write!(formatter, "{}", lines.join("\n"))
+    }
+}
+
+impl Default for Core {
+    fn default() -> Self {
+        Self::new(load_file::DEFAULT_CONSTANTS["CORESIZE"]).unwrap()
+    }
+}
+
+impl fmt::Debug for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        self.format_lines(
+            formatter,
+            |i, _| format!("{:<6}", i),
+            |i, _| {
+                if let Ok(process) = self.process_queue.peek() {
+                    if i as u32 == process.offset.value() {
+                        return format!("{:>8}", "; <= PC");
+                    }
+                }
+
+                String::new()
+            },
+        )
+    }
+}
+
+impl fmt::Display for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        self.format_lines(formatter, |_, _| String::new(), |_, _| String::new())
     }
 }
 

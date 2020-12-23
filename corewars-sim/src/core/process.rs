@@ -49,6 +49,7 @@ impl Queue {
     }
 
     /// Get the next offset for execution without modifying the queue.
+    // TODO: this should probably just return Option<&ProcessEntry>
     pub fn peek(&self) -> Result<&ProcessEntry, Error> {
         if let Some(entry) = self.queue.get(0) {
             Ok(entry)
@@ -91,8 +92,8 @@ pub enum Error {
     ProcessNameExists(String),
 
     /// The warrior attempted to execute a DAT instruction
-    #[error("terminated due to reaching a DAT")]
-    ExecuteDat,
+    #[error("terminated due to reaching a DAT at offset {0}")]
+    ExecuteDat(Offset),
 
     /// The warrior attempted to execute a division by zero
     #[error("terminated due to division by 0")]

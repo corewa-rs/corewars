@@ -27,7 +27,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match instruction.opcode {
         // Process control/miscellaneous opcodes
-        Opcode::Dat => return Err(process::Error::ExecuteDat),
+        Opcode::Dat => return Err(process::Error::ExecuteDat(program_counter)),
         Opcode::Mov => modifier::execute_on_instructions(
             core,
             program_counter,
@@ -83,8 +83,10 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
 
         // Skipping control flow opcodes
         Opcode::Cmp | Opcode::Seq => {
-            program_counter_offset.set(core.offset(1).into());
-            modifier::execute_on_instructions(
+            // NOTE: this set to 1 instead of 2 seems to be the discrepancy between
+            // pMars and this simulator.
+            program_counter_offset.set(core.offset(2).into());
+            let r = modifier::execute_on_instructions(
                 core,
                 program_counter,
                 a_pointer,
@@ -102,10 +104,12 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                     }
                     None
                 },
-            )
+            );
+            eprintln!("Setting offset from cmp: {:?}", program_counter_offset);
+            r
         }
         Opcode::Slt => {
-            program_counter_offset.set(core.offset(1).into());
+            program_counter_offset.set(core.offset(2).into());
             modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
                 if a.value() >= b.value() {
                     program_counter_offset.set(None);
@@ -114,7 +118,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             })
         }
         Opcode::Sne => {
-            let next_instruction = Some(core.offset(1));
+            let next_instruction = Some(core.offset(2));
             modifier::execute_on_instructions(
                 core,
                 program_counter,
@@ -194,7 +198,7 @@ mod tests {
             let mut core = build_core("dat #0, #0");
             let pc = core.offset(0);
             let err = execute(&mut core, pc).unwrap_err();
-            assert_eq!(err, Error::ExecuteDat);
+            assert_eq!(err, Error::ExecuteDat(pc));
         }
 
         #[test]

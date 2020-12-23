@@ -57,6 +57,12 @@ impl Offset {
     }
 }
 
+impl std::fmt::Display for Offset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 /// Implement a `std::ops` operation for `Offset`.
 macro_rules! impl_offset_op {
     ($op_trait:ident :: $op:ident , $assign_trait:ident :: $assign:ident ) => {
