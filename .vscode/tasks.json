@@ -14,6 +14,7 @@
       "group": "build",
       "isBackground": true,
       "presentation": {
+        "panel": "shared",
         "clear": true,
         "reveal": "silent"
       },
@@ -33,6 +34,7 @@
         "isDefault": true
       },
       "presentation": {
+        "panel": "shared",
         "clear": true
       },
       "problemMatcher": [
@@ -53,6 +55,7 @@
         "RUST_BACKTRACE": "1"
       },
       "presentation": {
+        "panel": "shared",
         "clear": true
       },
       "problemMatcher": [
