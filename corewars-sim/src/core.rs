@@ -124,6 +124,7 @@ impl Core {
         self.process_queue.push(
             warrior_name,
             self.offset(warrior.program.origin.unwrap_or(0) as i32),
+            None,
         );
 
         Ok(())
@@ -148,7 +149,7 @@ impl Core {
         match result {
             Err(err) => match err {
                 process::Error::DivideByZero | process::Error::ExecuteDat(_) => {
-                    if !self.process_queue.is_process_alive(&current_process.name) {
+                    if self.process_queue.thread_count(&current_process.name) < 1 {
                         Err(err)
                     } else {
                         // This is fine, the task terminated but the process is still alive
@@ -158,19 +159,29 @@ impl Core {
                 _ => panic!("Unexpected error {}", err),
             },
             Ok(result) => {
-                // In the special case of a split, enqueue PC+1 before also enqueueing the other offset
-                if result.should_split {
-                    self.process_queue
-                        .push(current_process.name.clone(), current_process.offset + 1);
-                }
+                // In the special case of a split, enqueue PC+1 (with same thread id)
+                // before also enqueueing the other offset (new thread id)
+                let new_thread_id = if result.should_split {
+                    self.process_queue.push(
+                        current_process.name.clone(),
+                        current_process.offset + 1,
+                        Some(current_process.thread),
+                    );
+                    None
+                } else {
+                    Some(current_process.thread)
+                };
 
                 // Either the opcode changed the program counter, or we should just enqueue PC+1
                 let offset = result
                     .program_counter_offset
                     .unwrap_or_else(|| self.offset(1));
 
-                self.process_queue
-                    .push(current_process.name, current_process.offset + offset);
+                self.process_queue.push(
+                    current_process.name,
+                    current_process.offset + offset,
+                    new_thread_id,
+                );
 
                 Ok(())
             }
