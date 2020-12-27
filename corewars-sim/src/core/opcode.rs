@@ -83,10 +83,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
 
         // Skipping control flow opcodes
         Opcode::Cmp | Opcode::Seq => {
-            // NOTE: this set to 1 instead of 2 seems to be the discrepancy between
-            // pMars and this simulator.
             program_counter_offset.set(core.offset(2).into());
-            let r = modifier::execute_on_instructions(
+            modifier::execute_on_instructions(
                 core,
                 program_counter,
                 a_pointer,
@@ -104,9 +102,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                     }
                     None
                 },
-            );
-            eprintln!("Setting offset from cmp: {:?}", program_counter_offset);
-            r
+            )
         }
         Opcode::Slt => {
             program_counter_offset.set(core.offset(2).into());
@@ -387,7 +383,7 @@ mod tests {
             dat     #0, #1
             dat     #0, #1
             ",
-            Some(1)
+            Some(2)
             ; "cmp_equal"
         )]
         #[test_case(
@@ -396,7 +392,7 @@ mod tests {
             dat     #0, #1
             dat     #0, #1
             ",
-            Some(1)
+            Some(2)
             ; "seq_equal"
         )]
         #[test_case(
@@ -432,7 +428,7 @@ mod tests {
             dat     #0, #1
             dat     #1, #1
             ",
-            Some(1)
+            Some(2)
             ; "sne_unequal"
         )]
         fn execute_skip_equality(program: &str, expected_offset: Option<i32>) {
@@ -480,7 +476,7 @@ mod tests {
             );
             let pc = core.offset(0);
             let result = execute(&mut core, pc).unwrap();
-            assert_eq!(result.program_counter_offset, Some(core.offset(1)));
+            assert_eq!(result.program_counter_offset, Some(core.offset(2)));
         }
     }
 

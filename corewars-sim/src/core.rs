@@ -132,9 +132,17 @@ impl Core {
     /// Run a single cycle of simulation. This will continue to execute even
     /// after MAXCYCLES has been reached
     pub fn step(&mut self) -> Result<(), process::Error> {
+        let current_process = self.process_queue.pop()?;
+
+        eprintln!(
+            "Step{:>6} (t{:>2}): {:0>5} {}",
+            self.steps_taken,
+            current_process.thread,
+            current_process.offset.value(),
+            self.get_offset(current_process.offset),
+        );
         self.steps_taken += 1;
 
-        let current_process = self.process_queue.pop()?;
         let result = opcode::execute(self, current_process.offset);
 
         match result {
@@ -179,9 +187,6 @@ impl Core {
                 break;
             }
 
-            // TODO: add a way to just print current line instead of entire core
-            eprintln!("{:?}\n============================================", &self);
-
             let result = self.step();
             if result.is_err() {
                 return result;
@@ -191,6 +196,7 @@ impl Core {
         Ok(())
     }
 
+    // TODO: clean up this impl a bunch
     fn format_lines<F: Fn(usize, &Instruction) -> String, G: Fn(usize, &Instruction) -> String>(
         &self,
         formatter: &mut fmt::Formatter,
@@ -248,7 +254,7 @@ impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.format_lines(
             formatter,
-            |i, _| format!("{:<6}", i),
+            |i, _| format!("{:0>6} ", i),
             |i, _| {
                 if let Ok(process) = self.process_queue.peek() {
                     if i as u32 == process.offset.value() {

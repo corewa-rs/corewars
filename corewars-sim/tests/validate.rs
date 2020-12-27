@@ -25,8 +25,7 @@ fn validate_redcode() {
     eprintln!("Before run:\n{:?}\n==============================", core);
 
     // If the run fails, check the flag output to see where it failed
-    let core_result = core.run(10_000);
-    if let Err(error) = core_result {
+    if let Err(error) = core.run(10_000) {
         eprintln!(
             "Error {} after {} cycles have run:\n{:?}",
             error,

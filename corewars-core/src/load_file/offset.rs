@@ -59,7 +59,7 @@ impl Offset {
 
 impl std::fmt::Display for Offset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.value)
+        self.value.fmt(f)
     }
 }
 
