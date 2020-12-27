@@ -111,7 +111,7 @@ impl Core {
         // safe way of loading a resolved warrior perhaps
 
         for (i, instruction) in warrior.program.instructions.iter().enumerate() {
-            self.instructions[i] = instruction.clone();
+            self.instructions[i] = self.normalize(instruction.clone());
         }
 
         // TODO: Maybe some kinda increasing counter for warrior names
@@ -128,6 +128,25 @@ impl Core {
         );
 
         Ok(())
+    }
+
+    fn normalize(&self, mut instruction: Instruction) -> Instruction {
+        // NOTE: this works, but it's a bit unforgiving in terms of debugging since
+        // we lose information in the process. Similarly, during parsing we lose
+        // expression expansion etc.
+
+        // Maybe it would be better to just normalize all values during execution
+        // instead of during warrior loading...
+
+        instruction
+            .a_field
+            .set_value(self.offset(instruction.a_field.unwrap_value()));
+
+        instruction
+            .b_field
+            .set_value(self.offset(instruction.b_field.unwrap_value()));
+
+        instruction
     }
 
     /// Run a single cycle of simulation. This will continue to execute even
