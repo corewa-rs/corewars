@@ -3,20 +3,39 @@
 /// # Examples
 ///
 /// ```
-/// enum_string!(pub Foo {
-///     Bar => "Bar",
-///     Baz => "BAZ"
-/// })
+/// # #[macro_use]
+/// # extern crate corewars_core;
+/// #
+/// enum_string! {
+///     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+///     #[allow(dead_code)]
+///     pub enum Foo {
+///         Bar => "Bar",
+///         Baz => "BAZ",
+///     }
+/// }
+///
+/// # fn main() {
+/// assert_eq!(&Foo::Bar.to_string(), "Bar");
+/// assert_eq!(&Foo::Baz.to_string(), "BAZ");
+/// # }
 /// ```
 ///
 /// This will generate a `pub enum Foo` with variants `Bar` and `Baz`, which
 /// implements `std::str::FromStr` and `std::fmt::Display` for the string
 /// values specified.
+///
+// This really should have #[cfg_attr(doctest, macro_export)]
+// But cfg(doctest) does not work as expected: https://github.com/rust-lang/rust/issues/67295
+#[macro_export]
 macro_rules! enum_string {
-    ($vis:vis $name:ident {
-        $($variant:ident => $value:expr),* $(,)?
-    }) => {
-        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    (
+        $(#[$attr:meta])*
+        $vis:vis enum $name:ident {
+            $($variant:ident => $value:expr),* $(,)?
+        }
+    ) => {
+        $(#[$attr])*
         $vis enum $name {
             $($variant,)*
         }
@@ -58,20 +77,28 @@ mod test {
     use std::str::FromStr;
 
     mod submod {
-        enum_string!(pub Foo {
-            Bar => "Bar",
-        });
+        enum_string! {
+            #[derive(Debug, PartialEq, Eq)]
+            pub enum Foo {
+                Bar => "Bar",
+            }
+        }
 
-        enum_string!(pub Comma {
-            NoTrailing => "still works"
-        });
+        enum_string! {
+            pub enum Comma {
+                NoTrailing => "still works"
+            }
+        }
     }
 
-    enum_string!(Foo {
-        Bar => "Bar",
-        Baz => "Baz",
-        SomethingElse => "blahblah",
-    });
+    enum_string! {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        enum Foo {
+            Bar => "Bar",
+            Baz => "Baz",
+            SomethingElse => "blahblah",
+        }
+    }
 
     #[test]
     fn pub_visible() {

@@ -1,31 +1,27 @@
 use std::fmt;
 
-enum_string!(pub Opcode {
-    Add => "ADD",
-    Cmp => "CMP",
-    Dat => "DAT",
-    Div => "DIV",
-    Djn => "DJN",
-    Jmn => "JMN",
-    Jmp => "JMP",
-    Jmz => "JMZ",
-    Mod => "MOD",
-    Mov => "MOV",
-    Mul => "MUL",
-    Nop => "NOP",
-    Seq => "SEQ",
-    Slt => "SLT",
-    Sne => "SNE",
-    Spl => "SPL",
-    Sub => "SUB",
-});
-
-enum_string!(pub PseudoOpcode {
-    Org => "ORG",
-    End => "END",
-    Equ => "EQU",
-    For => "FOR",
-});
+enum_string! {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum Opcode {
+        Add => "ADD",
+        Cmp => "CMP",
+        Dat => "DAT",
+        Div => "DIV",
+        Djn => "DJN",
+        Jmn => "JMN",
+        Jmp => "JMP",
+        Jmz => "JMZ",
+        Mod => "MOD",
+        Mov => "MOV",
+        Mul => "MUL",
+        Nop => "NOP",
+        Seq => "SEQ",
+        Slt => "SLT",
+        Sne => "SNE",
+        Spl => "SPL",
+        Sub => "SUB",
+    }
+}
 
 impl Default for Opcode {
     fn default() -> Self {
@@ -33,15 +29,29 @@ impl Default for Opcode {
     }
 }
 
-enum_string!(pub Modifier {
-    A   => "A",
-    B   => "B",
-    AB  => "AB",
-    BA  => "BA",
-    F   => "F",
-    X   => "X",
-    I   => "I",
-});
+enum_string! {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum PseudoOpcode {
+        Org => "ORG",
+        End => "END",
+        Equ => "EQU",
+        For => "FOR",
+    }
+}
+
+enum_string! {
+    #[allow(clippy::upper_case_acronyms)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum Modifier {
+        A   => "A",
+        B   => "B",
+        AB  => "AB",
+        BA  => "BA",
+        F   => "F",
+        X   => "X",
+        I   => "I",
+    }
+}
 
 impl Default for Modifier {
     fn default() -> Self {
@@ -76,16 +86,19 @@ impl Modifier {
     }
 }
 
-enum_string!(pub AddressMode {
-    Immediate           => "#",
-    Direct              => "$",
-    IndirectA           => "*",
-    IndirectB           => "@",
-    PreDecIndirectA     => "{",
-    PreDecIndirectB     => "<",
-    PostIncIndirectA    => "}",
-    PostIncIndirectB    => ">",
-});
+enum_string! {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum AddressMode {
+        Immediate           => "#",
+        Direct              => "$",
+        IndirectA           => "*",
+        IndirectB           => "@",
+        PreDecIndirectA     => "{",
+        PreDecIndirectB     => "<",
+        PostIncIndirectA    => "}",
+        PostIncIndirectB    => ">",
+    }
+}
 
 impl Default for AddressMode {
     fn default() -> Self {
