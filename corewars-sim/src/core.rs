@@ -83,6 +83,11 @@ impl Core {
         &self.instructions[offset.value() as usize]
     }
 
+    /// Get a mutable instruction from a given index in the core
+    pub fn get_mut(&mut self, index: i32) -> &mut Instruction {
+        self.get_offset_mut(self.offset(index))
+    }
+
     /// Get a mutable from a given offset in the core
     fn get_offset_mut(&mut self, offset: Offset) -> &mut Instruction {
         &mut self.instructions[offset.value() as usize]
@@ -341,14 +346,23 @@ mod tests {
         .expect("Failed to parse warrior");
 
         core.load_warrior(&warrior).expect("Failed to load warrior");
-        assert_eq!(core.size(), 128);
+        let expected_core_size = 128_i32;
+        assert_eq!(core.size(), expected_core_size as u32);
 
         assert_eq!(
             &core.instructions[..4],
             &[
                 Instruction::new(Opcode::Mov, Field::direct(1), Field::immediate(1)),
-                Instruction::new(Opcode::Jmp, Field::immediate(-1), Field::immediate(2)),
-                Instruction::new(Opcode::Jmp, Field::immediate(-1), Field::immediate(2)),
+                Instruction::new(
+                    Opcode::Jmp,
+                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(2)
+                ),
+                Instruction::new(
+                    Opcode::Jmp,
+                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(2)
+                ),
                 Instruction::default(),
             ]
         );

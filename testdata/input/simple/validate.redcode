@@ -74,7 +74,7 @@ t16     jmz l10,1
         jmp fail
 l10     cmp t13,t15
         jmp fail
-        add t17,<t17
+        add t17,<t17    ; we diverge here compared to pmars, causing failure during t18
 t17     jmp 1,1
 t18     jmp 2,1
         cmp t17,t18

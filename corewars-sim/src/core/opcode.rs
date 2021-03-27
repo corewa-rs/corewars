@@ -15,23 +15,41 @@ pub struct Executed {
     pub should_split: bool,
 }
 
+/// TODO: docstring
 pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, process::Error> {
     let instruction = core.get_offset(program_counter).clone();
+    let opcode = instruction.opcode;
 
     let zero = core.offset(0);
     let program_counter_offset = Cell::new(None);
 
+    // NOTE: the order of evaluation is significant here: we create the "register"
+    // by cloning the A operand before evaluating the B pointer, and all further
+    // operations must use the buffered A operand, in case the B pointer evaluation
+    // modifies memory
     let a_pointer = address::a_pointer(core, program_counter);
+    let a_instruction = core.get_offset(a_pointer).clone();
+    // Apply postincrement / predecrement now, before we do any other operations.
+    address::apply_a_pointer(core, program_counter);
+
     let b_pointer = address::b_pointer(core, program_counter);
+    let b_instruction = core.get_offset(b_pointer).clone();
+    address::apply_b_pointer(core, program_counter);
+
+    // TODO: we maybe need to pass both the b_value *and* its offset to the
+    // modifier code... also, I don't really like the function signatures in
+    // there, it's kinda messy tbh
 
     // See docs/icws94.txt:1113 for detailed description of each opcode
-    match instruction.opcode {
+    match opcode {
         // Process control/miscellaneous opcodes
-        Opcode::Dat => return Err(process::Error::ExecuteDat(program_counter)),
+        Opcode::Dat => {
+            return Err(process::Error::ExecuteDat(program_counter));
+        }
         Opcode::Mov => modifier::execute_on_instructions(
             core,
-            program_counter,
-            a_pointer,
+            instruction,
+            a_instruction,
             b_pointer,
             |a, _b| Some(a),
             |a, _b| Some(a),
@@ -86,8 +104,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             program_counter_offset.set(core.offset(2).into());
             modifier::execute_on_instructions(
                 core,
-                program_counter,
-                a_pointer,
+                instruction,
+                a_instruction,
                 b_pointer,
                 |a, b| {
                     if a != b {
@@ -117,8 +135,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             let next_instruction = Some(core.offset(2));
             modifier::execute_on_instructions(
                 core,
-                program_counter,
-                a_pointer,
+                instruction,
+                a_instruction,
                 b_pointer,
                 |a, b| {
                     if a != b {
@@ -169,7 +187,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
 
     Ok(Executed {
         program_counter_offset: program_counter_offset.get(),
-        should_split: instruction.opcode == Opcode::Spl,
+        should_split: opcode == Opcode::Spl,
     })
 }
 
@@ -185,6 +203,7 @@ mod tests {
     use test_case::test_case;
 
     mod process {
+
         use super::*;
 
         use pretty_assertions::assert_eq;
@@ -230,34 +249,63 @@ mod tests {
         }
     }
 
-    #[test_case("add", 3; "add")]
-    #[test_case("sub", 7999; "sub")]
-    #[test_case("mul", 2; "mul")]
-    fn execute_infallible_arithmetic(opcode: &str, expected_result: i32) {
+    mod infallible_arithmetic {
+        use super::*;
+
+        use super::test_case;
         use pretty_assertions::assert_eq;
 
-        let mut core = build_core(&format!(
-            "
+        #[test_case("add", 3; "add")]
+        #[test_case("sub", 7999; "sub")]
+        #[test_case("mul", 2; "mul")]
+        fn perform_arithmetic(opcode: &str, expected_result: i32) {
+            use pretty_assertions::assert_eq;
+
+            let mut core = build_core(&format!(
+                "
                 {}.a $1, $2
                 dat #1, #0
                 dat #2, #0
                 ",
-            opcode
-        ));
+                opcode
+            ));
 
-        let pc = core.offset(0);
-        let result = execute(&mut core, pc).unwrap();
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
 
-        assert!(result.program_counter_offset.is_none());
+            assert!(result.program_counter_offset.is_none());
 
-        assert_eq!(
-            *core.get(2),
-            Instruction::new(
-                Opcode::Dat,
-                Field::immediate(expected_result),
-                Field::immediate(0)
-            )
-        );
+            assert_eq!(
+                *core.get(2),
+                Instruction::new(
+                    Opcode::Dat,
+                    Field::immediate(expected_result),
+                    Field::immediate(0)
+                )
+            );
+        }
+
+        #[test]
+        fn add_with_predecrement() {
+            let mut core = build_core(
+                "
+                add.f $1, <1
+                dat.f $1, $1
+            ",
+            );
+
+            let pc = core.offset(0);
+            let result = execute(&mut core, pc).unwrap();
+
+            assert!(result.program_counter_offset.is_none());
+
+            // The a-operand should be from before the predecrement, but the
+            // b-operand should be from after it, resulting in (1+1=2, 1+0=1)
+            assert_eq!(
+                *core.get(1),
+                Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(1))
+            );
+        }
     }
 
     mod fallible_arithmetic {
@@ -376,6 +424,7 @@ mod tests {
         use super::*;
 
         use super::test_case;
+        use pretty_assertions::assert_eq;
 
         #[test_case(
             "
