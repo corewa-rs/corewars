@@ -32,17 +32,10 @@ pub enum Error {
 }
 
 /// The full memory core at a given point in time
-#[derive(Debug)]
 pub struct Core {
     instructions: Box<[Instruction]>,
     process_queue: process::Queue,
     steps_taken: usize,
-}
-
-impl Default for Core {
-    fn default() -> Self {
-        Self::new(load_file::DEFAULT_CONSTANTS["CORESIZE"]).unwrap()
-    }
 }
 
 impl Core {
@@ -63,6 +56,7 @@ impl Core {
         self.steps_taken
     }
 
+    #[cfg(test)]
     fn program_counter(&self) -> Offset {
         self.process_queue
             .peek()
@@ -87,6 +81,11 @@ impl Core {
     /// Get an instruction from a given offset in the core
     fn get_offset(&self, offset: Offset) -> &Instruction {
         &self.instructions[offset.value() as usize]
+    }
+
+    /// Get a mutable instruction from a given index in the core
+    pub fn get_mut(&mut self, index: i32) -> &mut Instruction {
+        self.get_offset_mut(self.offset(index))
     }
 
     /// Get a mutable from a given offset in the core
@@ -117,7 +116,7 @@ impl Core {
         // safe way of loading a resolved warrior perhaps
 
         for (i, instruction) in warrior.program.instructions.iter().enumerate() {
-            self.instructions[i] = instruction.clone();
+            self.instructions[i] = self.normalize(instruction.clone());
         }
 
         // TODO: Maybe some kinda increasing counter for warrior names
@@ -130,23 +129,51 @@ impl Core {
         self.process_queue.push(
             warrior_name,
             self.offset(warrior.program.origin.unwrap_or(0) as i32),
+            None,
         );
 
         Ok(())
     }
 
+    fn normalize(&self, mut instruction: Instruction) -> Instruction {
+        // NOTE: this works, but it's a bit unforgiving in terms of debugging since
+        // we lose information in the process. Similarly, during parsing we lose
+        // expression expansion etc.
+
+        // Maybe it would be better to just normalize all values during execution
+        // instead of during warrior loading...
+
+        instruction
+            .a_field
+            .set_value(self.offset(instruction.a_field.unwrap_value()));
+
+        instruction
+            .b_field
+            .set_value(self.offset(instruction.b_field.unwrap_value()));
+
+        instruction
+    }
+
     /// Run a single cycle of simulation. This will continue to execute even
     /// after MAXCYCLES has been reached
     pub fn step(&mut self) -> Result<(), process::Error> {
+        let current_process = self.process_queue.pop()?;
+
+        eprintln!(
+            "Step{:>6} (t{:>2}): {:0>5} {}",
+            self.steps_taken,
+            current_process.thread,
+            current_process.offset.value(),
+            self.get_offset(current_process.offset),
+        );
         self.steps_taken += 1;
 
-        let current_process = self.process_queue.pop()?;
         let result = opcode::execute(self, current_process.offset);
 
         match result {
             Err(err) => match err {
-                process::Error::DivideByZero | process::Error::ExecuteDat => {
-                    if !self.process_queue.is_process_alive(&current_process.name) {
+                process::Error::DivideByZero | process::Error::ExecuteDat(_) => {
+                    if self.process_queue.thread_count(&current_process.name) < 1 {
                         Err(err)
                     } else {
                         // This is fine, the task terminated but the process is still alive
@@ -156,19 +183,29 @@ impl Core {
                 _ => panic!("Unexpected error {}", err),
             },
             Ok(result) => {
-                // In the special case of a split, enqueue PC+1 before also enqueueing the other offset
-                if result.should_split {
-                    self.process_queue
-                        .push(current_process.name.clone(), current_process.offset + 1);
-                }
+                // In the special case of a split, enqueue PC+1 (with same thread id)
+                // before also enqueueing the other offset (new thread id)
+                let new_thread_id = if result.should_split {
+                    self.process_queue.push(
+                        current_process.name.clone(),
+                        current_process.offset + 1,
+                        Some(current_process.thread),
+                    );
+                    None
+                } else {
+                    Some(current_process.thread)
+                };
 
                 // Either the opcode changed the program counter, or we should just enqueue PC+1
                 let offset = result
                     .program_counter_offset
                     .unwrap_or_else(|| self.offset(1));
 
-                self.process_queue
-                    .push(current_process.name, current_process.offset + offset);
+                self.process_queue.push(
+                    current_process.name,
+                    current_process.offset + offset,
+                    new_thread_id,
+                );
 
                 Ok(())
             }
@@ -193,19 +230,27 @@ impl Core {
 
         Ok(())
     }
-}
 
-impl fmt::Display for Core {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    // TODO: clean up this impl a bunch
+    fn format_lines<F: Fn(usize, &Instruction) -> String, G: Fn(usize, &Instruction) -> String>(
+        &self,
+        formatter: &mut fmt::Formatter,
+        instruction_prefix: F,
+        instruction_suffix: G,
+    ) -> fmt::Result {
         let mut lines = Vec::new();
         let mut iter = self.instructions.iter().enumerate().peekable();
 
         while let Some((i, instruction)) = iter.next() {
-            if i as u32 == self.program_counter().value() {
-                lines.push(format!("{}{:>8}", instruction, "<= PC"));
-            } else if instruction != &Instruction::default() {
-                lines.push(instruction.to_string());
-            } else {
+            let add_line = |line_vec: &mut Vec<String>, j| {
+                line_vec.push(
+                    instruction_prefix(j, instruction)
+                        + &instruction.to_string()
+                        + &instruction_suffix(j, instruction),
+                )
+            };
+
+            if *instruction == Instruction::default() {
                 // Skip large chunks of defaulted instructions with a counter instead
                 let mut skipped_count = 0;
                 while let Some(&(_, inst)) = iter.peek() {
@@ -217,18 +262,50 @@ impl fmt::Display for Core {
                 }
 
                 if skipped_count > 5 {
-                    lines.push(Instruction::default().to_string());
+                    add_line(&mut lines, i);
                     lines.push(format!("; {:<6}({} more)", "...", skipped_count - 2));
-                    lines.push(Instruction::default().to_string());
+                    add_line(&mut lines, i + skipped_count);
                 } else {
                     for _ in 0..skipped_count {
-                        lines.push(Instruction::default().to_string());
+                        add_line(&mut lines, i);
                     }
                 }
+            } else {
+                add_line(&mut lines, i);
             }
         }
 
         write!(formatter, "{}", lines.join("\n"))
+    }
+}
+
+impl Default for Core {
+    fn default() -> Self {
+        Self::new(load_file::DEFAULT_CONSTANTS["CORESIZE"]).unwrap()
+    }
+}
+
+impl fmt::Debug for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        self.format_lines(
+            formatter,
+            |i, _| format!("{:0>6} ", i),
+            |i, _| {
+                if let Ok(process) = self.process_queue.peek() {
+                    if i as u32 == process.offset.value() {
+                        return format!("{:>8}", "; <= PC");
+                    }
+                }
+
+                String::new()
+            },
+        )
+    }
+}
+
+impl fmt::Display for Core {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        self.format_lines(formatter, |_, _| String::new(), |_, _| String::new())
     }
 }
 
@@ -269,14 +346,23 @@ mod tests {
         .expect("Failed to parse warrior");
 
         core.load_warrior(&warrior).expect("Failed to load warrior");
-        assert_eq!(core.size(), 128);
+        let expected_core_size = 128_i32;
+        assert_eq!(core.size(), expected_core_size as u32);
 
         assert_eq!(
             &core.instructions[..4],
             &[
                 Instruction::new(Opcode::Mov, Field::direct(1), Field::immediate(1)),
-                Instruction::new(Opcode::Jmp, Field::immediate(-1), Field::immediate(2)),
-                Instruction::new(Opcode::Jmp, Field::immediate(-1), Field::immediate(2)),
+                Instruction::new(
+                    Opcode::Jmp,
+                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(2)
+                ),
+                Instruction::new(
+                    Opcode::Jmp,
+                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(2)
+                ),
                 Instruction::default(),
             ]
         );

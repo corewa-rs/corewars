@@ -4,77 +4,204 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Cargo test: all",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--lib"
-        ],
-      },
-      "args": [
-        "--nocapture",
-        "--test-threads=1"
-      ],
-      "env": {
-        "RUST_BACKTRACE": "1",
-      },
-      "console": "internalConsole",
-      "terminal": "console",
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Cargo test: by name",
+      "name": "Debug unit tests in library 'corewars'",
       "cargo": {
         "args": [
           "test",
           "--no-run",
           "--lib",
+          "--package=corewars",
         ],
+        "filter": {
+          "name": "corewars",
+          "kind": "lib"
+        }
       },
+      "terminal": "console",
       "args": [
-        "${input:cargoTest}",
         "--nocapture",
         "--test-threads=1",
       ],
-      "env": {
-        "RUST_BACKTRACE": "1",
-      },
-      "console": "internalConsole",
-      "terminal": "console",
+      "cwd": "${workspaceFolder}"
     },
     {
       "type": "lldb",
       "request": "launch",
-      "name": "corewars dump load file",
+      "name": "Debug executable 'corewars'",
       "cargo": {
         "args": [
           "build",
+          "--bin=corewars",
+          "--package=corewars"
         ],
+        "filter": {
+          "name": "corewars",
+          "kind": "bin"
+        }
       },
-      "args": [
-        "${input:inputFile}",
-        "dump",
-      ],
-      "cwd": "${workspaceFolder}/corewars/tests",
-      "env": {
-        "RUST_BACKTRACE": "1",
-      },
-      "console": "internalConsole",
-      "terminal": "console",
-    }
-  ],
-  "inputs": [
-    {
-      "id": "cargoTest",
-      "type": "promptString",
-      "description": "A cargo test name or name substring"
+      "args": [],
+      "cwd": "${workspaceFolder}"
     },
     {
-      "id": "inputFile",
-      "type": "promptString",
-      "description": "An input file for "
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'corewars'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=corewars",
+          "--package=corewars"
+        ],
+        "filter": {
+          "name": "corewars",
+          "kind": "bin"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'cli_test'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=cli_test",
+          "--package=corewars"
+        ],
+        "filter": {
+          "name": "cli_test",
+          "kind": "test"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'corewars-parser'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=corewars-parser"
+        ],
+        "filter": {
+          "name": "corewars-parser",
+          "kind": "lib"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'dump_test'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=dump_test",
+          "--package=corewars-parser"
+        ],
+        "filter": {
+          "name": "dump_test",
+          "kind": "test"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'corewars-core'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=corewars-core"
+        ],
+        "filter": {
+          "name": "corewars-core",
+          "kind": "lib"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'corewars-sim'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=corewars-sim"
+        ],
+        "filter": {
+          "name": "corewars-sim",
+          "kind": "lib"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'validate'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=validate",
+          "--package=corewars-sim"
+        ],
+        "filter": {
+          "name": "validate",
+          "kind": "test"
+        }
+      },
+      "terminal": "console",
+      "args": [
+        "--nocapture",
+        "--test-threads=1",
+      ],
+      "cwd": "${workspaceFolder}"
     }
-  ]
+  ],
 }

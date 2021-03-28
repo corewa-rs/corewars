@@ -3,7 +3,6 @@
 
 use pest::error::ErrorVariant::CustomError;
 use pest::Parser as _;
-use pest_derive::Parser;
 
 use super::error::Error;
 
@@ -11,9 +10,18 @@ pub type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 pub type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
 pub type SyntaxError = pest::error::Error<Rule>;
 
-#[derive(Parser)]
-#[grammar = "grammar/redcode.pest"]
-pub struct Grammar;
+// This is wrapped in a module as a workaround for
+// https://github.com/pest-parser/pest/issues/490
+#[allow(clippy::upper_case_acronyms)]
+mod derived {
+    use pest_derive::Parser;
+
+    #[derive(Parser)]
+    #[grammar = "grammar/redcode.pest"]
+    pub struct Grammar;
+}
+
+pub use derived::{Grammar, Rule};
 
 /// Parse an input line and return an iterator over
 
@@ -52,6 +60,9 @@ fn flatten_pairs(pairs: Pairs) -> Vec<Pair> {
 
 #[cfg(any(test, doctest))] // cfg(doctest) so we run the helper's doctest
 mod test {
+    // pest::parses_to seems to have a panic that doesn't conform to rust 2021
+    #![allow(non_fmt_panic)]
+
     use pest::{consumes_to, parses_to};
     use test_case::test_case;
 

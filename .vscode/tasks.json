@@ -9,6 +9,7 @@
         "doc",
         "--document-private-items",
         "--workspace",
+        "--no-deps",
         "--open"
       ],
       "group": "build",

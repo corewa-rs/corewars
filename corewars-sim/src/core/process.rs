@@ -10,6 +10,7 @@ use super::Offset;
 #[derive(Debug, Eq, PartialEq)]
 pub struct ProcessEntry {
     pub name: String,
+    pub thread: usize,
     pub offset: Offset,
 }
 
@@ -19,10 +20,14 @@ pub struct ProcessEntry {
 pub struct Queue {
     /// The actual offsets enqueued to be executed
     queue: VecDeque<ProcessEntry>,
+
     /// A map of process names to the number of tasks each has in the queue.
     /// This is updated whenever instructions are added to/removed from the queue,
     /// and can be used to determine whether a process is alive or not.
     processes: BTreeMap<String, usize>,
+
+    /// An increasing counter per process to give unique thread ids
+    next_thread_id: BTreeMap<String, usize>,
 }
 
 impl Queue {
@@ -31,6 +36,7 @@ impl Queue {
         Self {
             queue: VecDeque::new(),
             processes: BTreeMap::new(),
+            next_thread_id: BTreeMap::new(),
         }
     }
 
@@ -49,6 +55,7 @@ impl Queue {
     }
 
     /// Get the next offset for execution without modifying the queue.
+    // TODO: this should probably just return Option<&ProcessEntry>
     pub fn peek(&self) -> Result<&ProcessEntry, Error> {
         if let Some(entry) = self.queue.get(0) {
             Ok(entry)
@@ -57,10 +64,22 @@ impl Queue {
         }
     }
 
-    /// Add an entry to the process queue.
-    pub fn push(&mut self, process_name: String, offset: Offset) {
+    /// Add an entry to the process queue. If specified, it will use the given thread ID,
+    /// otherwise a new thread ID will be created based on the current number of
+    /// threads active for this process name.
+    pub fn push(&mut self, process_name: String, offset: Offset, thread: Option<usize>) {
+        let thread_id = if let Some(id) = thread {
+            id
+        } else {
+            let entry = self.next_thread_id.entry(process_name.clone()).or_insert(0);
+            let id = *entry;
+            *entry += 1;
+            id
+        };
+
         self.queue.push_back(ProcessEntry {
             name: process_name.clone(),
+            thread: thread_id,
             offset,
         });
 
@@ -69,8 +88,8 @@ impl Queue {
 
     /// Check the status of a process in the queue. Panics if the process was
     /// never added to the queue.
-    pub fn is_process_alive(&self, name: &str) -> bool {
-        self.processes[name] > 0
+    pub fn thread_count(&self, name: &str) -> usize {
+        self.processes[name]
     }
 }
 
@@ -82,17 +101,13 @@ pub enum Error {
     #[error("no process running to execute")]
     NoRemainingProcesses,
 
-    /// The process with this name has no remaining threads
-    #[error("process '{0}' has no remaining threads")]
-    NoRemainingThreads(String),
-
     /// A process already exists with the given name
     #[error("a process with the name '{0}' already exists")]
     ProcessNameExists(String),
 
     /// The warrior attempted to execute a DAT instruction
-    #[error("terminated due to reaching a DAT")]
-    ExecuteDat,
+    #[error("terminated due to reaching a DAT at offset {0}")]
+    ExecuteDat(Offset),
 
     /// The warrior attempted to execute a division by zero
     #[error("terminated due to division by 0")]
@@ -104,7 +119,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_queue() {
+    fn queue_multiple_processes() {
         let mut queue = Queue::new();
 
         assert_eq!(queue.peek().unwrap_err(), Error::NoRemainingProcesses);
@@ -112,23 +127,25 @@ mod tests {
 
         let starting_offset = Offset::new(10, 8000);
 
-        queue.push("p1".into(), starting_offset);
+        queue.push("p1".into(), starting_offset, None);
         assert_eq!(
             queue.peek().unwrap(),
             &ProcessEntry {
                 name: "p1".into(),
+                thread: 0,
                 offset: starting_offset
             }
         );
-        assert!(queue.is_process_alive("p1"));
+        assert!(queue.thread_count("p1") > 0);
 
-        queue.push("p2".into(), starting_offset + 5);
-        assert!(queue.is_process_alive("p2"));
+        queue.push("p2".into(), starting_offset + 5, None);
+        assert!(queue.thread_count("p2") > 0);
 
         assert_eq!(
             queue.pop().unwrap(),
             ProcessEntry {
                 name: "p1".into(),
+                thread: 0,
                 offset: starting_offset
             }
         );
@@ -136,26 +153,70 @@ mod tests {
             queue.peek().unwrap(),
             &ProcessEntry {
                 name: "p2".into(),
+                thread: 0,
                 offset: starting_offset + 5
             }
         );
-        assert!(!queue.is_process_alive("p1"));
-        assert!(queue.is_process_alive("p2"));
+        assert!(!queue.thread_count("p1") > 0);
+        assert!(queue.thread_count("p2") > 0);
 
         assert_eq!(
             queue.pop().unwrap(),
             ProcessEntry {
                 name: "p2".into(),
+                thread: 0,
                 offset: starting_offset + 5
             }
         );
-        assert!(!queue.is_process_alive("p1"));
-        assert!(!queue.is_process_alive("p2"));
+        assert!(!queue.thread_count("p1") > 0);
+        assert!(!queue.thread_count("p2") > 0);
 
         assert_eq!(queue.peek().unwrap_err(), Error::NoRemainingProcesses);
         assert_eq!(queue.pop().unwrap_err(), Error::NoRemainingProcesses);
 
-        assert!(!queue.is_process_alive("p1"));
-        assert!(!queue.is_process_alive("p2"));
+        assert!(!queue.thread_count("p1") > 0);
+        assert!(!queue.thread_count("p2") > 0);
+    }
+
+    #[test]
+    fn queue_single_process() {
+        let mut queue = Queue::new();
+        let starting_offset = Offset::new(10, 8000);
+
+        queue.push("p1".into(), starting_offset, None);
+        assert_eq!(
+            queue.peek().unwrap(),
+            &ProcessEntry {
+                name: "p1".into(),
+                thread: 0,
+                offset: starting_offset
+            }
+        );
+        assert!(queue.thread_count("p1") > 0);
+
+        // should increment the thread id to 1
+        queue.push("p1".into(), starting_offset, None);
+        queue.pop().unwrap();
+        assert_eq!(
+            queue.peek().unwrap(),
+            &ProcessEntry {
+                name: "p1".into(),
+                thread: 1,
+                offset: starting_offset
+            }
+        );
+        assert!(queue.thread_count("p1") > 0);
+
+        queue.push("p1".into(), starting_offset, Some(1));
+        queue.pop().unwrap();
+        assert_eq!(
+            queue.peek().unwrap(),
+            &ProcessEntry {
+                name: "p1".into(),
+                thread: 1,
+                offset: starting_offset
+            }
+        );
+        assert!(queue.thread_count("p1") > 0);
     }
 }
