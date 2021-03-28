@@ -4,7 +4,6 @@ use std::cell::Cell;
 
 use corewars_core::load_file::{Offset, Opcode};
 
-use super::address;
 use super::modifier;
 use super::process;
 use super::Core;
@@ -23,11 +22,13 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
     // These are basically just useful constants that some opcodes need to use
     let zero = core.offset(0);
     let skip_one = core.offset(2);
-    let jump_offset = address::resolve_a_pointer(core, program_counter) - program_counter;
 
     let program_counter_offset = Cell::new(None);
 
     let executor = modifier::Executor::new(core, program_counter);
+
+    // For jumping opcodes, this is the relative offset they will use to make the jump
+    let jump_offset = executor.a_ptr() - program_counter;
 
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match opcode {
@@ -41,7 +42,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
         // Infallible arithmetic
         Opcode::Add => executor.run_on_fields(|a, b| Some(a + b)),
         Opcode::Mul => executor.run_on_fields(|a, b| Some(a * b)),
-        Opcode::Sub => executor.run_on_fields(|a, b| Some(a - b)),
+        Opcode::Sub => executor.run_on_fields(|a, b| Some(b - a)),
 
         // Fallible arithmetic
         Opcode::Div => {
@@ -175,6 +176,23 @@ mod tests {
         }
 
         #[test]
+        fn execute_dat_with_postincrement() {
+            let mut core = build_core("dat >1, >2");
+            let pc = core.offset(0);
+
+            let err = execute(&mut core, pc).unwrap_err();
+
+            assert_eq!(err, Error::ExecuteDat(pc));
+            assert_eq!(
+                &core.instructions[1..=2],
+                &[
+                    Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(1)),
+                    Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(1)),
+                ]
+            );
+        }
+
+        #[test]
         fn execute_mov() {
             let instruction = Instruction {
                 opcode: Opcode::Mov,
@@ -214,7 +232,7 @@ mod tests {
         use pretty_assertions::assert_eq;
 
         #[test_case("add", 3; "add")]
-        #[test_case("sub", 7999; "sub")]
+        #[test_case("sub", 1; "sub")]
         #[test_case("mul", 2; "mul")]
         fn perform_arithmetic(opcode: &str, expected_result: i32) {
             use pretty_assertions::assert_eq;

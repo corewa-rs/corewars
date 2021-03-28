@@ -33,7 +33,8 @@ fn validate_redcode() {
             core
         );
 
-        // "flag" label == 87 which should show why the test failed
+        // "flag" label == 87 which should show why the test failed,
+        // although it tends to be
         let flag = core.get(87);
         assert_eq!(
             (flag.a_field.unwrap_value(), flag.b_field.unwrap_value()),

@@ -6,32 +6,52 @@ use super::address;
 use super::Core;
 
 /// A helper struct to execute an instruction using the proper modifiers.
+/// This struct maintains the "registers" used for evaluating instructions
 pub(super) struct Executor<'a> {
     core: &'a mut Core,
     program_counter: Offset,
-    a_pointer: Offset,
-    b_pointer: Offset,
+    a_value: Instruction,
+    b_value: Instruction,
+    a_ptr: Offset,
+    b_ptr: Offset,
 }
 
 impl<'a> Executor<'a> {
     /// Build a new executor for the given program offset of the given [`Core`].
     pub fn new(core: &'a mut Core, program_counter: Offset) -> Self {
-        let a_pointer = address::resolve_a_pointer(core, program_counter);
-        let b_pointer = address::resolve_b_pointer(core, program_counter);
+        let a_ptr = address::resolve_a_pointer(core, program_counter);
+
+        // NOTE: the order of evaluation is significant here: we create the "register"
+        // by cloning the A operand before evaluating the B pointer, and all further
+        // operations must use the buffered A operand, in case the B pointer evaluation
+        // modifies memory
+        address::apply_a_pointer(core, program_counter, address::EvalTime::Pre);
+        let a_value = core.get_offset(a_ptr).clone();
+        address::apply_a_pointer(core, program_counter, address::EvalTime::Post);
+
+        let b_ptr = address::resolve_b_pointer(core, program_counter);
+
+        address::apply_b_pointer(core, program_counter, address::EvalTime::Pre);
+        let b_value = core.get_offset(b_ptr).clone();
+        address::apply_b_pointer(core, program_counter, address::EvalTime::Post);
 
         Self {
             core,
             program_counter,
-            a_pointer,
-            b_pointer,
+            a_value,
+            b_value,
+            a_ptr,
+            b_ptr,
         }
     }
 
+    /// Getter for the resolved A pointer
+    pub fn a_ptr(&self) -> Offset {
+        self.a_ptr
+    }
+
     /// Execute a given operation (`FieldOp`) on a given instruction. This is a convenience
-    /// shortcut for [`run_on_instructions`] without an `InstructionOp`.
-    ///
-    /// `from_offset` should be the program counter from which offsets should be calculated.
-    /// `a_pointer` and `b_pointer`
+    /// shortcut for [`run_on_instructions`](Self::run_on_instructions) without an `InstructionOp`.
     pub fn run_on_fields<FieldOp>(self, field_op: FieldOp)
     where
         FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
@@ -42,9 +62,6 @@ impl<'a> Executor<'a> {
     /// Execute a given operation (`FieldOp`) on a given instruction.
     /// `field_op` and `instruction_op` are closures taking an `a` and `b`
     /// argument and returning the new value to set in the `b` instruction, if any.
-    ///
-    /// `b_pointer` is taken as an argument instead of an instruction reference, since
-    /// it's not allowed to mutably borrow both the core _and_ an instruction simultaneously.
     pub fn run_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
         self,
         mut field_op: FieldOp,
@@ -56,25 +73,13 @@ impl<'a> Executor<'a> {
     {
         let instruction = self.core.get_offset(self.program_counter).clone();
 
-        // NOTE: the order of evaluation is significant here: we create the "register"
-        // by cloning the A operand before evaluating the B pointer, and all further
-        // operations must use the buffered A operand, in case the B pointer evaluation
-        // modifies memory
-        address::apply_a_pointer(self.core, self.program_counter, address::EvalTime::Pre);
-        let a_value = self.core.get_offset(self.a_pointer).clone();
-        address::apply_a_pointer(self.core, self.program_counter, address::EvalTime::Post);
+        let a_value_a_offset = self.core.offset(self.a_value.a_field.unwrap_value());
+        let a_value_b_offset = self.core.offset(self.a_value.b_field.unwrap_value());
 
-        address::apply_b_pointer(self.core, self.program_counter, address::EvalTime::Pre);
-        let b_value = self.core.get_offset(self.b_pointer).clone();
-        address::apply_b_pointer(self.core, self.program_counter, address::EvalTime::Post);
+        let b_value_a_offset = self.core.offset(self.b_value.a_field.unwrap_value());
+        let b_value_b_offset = self.core.offset(self.b_value.b_field.unwrap_value());
 
-        let a_value_a_offset = self.core.offset(a_value.a_field.unwrap_value());
-        let a_value_b_offset = self.core.offset(a_value.b_field.unwrap_value());
-
-        let b_value_a_offset = self.core.offset(b_value.a_field.unwrap_value());
-        let b_value_b_offset = self.core.offset(b_value.b_field.unwrap_value());
-
-        let b_target = self.core.get_offset_mut(self.b_pointer);
+        let b_target = self.core.get_offset_mut(self.b_ptr);
 
         match instruction.modifier {
             Modifier::A => {
@@ -107,7 +112,7 @@ impl<'a> Executor<'a> {
 
                 if instruction.modifier == Modifier::I {
                     if let Some(mut instruction_op) = instruction_op.into() {
-                        if let Some(res) = instruction_op(a_value, b_target.clone()) {
+                        if let Some(res) = instruction_op(self.a_value, b_target.clone()) {
                             b_target.opcode = res.opcode;
                             b_target.modifier = res.modifier;
                         }
@@ -156,15 +161,7 @@ mod tests {
         ));
 
         let zero = core.offset(0);
-        let a_pointer = core.offset(1);
-        let b_pointer = core.offset(2);
-
-        let exec = Executor {
-            core: &mut core,
-            program_counter: zero,
-            a_pointer,
-            b_pointer,
-        };
+        let exec = Executor::new(&mut core, zero);
 
         exec.run_on_fields(|a, b| {
             // kinda hacky way to verify exact outputs but I guess it works...
@@ -195,15 +192,8 @@ mod tests {
 
         let output = core.offset(0);
         let zero = core.offset(0);
-        let a_pointer = core.offset(1);
-        let b_pointer = core.offset(2);
 
-        let exec = Executor {
-            core: &mut core,
-            program_counter: zero,
-            a_pointer,
-            b_pointer,
-        };
+        let exec = Executor::new(&mut core, zero);
 
         exec.run_on_instructions(
             |a, b| {
