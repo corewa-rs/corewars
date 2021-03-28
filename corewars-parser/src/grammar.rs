@@ -11,6 +11,7 @@ pub type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 pub type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
 pub type SyntaxError = pest::error::Error<Rule>;
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Parser)]
 #[grammar = "grammar/redcode.pest"]
 pub struct Grammar;
@@ -52,6 +53,9 @@ fn flatten_pairs(pairs: Pairs) -> Vec<Pair> {
 
 #[cfg(any(test, doctest))] // cfg(doctest) so we run the helper's doctest
 mod test {
+    // pest::parses_to seems to have a panic that doesn't conform to rust 2021
+    #![allow(non_fmt_panic)]
+
     use pest::{consumes_to, parses_to};
     use test_case::test_case;
 
