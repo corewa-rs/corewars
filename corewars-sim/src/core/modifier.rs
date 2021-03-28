@@ -16,8 +16,8 @@ pub(super) struct Executor<'a> {
 impl<'a> Executor<'a> {
     /// Build a new executor for the given program offset of the given [`Core`].
     pub fn new(core: &'a mut Core, program_counter: Offset) -> Self {
-        let a_pointer = address::a_pointer(core, program_counter);
-        let b_pointer = address::b_pointer(core, program_counter);
+        let a_pointer = address::resolve_a_pointer(core, program_counter);
+        let b_pointer = address::resolve_b_pointer(core, program_counter);
 
         Self {
             core,
@@ -60,11 +60,13 @@ impl<'a> Executor<'a> {
         // by cloning the A operand before evaluating the B pointer, and all further
         // operations must use the buffered A operand, in case the B pointer evaluation
         // modifies memory
+        address::apply_a_pointer(self.core, self.program_counter, address::EvalTime::Pre);
         let a_value = self.core.get_offset(self.a_pointer).clone();
-        address::apply_a_pointer(self.core, self.program_counter);
+        address::apply_a_pointer(self.core, self.program_counter, address::EvalTime::Post);
 
+        address::apply_b_pointer(self.core, self.program_counter, address::EvalTime::Pre);
         let b_value = self.core.get_offset(self.b_pointer).clone();
-        address::apply_b_pointer(self.core, self.program_counter);
+        address::apply_b_pointer(self.core, self.program_counter, address::EvalTime::Post);
 
         let a_value_a_offset = self.core.offset(a_value.a_field.unwrap_value());
         let a_value_b_offset = self.core.offset(a_value.b_field.unwrap_value());

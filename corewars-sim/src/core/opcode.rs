@@ -20,10 +20,10 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
     let instruction = core.get_offset(program_counter).clone();
     let opcode = instruction.opcode;
 
-    // These are basically just useful constants that some opcodes want to use
+    // These are basically just useful constants that some opcodes need to use
     let zero = core.offset(0);
     let skip_one = core.offset(2);
-    let jump_offset = address::a_pointer(core, program_counter) - program_counter;
+    let jump_offset = address::resolve_a_pointer(core, program_counter) - program_counter;
 
     let program_counter_offset = Cell::new(None);
 

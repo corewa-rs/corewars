@@ -27,7 +27,7 @@ fn validate_redcode() {
     // If the run fails, check the flag output to see where it failed
     if let Err(error) = core.run(10_000) {
         eprintln!(
-            "Error {} after {} cycles have run:\n{:?}",
+            "Error '{}' after {} cycles have run:\n{:?}",
             error,
             core.steps_taken(),
             core
