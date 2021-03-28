@@ -3,7 +3,6 @@
 
 use pest::error::ErrorVariant::CustomError;
 use pest::Parser as _;
-use pest_derive::Parser;
 
 use super::error::Error;
 
@@ -11,10 +10,18 @@ pub type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 pub type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
 pub type SyntaxError = pest::error::Error<Rule>;
 
+// This is wrapped in a module as a workaround for
+// https://github.com/pest-parser/pest/issues/490
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Parser)]
-#[grammar = "grammar/redcode.pest"]
-pub struct Grammar;
+mod derived {
+    use pest_derive::Parser;
+
+    #[derive(Parser)]
+    #[grammar = "grammar/redcode.pest"]
+    pub struct Grammar;
+}
+
+pub use derived::{Grammar, Rule};
 
 /// Parse an input line and return an iterator over
 
