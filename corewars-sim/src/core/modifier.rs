@@ -2,107 +2,123 @@
 
 use corewars_core::load_file::{Instruction, Modifier, Offset};
 
+use super::address;
 use super::Core;
 
-/// Execute a given operation (`FieldOp`) on a given instruction. This is a convenience
-/// shortcut for [`execute_on_instruction`] without an `InstructionOp`.
-///
-/// `from_offset` should be the program counter from which offsets should be calculated.
-/// `a_pointer` and `b_pointer`
-pub fn execute_on_fields<FieldOp>(
-    core: &mut Core,
-    from_offset: Offset,
+/// A helper struct to execute an instruction using the proper modifiers.
+pub(super) struct Executor<'a> {
+    core: &'a mut Core,
+    program_counter: Offset,
     a_pointer: Offset,
     b_pointer: Offset,
-    field_op: FieldOp,
-) where
-    FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
-{
-    let instruction = core.get_offset(from_offset).clone();
-    let a_value = core.get_offset(a_pointer).clone();
-
-    execute_on_instructions::<_, fn(_, _) -> _, _>(
-        core,
-        instruction,
-        a_value,
-        b_pointer,
-        field_op,
-        None,
-    )
 }
 
-/// Execute a given operation (`FieldOp`) on a given instruction.
-/// `field_op` and `instruction_op` are closures taking an `a` and `b`
-/// argument and returning the new value to set in the `b` instruction, if any.
-///
-/// `b_pointer` is taken as an argument instead of an instruction reference, since
-/// it's not allowed to mutably borrow both the core _and_ an instruction simultaneously.
-pub fn execute_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
-    core: &mut Core,
-    instruction: Instruction,
-    a_value: Instruction,
-    b_pointer: Offset,
-    mut field_op: FieldOp,
-    instruction_op: OptionalInstructionOp,
-) where
-    FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
-    InstructionOp: FnMut(Instruction, Instruction) -> Option<Instruction>,
-    OptionalInstructionOp: Into<Option<InstructionOp>>,
-{
-    let a_value_a_offset = core.offset(a_value.a_field.unwrap_value());
-    let a_value_b_offset = core.offset(a_value.b_field.unwrap_value());
+impl<'a> Executor<'a> {
+    /// Build a new executor for the given program offset of the given [`Core`].
+    pub fn new(core: &'a mut Core, program_counter: Offset) -> Self {
+        let a_pointer = address::a_pointer(core, program_counter);
+        let b_pointer = address::b_pointer(core, program_counter);
 
-    let b_value = core.get_offset(b_pointer).clone();
-
-    let b_value_a_offset = core.offset(b_value.a_field.unwrap_value());
-    let b_value_b_offset = core.offset(b_value.b_field.unwrap_value());
-
-    let b_target = core.get_offset_mut(b_pointer);
-
-    match instruction.modifier {
-        Modifier::A => {
-            if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
-                b_target.a_field.set_value(res);
-            }
+        Self {
+            core,
+            program_counter,
+            a_pointer,
+            b_pointer,
         }
-        Modifier::B => {
-            if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
-                b_target.b_field.set_value(res);
-            }
-        }
-        Modifier::AB => {
-            if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
-                b_target.b_field.set_value(res);
-            }
-        }
-        Modifier::BA => {
-            if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
-                b_target.a_field.set_value(res);
-            }
-        }
-        Modifier::F | Modifier::I => {
-            if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
-                b_target.a_field.set_value(a_res);
-            }
-            if let Some(b_res) = field_op(a_value_b_offset, b_value_b_offset) {
-                b_target.b_field.set_value(b_res);
-            }
+    }
 
-            if instruction.modifier == Modifier::I {
-                if let Some(mut instruction_op) = instruction_op.into() {
-                    if let Some(res) = instruction_op(a_value, b_target.clone()) {
-                        b_target.opcode = res.opcode;
-                        b_target.modifier = res.modifier;
+    /// Execute a given operation (`FieldOp`) on a given instruction. This is a convenience
+    /// shortcut for [`run_on_instructions`] without an `InstructionOp`.
+    ///
+    /// `from_offset` should be the program counter from which offsets should be calculated.
+    /// `a_pointer` and `b_pointer`
+    pub fn run_on_fields<FieldOp>(self, field_op: FieldOp)
+    where
+        FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
+    {
+        self.run_on_instructions::<_, fn(_, _) -> _, _>(field_op, None)
+    }
+
+    /// Execute a given operation (`FieldOp`) on a given instruction.
+    /// `field_op` and `instruction_op` are closures taking an `a` and `b`
+    /// argument and returning the new value to set in the `b` instruction, if any.
+    ///
+    /// `b_pointer` is taken as an argument instead of an instruction reference, since
+    /// it's not allowed to mutably borrow both the core _and_ an instruction simultaneously.
+    pub fn run_on_instructions<FieldOp, InstructionOp, OptionalInstructionOp>(
+        self,
+        mut field_op: FieldOp,
+        instruction_op: OptionalInstructionOp,
+    ) where
+        FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
+        InstructionOp: FnMut(Instruction, Instruction) -> Option<Instruction>,
+        OptionalInstructionOp: Into<Option<InstructionOp>>,
+    {
+        let instruction = self.core.get_offset(self.program_counter).clone();
+
+        // NOTE: the order of evaluation is significant here: we create the "register"
+        // by cloning the A operand before evaluating the B pointer, and all further
+        // operations must use the buffered A operand, in case the B pointer evaluation
+        // modifies memory
+        let a_value = self.core.get_offset(self.a_pointer).clone();
+        address::apply_a_pointer(self.core, self.program_counter);
+
+        let b_value = self.core.get_offset(self.b_pointer).clone();
+        address::apply_b_pointer(self.core, self.program_counter);
+
+        let a_value_a_offset = self.core.offset(a_value.a_field.unwrap_value());
+        let a_value_b_offset = self.core.offset(a_value.b_field.unwrap_value());
+
+        let b_value_a_offset = self.core.offset(b_value.a_field.unwrap_value());
+        let b_value_b_offset = self.core.offset(b_value.b_field.unwrap_value());
+
+        let b_target = self.core.get_offset_mut(self.b_pointer);
+
+        match instruction.modifier {
+            Modifier::A => {
+                if let Some(res) = field_op(a_value_a_offset, b_value_a_offset) {
+                    b_target.a_field.set_value(res);
+                }
+            }
+            Modifier::B => {
+                if let Some(res) = field_op(a_value_b_offset, b_value_b_offset) {
+                    b_target.b_field.set_value(res);
+                }
+            }
+            Modifier::AB => {
+                if let Some(res) = field_op(a_value_a_offset, b_value_b_offset) {
+                    b_target.b_field.set_value(res);
+                }
+            }
+            Modifier::BA => {
+                if let Some(res) = field_op(a_value_b_offset, b_value_a_offset) {
+                    b_target.a_field.set_value(res);
+                }
+            }
+            Modifier::F | Modifier::I => {
+                if let Some(a_res) = field_op(a_value_a_offset, b_value_a_offset) {
+                    b_target.a_field.set_value(a_res);
+                }
+                if let Some(b_res) = field_op(a_value_b_offset, b_value_b_offset) {
+                    b_target.b_field.set_value(b_res);
+                }
+
+                if instruction.modifier == Modifier::I {
+                    if let Some(mut instruction_op) = instruction_op.into() {
+                        if let Some(res) = instruction_op(a_value, b_target.clone()) {
+                            b_target.opcode = res.opcode;
+                            b_target.modifier = res.modifier;
+                        }
                     }
                 }
             }
-        }
-        Modifier::X => {
-            if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
-                b_target.a_field.set_value(a_res);
-            }
-            if let Some(b_res) = field_op(a_value_a_offset, b_value_b_offset) {
-                b_target.b_field.set_value(b_res);
+            Modifier::X => {
+                if let Some(a_res) = field_op(a_value_b_offset, b_value_a_offset) {
+                    b_target.a_field.set_value(a_res);
+                }
+                if let Some(b_res) = field_op(a_value_a_offset, b_value_b_offset) {
+                    b_target.b_field.set_value(b_res);
+                }
             }
         }
     }
@@ -140,7 +156,15 @@ mod tests {
         let zero = core.offset(0);
         let a_pointer = core.offset(1);
         let b_pointer = core.offset(2);
-        execute_on_fields(&mut core, zero, a_pointer, b_pointer, |a, b| {
+
+        let exec = Executor {
+            core: &mut core,
+            program_counter: zero,
+            a_pointer,
+            b_pointer,
+        };
+
+        exec.run_on_fields(|a, b| {
             // kinda hacky way to verify exact outputs but I guess it works...
             let string_ans = a.value().to_string() + &b.value().to_string();
             Some(zero + string_ans.parse::<i32>().unwrap())
@@ -169,15 +193,17 @@ mod tests {
 
         let output = core.offset(0);
         let zero = core.offset(0);
-        let instruction = core.get_offset(zero).clone();
-        let a = core.get(1).clone();
-        let b_ptr = core.offset(2);
+        let a_pointer = core.offset(1);
+        let b_pointer = core.offset(2);
 
-        execute_on_instructions(
-            &mut core,
-            instruction,
-            a,
-            b_ptr,
+        let exec = Executor {
+            core: &mut core,
+            program_counter: zero,
+            a_pointer,
+            b_pointer,
+        };
+
+        exec.run_on_instructions(
             |a, b| {
                 let string_ans = a.value().to_string() + &b.value().to_string();
                 Some(output + string_ans.parse::<i32>().unwrap())

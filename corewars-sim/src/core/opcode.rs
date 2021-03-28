@@ -20,25 +20,14 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
     let instruction = core.get_offset(program_counter).clone();
     let opcode = instruction.opcode;
 
+    // These are basically just useful constants that some opcodes want to use
     let zero = core.offset(0);
+    let skip_one = core.offset(2);
+    let jump_offset = address::a_pointer(core, program_counter) - program_counter;
+
     let program_counter_offset = Cell::new(None);
 
-    // NOTE: the order of evaluation is significant here: we create the "register"
-    // by cloning the A operand before evaluating the B pointer, and all further
-    // operations must use the buffered A operand, in case the B pointer evaluation
-    // modifies memory
-    let a_pointer = address::a_pointer(core, program_counter);
-    let a_instruction = core.get_offset(a_pointer).clone();
-    // Apply postincrement / predecrement now, before we do any other operations.
-    address::apply_a_pointer(core, program_counter);
-
-    let b_pointer = address::b_pointer(core, program_counter);
-    let b_instruction = core.get_offset(b_pointer).clone();
-    address::apply_b_pointer(core, program_counter);
-
-    // TODO: we maybe need to pass both the b_value *and* its offset to the
-    // modifier code... also, I don't really like the function signatures in
-    // there, it's kinda messy tbh
+    let executor = modifier::Executor::new(core, program_counter);
 
     // See docs/icws94.txt:1113 for detailed description of each opcode
     match opcode {
@@ -46,37 +35,18 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
         Opcode::Dat => {
             return Err(process::Error::ExecuteDat(program_counter));
         }
-        Opcode::Mov => modifier::execute_on_instructions(
-            core,
-            instruction,
-            a_instruction,
-            b_pointer,
-            |a, _b| Some(a),
-            |a, _b| Some(a),
-        ),
+        Opcode::Mov => executor.run_on_instructions(|a, _b| Some(a), |a, _b| Some(a)),
         Opcode::Nop => {}
 
         // Infallible arithmetic
-        Opcode::Add => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
-                Some(a + b)
-            })
-        }
-        Opcode::Mul => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
-                Some(a * b)
-            })
-        }
-        Opcode::Sub => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
-                Some(a - b)
-            })
-        }
+        Opcode::Add => executor.run_on_fields(|a, b| Some(a + b)),
+        Opcode::Mul => executor.run_on_fields(|a, b| Some(a * b)),
+        Opcode::Sub => executor.run_on_fields(|a, b| Some(a - b)),
 
         // Fallible arithmetic
         Opcode::Div => {
             let mut div_result = Ok(());
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+            executor.run_on_fields(|a, b| {
                 if b.value() == 0 {
                     div_result = Err(process::Error::DivideByZero);
                     None
@@ -88,7 +58,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
         }
         Opcode::Mod => {
             let mut rem_result = Ok(());
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+            executor.run_on_fields(|a, b| {
                 if b.value() == 0 {
                     rem_result = Err(process::Error::DivideByZero);
                     None
@@ -101,12 +71,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
 
         // Skipping control flow opcodes
         Opcode::Cmp | Opcode::Seq => {
-            program_counter_offset.set(core.offset(2).into());
-            modifier::execute_on_instructions(
-                core,
-                instruction,
-                a_instruction,
-                b_pointer,
+            program_counter_offset.set(skip_one.into());
+            executor.run_on_instructions(
                 |a, b| {
                     if a != b {
                         program_counter_offset.set(None)
@@ -123,8 +89,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             )
         }
         Opcode::Slt => {
-            program_counter_offset.set(core.offset(2).into());
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |a, b| {
+            program_counter_offset.set(skip_one.into());
+            executor.run_on_fields(|a, b| {
                 if a.value() >= b.value() {
                     program_counter_offset.set(None);
                 }
@@ -132,12 +98,8 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             })
         }
         Opcode::Sne => {
-            let next_instruction = Some(core.offset(2));
-            modifier::execute_on_instructions(
-                core,
-                instruction,
-                a_instruction,
-                b_pointer,
+            let next_instruction = Some(skip_one);
+            executor.run_on_instructions(
                 |a, b| {
                     if a != b {
                         program_counter_offset.set(next_instruction);
@@ -155,30 +117,26 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
 
         // Jumping control flow opcodes
         // These subtract the current program counter since this offset will be added to it later
-        Opcode::Djn => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
-                let decremented = b - 1_i32;
-                if decremented != zero {
-                    program_counter_offset.set((a_pointer - program_counter).into());
-                }
-                Some(decremented)
-            })
-        }
-        Opcode::Jmn => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
-                if b != zero {
-                    program_counter_offset.set((a_pointer - program_counter).into());
-                }
-                None
-            })
-        }
+        Opcode::Djn => executor.run_on_fields(|_a, b| {
+            let decremented = b - 1_i32;
+            if decremented != zero {
+                program_counter_offset.set(jump_offset.into());
+            }
+            Some(decremented)
+        }),
+        Opcode::Jmn => executor.run_on_fields(|_a, b| {
+            if b != zero {
+                program_counter_offset.set(jump_offset.into());
+            }
+            None
+        }),
         Opcode::Jmp | Opcode::Spl => {
-            program_counter_offset.set((a_pointer - program_counter).into());
+            program_counter_offset.set(jump_offset.into());
         }
         Opcode::Jmz => {
-            modifier::execute_on_fields(core, program_counter, a_pointer, b_pointer, |_a, b| {
+            executor.run_on_fields(|_a, b| {
                 if b == zero {
-                    program_counter_offset.set((a_pointer - program_counter).into());
+                    program_counter_offset.set(jump_offset.into());
                 }
                 None
             });

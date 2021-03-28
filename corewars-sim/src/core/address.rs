@@ -50,9 +50,9 @@ fn resolve_pointer(core: &Core, program_counter: Offset, field: &Field) -> Offse
                 PreDecIndirectA => pointed_to.a_field.unwrap_value(),
                 PreDecIndirectB => pointed_to.b_field.unwrap_value(),
                 _ => unreachable!(),
-            } - 1;
+            };
 
-            field_value + indirect_offset
+            field_value + indirect_offset - 1
         }
     };
 
