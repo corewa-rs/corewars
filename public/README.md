@@ -28,7 +28,7 @@ corewars 0.2.0
 
 ## Cargo Crates
 
-Latest [documentation](https://corewa.rs/crates/corewars) published from develop,
+Latest [documentation](https://corewa.rs/crates/corewars/) published from develop,
 with older version docs available on [docs.rs](https://docs.rs/corewars).
 
 * [corewars](https://crates.io/crates/corewars): the binary to run Core Wars
