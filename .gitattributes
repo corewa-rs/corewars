@@ -1,0 +1,3 @@
+# Mark lockfiles as generated
+**/Cargo.lock       linguist-generated=true
+**/Gemfile.lock     linguist-generated=true
