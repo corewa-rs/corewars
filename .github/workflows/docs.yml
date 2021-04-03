@@ -1,0 +1,38 @@
+name: docs
+
+# Rely on docs.rs to host old versions of docs. This job just publishes latest
+# docs from develop regardless of stability or version
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup default Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build crate docs
+        run: cargo doc --verbose --no-deps --workspace
+        env:
+          RUSTDOCFLAGS:
+            "--default-theme=dark"
+
+      - name: Copy docs to jekyll site source tree
+        run: cp -R ./target/doc/ ./public/crates
+
+      - name: Deploy crate docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          cname: corewa.rs
+          enable_jekyll: true
+          force_orphan: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
