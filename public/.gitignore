@@ -1,9 +1,4 @@
 # Jekyll-created pages
-_site
 .sass-cache
 .jekyll-cache
 .jekyll-metadata
-
-# Created at build time when publishing to gh-pages
-CNAME
-crates

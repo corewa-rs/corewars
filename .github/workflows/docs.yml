@@ -26,7 +26,8 @@ jobs:
             "--default-theme=dark"
 
       - name: Copy docs to jekyll site source tree
-        run: cp -R ./target/doc/ ./public/crates
+        run: |
+          cp -R ./target/doc/ ./public/crates
 
       - name: Deploy crate docs
         uses: peaceiris/actions-gh-pages@v3
