@@ -23,8 +23,8 @@ mod derived {
 
 pub use derived::{Grammar, Rule};
 
-/// Parse an input line and return an iterator over
-
+/// Parse an input line and flatten it to only include the terminal token pairs,
+/// i.e. pairs without any inner token pairs.
 pub fn tokenize(line: &str) -> Vec<Pair> {
     parse_line(line)
         .map(|pairs| {
@@ -37,10 +37,12 @@ pub fn tokenize(line: &str) -> Vec<Pair> {
         .unwrap_or_default()
 }
 
+/// Parse a single line of input according to the grammar.
 pub fn parse_line(line: &str) -> Result<Pairs, Error> {
     Ok(Grammar::parse(Rule::Line, line)?)
 }
 
+/// Parse a single expression as a string.
 pub fn parse_expression(line: &str) -> Result<Pair, Error> {
     let mut pairs = Grammar::parse(Rule::Expression, line)?;
 

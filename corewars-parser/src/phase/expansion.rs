@@ -24,8 +24,6 @@ pub struct Lines {
 pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
     let labels = collect_and_expand(&mut text);
 
-    // TODO: #39 FOR expansion
-
     substitute_offsets(&mut text, &labels);
 
     if let Some(mut origin_str) = origin.as_mut() {
@@ -43,7 +41,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     let mut collector = Collector::new();
 
     let mut i: usize = 0;
-    let mut offset = 0;
+    let mut offset: u32 = 0;
 
     while i < lines.len() {
         // TODO clone
@@ -76,27 +74,31 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             Rule::For => {
                 // Unwrap is okay since for must always have expression after it
                 let line_remainder = &line[first_token.as_span().end()..];
-                lines.remove(i);
                 collector.push_for(None, i, line_remainder);
-
-                continue;
             }
             Rule::Rof => {
                 let for_stmt = collector.pop_rof();
                 // For now, we don't handle the label properly, just copy+paste
                 // the inner lines N times without any substitutions
-                let range_to_repeat = for_stmt.start_line..i;
+                let range_to_repeat = (for_stmt.start_line + 1)..i;
                 let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
 
-                let new_contents = lines[range_to_repeat.clone()]
+                // We need to subtract the offset, since we ended up replacing
+                // those lines. They will be processed normally after substitution
+                offset -= range_to_repeat.len() as u32;
+
+                let new_contents = lines[range_to_repeat]
                     .iter()
                     .cloned()
                     .cycle()
                     .take(insert_line_count)
                     .collect::<Vec<_>>();
 
-                lines.splice(for_stmt.start_line..=i, new_contents);
+                let range_to_replace = for_stmt.start_line..=i;
+                lines.splice(range_to_replace, new_contents);
+
                 i = for_stmt.start_line;
+
                 continue;
             }
             Rule::Label => {
@@ -572,6 +574,27 @@ mod test {
             "mov 2, 3",
         ];
         "repeat multiple"
+    )]
+    #[test_case(
+        &[
+            "for 2",
+            "for 3",
+            "mov 0, 1",
+            "rof",
+            "mov 1, 2",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 1, 2",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 1, 2",
+        ];
+        "nested for"
     )]
     #[test_case(
         &[

@@ -35,5 +35,10 @@ fn read_dir(input_file: &str) {
         ParseResult::Err(e, _) => panic!("Parse error:\n{}", e),
     };
 
-    assert_eq!(parsed_core.to_string().trim(), expected_output);
+    let actual_output = parsed_core.to_string();
+
+    let actual_lines: Vec<&str> = actual_output.trim().lines().collect();
+    let expected_lines: Vec<&str> = expected_output.lines().collect();
+
+    assert_eq!(actual_lines, expected_lines);
 }
