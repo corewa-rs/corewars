@@ -11,6 +11,8 @@ use pest::Span;
 
 use crate::grammar;
 
+use super::evaluation;
+
 /// The result of expansion and substitution
 #[derive(Debug, Default, PartialEq)]
 pub struct Lines {
@@ -71,8 +73,35 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
         };
 
         match first_token.as_rule() {
+            Rule::For => {
+                // Unwrap is okay since for must always have expression after it
+                let line_remainder = &line[first_token.as_span().end()..];
+                lines.remove(i);
+                collector.push_for(None, i, line_remainder);
+
+                continue;
+            }
+            Rule::Rof => {
+                let for_stmt = collector.pop_rof();
+                // For now, we don't handle the label properly, just copy+paste
+                // the inner lines N times without any substitutions
+                let range_to_repeat = for_stmt.start_line..i;
+                let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
+
+                let new_contents = lines[range_to_repeat.clone()]
+                    .iter()
+                    .cloned()
+                    .cycle()
+                    .take(insert_line_count)
+                    .collect::<Vec<_>>();
+
+                lines.splice(for_stmt.start_line..=i, new_contents);
+                i = for_stmt.start_line;
+                continue;
+            }
             Rule::Label => {
                 if let Some(next_token) = tokenized_line.get(1) {
+                    // TODO: handle FOR as next token as well
                     if next_token.as_rule() == Rule::Substitution {
                         collector.process_equ(first_token.as_str(), next_token.as_str());
                         lines.remove(i);
@@ -217,10 +246,18 @@ enum LabelValue {
 type Labels = HashMap<String, LabelValue>;
 
 #[derive(Debug)]
+struct ForStatement {
+    index_label: Option<String>,
+    iter_count: u32,
+    start_line: usize,
+}
+
+#[derive(Debug)]
 struct Collector {
     labels: Labels,
     current_equ: Option<(String, Vec<String>)>,
     pending_labels: HashSet<String>,
+    for_stack: Vec<ForStatement>,
 }
 
 impl Collector {
@@ -229,6 +266,7 @@ impl Collector {
             labels: Labels::new(),
             current_equ: None,
             pending_labels: HashSet::new(),
+            for_stack: Vec::new(),
         }
     }
 
@@ -278,6 +316,21 @@ impl Collector {
             self.labels
                 .insert(multiline_equ_label, LabelValue::Substitution(values));
         }
+    }
+
+    fn push_for(&mut self, label: Option<&str>, line: usize, expression: &str) {
+        // TODO handle errors instead of unwrap
+        // Also, need to expand labels in the expression first before passing to evaluator
+        let expr_value = evaluation::evaluate_expression(expression.to_string()).unwrap();
+        self.for_stack.push(ForStatement {
+            index_label: label.map(String::from),
+            iter_count: expr_value,
+            start_line: line,
+        });
+    }
+
+    fn pop_rof(&mut self) -> ForStatement {
+        self.for_stack.pop().unwrap()
     }
 
     fn finish(mut self) -> Labels {
@@ -491,6 +544,100 @@ mod test {
     }
 
     #[test_case(
+        &[
+            "for 3",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "repeat"
+    )]
+    #[test_case(
+        &[
+            "for 3",
+            "mov 0, 1",
+            "mov 2, 3",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 2, 3",
+            "mov 0, 1",
+            "mov 2, 3",
+            "mov 0, 1",
+            "mov 2, 3",
+        ];
+        "repeat multiple"
+    )]
+    #[test_case(
+        &[
+            "for 2 + 2",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "evaluate expression"
+    )]
+    // #[test_case(
+    //     &[
+    //         "base",
+    //         "N for 2 + 2",
+    //         "mov base, N",
+    //         "rof",
+    //     ],
+    //     &[
+    //         "mov 0, 0",
+    //         "mov 0, 1",
+    //         "mov 0, 2",
+    //         "mov 0, 3",
+    //     ];
+    //     "repeat index"
+    // )]
+    #[test_case(
+        &[
+            "foo equ mov 0, 1",
+            "for 3",
+            "foo",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "repeat and expand"
+    )]
+    #[test_case(
+        &[
+            "for 3",
+            "foo equ mov 0, 1",
+            "rof",
+            "foo",
+        ],
+        &[
+            "mov 0, 1",
+        ];
+        "repeat equ"
+    )]
+    fn collects_and_expands_forrof(lines: &[&str], expected: &[&str]) {
+        let mut lines = lines.iter().map(|s| s.to_string()).collect();
+        let _ = collect_and_expand(&mut lines);
+
+        let expected_lines: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+
+        assert_eq!(lines, expected_lines);
+    }
+
+    #[test_case(
         &["step equ 4", "mov 1, step"],
         &["mov 1, 4"];
         "expression equ"
@@ -505,7 +652,8 @@ mod test {
             "step equ mov 1, 2",
             "lbl1 step",
             "step",
-            "nop lbl1, 0"],
+            "nop lbl1, 0",
+        ],
         &[
             "mov 1, 2",
             "mov 1, 2",

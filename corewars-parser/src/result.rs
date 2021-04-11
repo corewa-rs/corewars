@@ -60,5 +60,3 @@ impl<T> From<Error> for Result<T> {
         Self::Err(err, Vec::new())
     }
 }
-
-// TODO some more impls. Probably some kind of deref coercion to make it more ergo

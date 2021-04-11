@@ -101,7 +101,7 @@ impl TryFrom<Phase<Expanded>> for Phase<Evaluated> {
         let origin = prev
             .state
             .origin
-            .map(evaluation::evaluate_origin)
+            .map(evaluation::evaluate_expression)
             .transpose()?;
 
         // TODO evaluate assertions
