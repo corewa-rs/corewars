@@ -72,9 +72,11 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
         match first_token.as_rule() {
             Rule::For => {
-                // Unwrap is okay since for must always have expression after it
                 let line_remainder = &line[first_token.as_span().end()..];
                 collector.push_for(None, i, line_remainder);
+                // TODO: should we now just skip all the way to the ROF? I guess not
+                // so we can support nested for, but is there any potential negative
+                // side effect of processing all the lines to be substituted twice?
             }
             Rule::Rof => {
                 let for_stmt = collector.pop_rof();
@@ -83,7 +85,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 let range_to_repeat = (for_stmt.start_line + 1)..i;
                 let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
 
-                // We need to subtract the offset, since we ended up replacing
+                // We need to subtract the offset, since we end up replacing
                 // those lines. They will be processed normally after substitution
                 offset -= range_to_repeat.len() as u32;
 
@@ -557,6 +559,15 @@ mod test {
             "mov 0, 1",
         ];
         "repeat"
+    )]
+    #[test_case(
+        &[
+            "for 0",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[];
+        "empty"
     )]
     #[test_case(
         &[
