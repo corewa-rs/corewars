@@ -44,7 +44,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     let mut offset: u32 = 0;
 
     while i < lines.len() {
-        // TODO clone
         let line = lines[i].clone();
         let tokenized_line = grammar::tokenize(&line);
 
@@ -55,14 +54,26 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
         let first_token = &tokenized_line[0];
 
         // Returns true if anything was expanded, false otherwise
-        let mut expand_next_token = |collector: &Collector| {
+        let mut expand_next_token = |collector: &Collector, is_for_expr: bool| {
             for token in tokenized_line[1..].iter() {
                 if token.as_rule() == Rule::Label {
-                    if let Some(LabelValue::Substitution(subst)) =
-                        collector.labels.get(token.as_str())
-                    {
-                        expand_lines(lines, i, token.as_span(), subst);
-                        return true;
+                    match (is_for_expr, collector.labels.get(token.as_str())) {
+                        (_, Some(LabelValue::Substitution(subst))) => {
+                            expand_lines(lines, i, token.as_span(), subst);
+                            return true;
+                        }
+                        (true, Some(&LabelValue::Offset(abs_offset))) => {
+                            let relative_offset = (abs_offset as i32) - (offset as i32);
+                            expand_lines(lines, i, token.as_span(), &[relative_offset.to_string()]);
+                            return true;
+                        }
+                        (true, _) => {
+                            // TODO: this is probably an error case
+                        }
+                        _ => {
+                            // this is probably a forward usage of a label not
+                            // yet declared, which _could_ be an error
+                        }
                     }
                 }
             }
@@ -72,14 +83,19 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
         match first_token.as_rule() {
             Rule::For => {
+                collector.resolve_pending_labels(offset);
+
+                if expand_next_token(&collector, true) {
+                    continue;
+                }
+
                 let line_remainder = &line[first_token.as_span().end()..];
                 collector.push_for(None, i, line_remainder);
-                // TODO: should we now just skip all the way to the ROF? I guess not
-                // so we can support nested for, but is there any potential negative
-                // side effect of processing all the lines to be substituted twice?
+                // Continue processing lines as normal, since we still need to collect
+                // labels and potentially nested for loops
             }
             Rule::Rof => {
-                let for_stmt = collector.pop_rof();
+                let for_stmt = collector.pop_for();
                 // For now, we don't handle the label properly, just copy+paste
                 // the inner lines N times without any substitutions
                 let range_to_repeat = (for_stmt.start_line + 1)..i;
@@ -104,8 +120,9 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 continue;
             }
             Rule::Label => {
+                // TODO: handle `lbl FOR idx`
+
                 if let Some(next_token) = tokenized_line.get(1) {
-                    // TODO: handle FOR as next token as well
                     if next_token.as_rule() == Rule::Substitution {
                         collector.process_equ(first_token.as_str(), next_token.as_str());
                         lines.remove(i);
@@ -124,7 +141,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
                 collector.add_pending_label(first_token.as_str());
 
-                if expand_next_token(&collector) {
+                if expand_next_token(&collector, false) {
                     continue;
                 }
 
@@ -147,7 +164,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             other_rule => {
                 collector.resolve_pending_labels(offset);
 
-                if expand_next_token(&collector) {
+                if expand_next_token(&collector, false) {
                     continue;
                 }
 
@@ -168,7 +185,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 }
 
 fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution: &[String]) {
-    // TODO clone
     let line = &lines[index];
 
     let before = &line[..span.start()];
@@ -186,7 +202,6 @@ fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution:
 fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
     let mut i = 0;
     for line in lines.iter_mut() {
-        // TODO: clone
         let cloned = line.clone();
         let tokenized_line = grammar::tokenize(&cloned);
 
@@ -324,8 +339,8 @@ impl Collector {
 
     fn push_for(&mut self, label: Option<&str>, line: usize, expression: &str) {
         // TODO handle errors instead of unwrap
-        // Also, need to expand labels in the expression first before passing to evaluator
         let expr_value = evaluation::evaluate_expression(expression.to_string()).unwrap();
+
         self.for_stack.push(ForStatement {
             index_label: label.map(String::from),
             iter_count: expr_value,
@@ -333,7 +348,7 @@ impl Collector {
         });
     }
 
-    fn pop_rof(&mut self) -> ForStatement {
+    fn pop_for(&mut self) -> ForStatement {
         self.for_stack.pop().unwrap()
     }
 
@@ -662,6 +677,24 @@ mod test {
         ];
         "repeat equ"
     )]
+    #[test_case(
+        &[
+            "five equ 5",
+            "lbl mov 0, 1",
+            "dat 0, 0",
+            "for five + lbl", // 5 - 2
+            "mov 1, 2",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "dat 0, 0",
+            "mov 1, 2",
+            "mov 1, 2",
+            "mov 1, 2",
+        ];
+        "expand expr labels"
+    )]
     fn collects_and_expands_forrof(lines: &[&str], expected: &[&str]) {
         let mut lines = lines.iter().map(|s| s.to_string()).collect();
         let _ = collect_and_expand(&mut lines);
@@ -733,9 +766,9 @@ mod test {
         &[
             "org lbl_b",
             "four equ 2+2",
-            "lbl_a dat four+1, four+3",
+            "lbl_a dat four+1, four+3", // lbl_a = 0
             "nop -1, -1",
-            "lbl_b dat 1, 1",
+            "lbl_b dat 1, 1",   // lbl_b = 2
             "nop -1, -1",
             "lbl_c add #lbl_a+1, #lbl_b+four+3+4",
         ],
