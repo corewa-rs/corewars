@@ -148,7 +148,8 @@ fn evaluate_unary(pair: Pair) -> i32 {
 
 fn evaluate_number(pair: Pair) -> i32 {
     assert!(pair.as_rule() == Rule::Number);
-    i32::from_str_radix(pair.as_str(), 10)
+    pair.as_str()
+        .parse::<i32>()
         .unwrap_or_else(|_| panic!("Invalid Number: {:?}", pair.as_str()))
 }
 
