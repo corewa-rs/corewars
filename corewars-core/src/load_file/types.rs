@@ -11,6 +11,7 @@ enum_string! {
         Jmn => "JMN",
         Jmp => "JMP",
         Jmz => "JMZ",
+        Ldp => "LDP",
         Mod => "MOD",
         Mov => "MOV",
         Mul => "MUL",
@@ -19,6 +20,7 @@ enum_string! {
         Slt => "SLT",
         Sne => "SNE",
         Spl => "SPL",
+        Stp => "STP",
         Sub => "SUB",
     }
 }
