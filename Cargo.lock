@@ -153,6 +153,7 @@ version = "0.2.0"
 dependencies = [
  "itertools",
  "lazy_static",
+ "maplit",
  "pretty_assertions",
 ]
 

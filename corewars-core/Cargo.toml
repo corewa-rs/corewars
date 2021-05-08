@@ -14,6 +14,7 @@ description = "Data structures and common utilities for the corewars crate"
 [dependencies]
 itertools = "0.9.0"
 lazy_static = "1.4.0"
+maplit = "1.0.2"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"

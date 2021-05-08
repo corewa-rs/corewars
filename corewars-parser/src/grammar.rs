@@ -23,16 +23,26 @@ mod derived {
 
 pub use derived::{Grammar, Rule};
 
-/// Parse an input line and return an iterator over
-
+/// Parse an input line and flatten it to only include the terminal token pairs,
+/// i.e. pairs without any inner token pairs.
 pub fn tokenize(line: &str) -> Vec<Pair> {
-    parse_line(line).map(flatten_pairs).unwrap_or_default()
+    parse_line(line)
+        .map(|pairs| {
+            pairs
+                .flatten()
+                // Only collect terminal pairs without inner members
+                .filter(|pair| pair.clone().into_inner().peek().is_none())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
+/// Parse a single line of input according to the grammar.
 pub fn parse_line(line: &str) -> Result<Pairs, Error> {
     Ok(Grammar::parse(Rule::Line, line)?)
 }
 
+/// Parse a single expression as a string.
 pub fn parse_expression(line: &str) -> Result<Pair, Error> {
     let mut pairs = Grammar::parse(Rule::Expression, line)?;
 
@@ -47,15 +57,6 @@ pub fn parse_expression(line: &str) -> Result<Pair, Error> {
             )
             .into()
         })
-}
-
-fn flatten_pairs(pairs: Pairs) -> Vec<Pair> {
-    pairs
-        .flatten()
-        .filter(|pair|
-            // TODO avoid clone here if possible
-            pair.clone().into_inner().peek().is_none())
-        .collect()
 }
 
 #[cfg(any(test, doctest))] // cfg(doctest) so we run the helper's doctest
@@ -386,6 +387,16 @@ mod test {
         "equ mov 1, (1 + 2)",
         vec![(Substitution, "mov 1, (1 + 2)")];
         "equ continuation expr"
+    )]
+    #[test_case(
+        "for CORESIZE + 10",
+        vec![(For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
+        "for statement"
+    )]
+    #[test_case(
+        "N for CORESIZE + 10",
+        vec![(Label, "N"), (For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
+        "for statement index"
     )]
     fn tokenize_line(input: &str, expected_result: Vec<(Rule, &str)>) {
         let actual: Vec<(Rule, &str)> = tokenize(input)

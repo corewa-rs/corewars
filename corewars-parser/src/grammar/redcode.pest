@@ -7,7 +7,7 @@ WHITESPACE = _{ " " | "\t" }
 
 Line = _{ LabelDeclaration? ~ Statement? }
 
-Statement = _{ Instruction | EquStatement | LabelUsage }
+Statement = _{ Instruction | EquStatement | ForStatement | Rof | LabelUsage }
 
 Expression = { Expr }
 
@@ -23,7 +23,7 @@ Field = { AddressMode? ~ Expression }
 Opcode = {
     ^"DAT" | ^"MOV" | ^"ADD" | ^"SUB" | ^"MUL" | ^"DIV" | ^"MOD" |
     ^"JMP" | ^"JMZ" | ^"JMN" | ^"DJN" | ^"CMP" | ^"SEQ" | ^"SNE" |
-    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"END"
+    ^"SLT" | ^"SPL" | ^"NOP" | ^"ORG" | ^"END" | ^"LDP" | ^"STP"
 }
 
 Modifier = { ^"AB" | ^"BA" | ^"A" | ^"B" | ^"F" | ^"X" | ^"I" }
@@ -33,13 +33,20 @@ AddressMode = { "#" | "$" | "*" | "@" | "{" | "<" | "}" | ">" }
 
 // Substitutions
 
-LabelDeclaration = _{ !(Instruction | EquStatement) ~ Label ~ (":")? }
+LabelDeclaration = _{ !(Instruction | EquStatement | ForStatement | Rof ) ~ Label ~ (":")? }
 
 LabelUsage = _{ Label }
 
 EquStatement = _{ ^"EQU" ~ Substitution }
 
 Substitution = { ANY* }
+
+ForStatement = _{ For ~ Expression }
+
+For = { ^"FOR" }
+
+// NOTE: pMars reference allows additional strings after "ROF", but it's not clear why
+Rof = { ^"ROF" }
 
 
 // Expressions

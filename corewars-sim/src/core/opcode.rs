@@ -142,6 +142,9 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                 None
             });
         }
+
+        // P-space opcodes
+        Opcode::Ldp | Opcode::Stp => unimplemented!(),
     }
 
     Ok(Executed {

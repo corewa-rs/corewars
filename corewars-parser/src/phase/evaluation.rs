@@ -30,7 +30,7 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
 
 /// Parse and evaluate a single expression string to find the entry point to
 /// a warrior.
-pub fn evaluate_origin(expr: String) -> Result<u32, Error> {
+pub fn evaluate_expression(expr: String) -> Result<u32, Error> {
     let expr_pair = grammar::parse_expression(&expr)?;
 
     let origin = expression::evaluate(expr_pair);
@@ -175,12 +175,13 @@ mod test {
 
     #[test]
     fn evaluates_origin() {
-        let evaluated = evaluate_origin("2 * (4 + 3)".into()).expect("Should parse successfully");
+        let evaluated =
+            evaluate_expression("2 * (4 + 3)".into()).expect("Should parse successfully");
         assert_eq!(evaluated, 14);
     }
 
     #[test]
     fn fails_for_negative_origin() {
-        evaluate_origin("-10".into()).expect_err("-10 should be an invalid origin");
+        evaluate_expression("-10".into()).expect_err("-10 should be an invalid origin");
     }
 }

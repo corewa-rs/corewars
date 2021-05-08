@@ -11,6 +11,10 @@ use pest::Span;
 
 use crate::grammar;
 
+use super::evaluation;
+
+use corewars_core::load_file::DEFAULT_CONSTANTS;
+
 /// The result of expansion and substitution
 #[derive(Debug, Default, PartialEq)]
 pub struct Lines {
@@ -21,8 +25,6 @@ pub struct Lines {
 /// Collect and subsitute all labels found in the input lines.
 pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
     let labels = collect_and_expand(&mut text);
-
-    // TODO: #39 FOR expansion
 
     substitute_offsets(&mut text, &labels);
 
@@ -41,10 +43,9 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     let mut collector = Collector::new();
 
     let mut i: usize = 0;
-    let mut offset = 0;
+    let mut offset: u32 = 0;
 
     while i < lines.len() {
-        // TODO clone
         let line = lines[i].clone();
         let tokenized_line = grammar::tokenize(&line);
 
@@ -55,14 +56,38 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
         let first_token = &tokenized_line[0];
 
         // Returns true if anything was expanded, false otherwise
-        let mut expand_next_token = |collector: &Collector| {
+        let mut expand_next_token = |collector: &Collector, is_for_expr: bool| {
             for token in tokenized_line[1..].iter() {
                 if token.as_rule() == Rule::Label {
-                    if let Some(LabelValue::Substitution(subst)) =
-                        collector.labels.get(token.as_str())
-                    {
-                        expand_lines(lines, i, token.as_span(), subst);
+                    let label_value = collector.get_label_value(token.as_str(), offset);
+
+                    if let Some(label_value) = label_value {
+                        match label_value {
+                            LabelValue::AbsoluteOffset(abs_offset) => {
+                                let relative_offset = (abs_offset as i32) - (offset as i32);
+                                expand_lines(
+                                    lines,
+                                    i,
+                                    token.as_span(),
+                                    &[relative_offset.to_string()],
+                                );
+                            }
+                            LabelValue::RelativeOffset(rel_offset) => {
+                                expand_lines(lines, i, token.as_span(), &[rel_offset.to_string()]);
+                            }
+                            LabelValue::Substitution(subst) => {
+                                expand_lines(lines, i, token.as_span(), &subst);
+                            }
+                        }
+
                         return true;
+                    }
+
+                    if is_for_expr {
+                        panic!("No label value found for expr {:?}", token.as_str())
+                    } else {
+                        // this is probably a forward usage of a label not
+                        // yet declared, which _could_ be an error
                     }
                 }
             }
@@ -71,27 +96,84 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
         };
 
         match first_token.as_rule() {
+            Rule::For => {
+                collector.resolve_pending_labels(offset);
+
+                if expand_next_token(&collector, true) {
+                    continue;
+                }
+
+                let line_remainder = &line[first_token.as_span().end()..];
+                collector.push_for(None, i, offset, line_remainder);
+                // Continue processing lines as normal, since we still need to collect
+                // labels and potentially nested for loops
+            }
+            Rule::Rof => {
+                let for_stmt = collector.pop_for();
+                // For now, we don't handle the label properly, just copy+paste
+                // the inner lines N times without any substitutions
+                let range_to_repeat = (for_stmt.start_line + 1)..i;
+                let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
+
+                // We need to subtract the offset, since we end up replacing
+                // those lines. They will be processed normally after substitution
+                offset -= range_to_repeat.len() as u32;
+
+                let new_contents = lines[range_to_repeat]
+                    .iter()
+                    .cloned()
+                    .cycle()
+                    .take(insert_line_count)
+                    .collect::<Vec<_>>();
+
+                let range_to_replace = for_stmt.start_line..=i;
+                lines.splice(range_to_replace, new_contents);
+
+                i = for_stmt.start_line;
+
+                continue;
+            }
             Rule::Label => {
                 if let Some(next_token) = tokenized_line.get(1) {
-                    if next_token.as_rule() == Rule::Substitution {
-                        collector.process_equ(first_token.as_str(), next_token.as_str());
-                        lines.remove(i);
-                        continue;
+                    match next_token.as_rule() {
+                        Rule::Substitution => {
+                            collector.process_equ(first_token.as_str(), next_token.as_str());
+                            lines.remove(i);
+                            continue;
+                        }
+                        Rule::For => {
+                            collector.resolve_pending_labels(offset);
+
+                            if !expand_next_token(&collector, true) {
+                                let line_remainder = &line[next_token.as_span().end()..];
+
+                                collector.push_for(
+                                    first_token.as_str().to_string(),
+                                    i,
+                                    offset,
+                                    line_remainder,
+                                );
+
+                                i += 1;
+                            }
+                            continue;
+                        }
+                        _ => {}
                     }
                 }
 
                 collector.resolve_pending_equ();
 
                 if let Some(LabelValue::Substitution(substitution)) =
-                    collector.labels.get(first_token.as_str())
+                    collector.get_label_value(first_token.as_str(), offset)
                 {
-                    expand_lines(lines, i, first_token.as_span(), substitution);
+                    expand_lines(lines, i, first_token.as_span(), &substitution);
                     continue;
                 }
 
                 collector.add_pending_label(first_token.as_str());
 
-                if expand_next_token(&collector) {
+                if expand_next_token(&collector, false) {
                     continue;
                 }
 
@@ -114,7 +196,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             other_rule => {
                 collector.resolve_pending_labels(offset);
 
-                if expand_next_token(&collector) {
+                if expand_next_token(&collector, false) {
                     continue;
                 }
 
@@ -135,7 +217,6 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 }
 
 fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution: &[String]) {
-    // TODO clone
     let line = &lines[index];
 
     let before = &line[..span.start()];
@@ -153,7 +234,6 @@ fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution:
 fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
     let mut i = 0;
     for line in lines.iter_mut() {
-        // TODO: clone
         let cloned = line.clone();
         let tokenized_line = grammar::tokenize(&cloned);
 
@@ -184,51 +264,73 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
         if token.as_rule() == grammar::Rule::Label {
             let label_value = labels.get(token.as_str());
 
-            match label_value {
-                Some(&LabelValue::Offset(offset)) => {
-                    let relative_offset = (offset as i32) - (from_offset as i32);
-                    let span = token.as_span();
-
-                    let range = span.start()..span.end();
-                    let replace_with = relative_offset.to_string();
-                    line.replace_range(range, &replace_with);
-
-                    // Recursively re-parse line and continue substitution.
-                    // This is less efficient, but means we don't need to deal
-                    // with the fact that the whole line was invalidate after
-                    // `replace_range`
-                    return substitute_offsets_in_line(line, labels, from_offset);
-                }
+            let relative_offset = match label_value {
+                Some(&LabelValue::AbsoluteOffset(offset)) => (offset as i32) - (from_offset as i32),
+                Some(&LabelValue::RelativeOffset(offset)) => offset,
                 _ => {
                     // TODO #25 actual error
                     panic!("No label {:?} found", token.as_str());
                 }
-            }
+            };
+
+            let span = token.as_span();
+
+            let range = span.start()..span.end();
+            let replace_with = relative_offset.to_string();
+            line.replace_range(range, &replace_with);
+
+            // Recursively re-parse line and continue substitution.
+            // This is less efficient, but means we don't need to deal
+            // with the fact that the whole line was invalidate after
+            // `replace_range`
+            return substitute_offsets_in_line(line, labels, from_offset);
         }
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 enum LabelValue {
-    Offset(u32),
+    AbsoluteOffset(u32),
+    RelativeOffset(i32),
     Substitution(Vec<String>),
 }
 
 type Labels = HashMap<String, LabelValue>;
+
+fn default_labels() -> Labels {
+    DEFAULT_CONSTANTS
+        .iter()
+        // Counterintuitively, we use a relative offset here so that it doesn't
+        // get translated like absolute offset labels would be
+        .map(|(lbl, value)| (lbl.clone(), LabelValue::RelativeOffset(*value as i32)))
+        .collect()
+}
+
+#[derive(Debug)]
+struct ForStatement {
+    index_label: Option<String>,
+    iter_count: u32,
+    start_line: usize,
+    start_offset: u32,
+}
 
 #[derive(Debug)]
 struct Collector {
     labels: Labels,
     current_equ: Option<(String, Vec<String>)>,
     pending_labels: HashSet<String>,
+    for_stack: Vec<ForStatement>,
+    for_offsets: HashMap<String, u32>,
 }
 
 impl Collector {
     fn new() -> Self {
         Self {
-            labels: Labels::new(),
+            labels: default_labels(),
             current_equ: None,
             pending_labels: HashSet::new(),
+            for_stack: Vec::new(),
+            for_offsets: HashMap::new(),
         }
     }
 
@@ -262,7 +364,7 @@ impl Collector {
 
         let pending_labels = std::mem::take(&mut self.pending_labels);
         for pending_label in pending_labels.into_iter() {
-            result.insert(pending_label, LabelValue::Offset(offset));
+            result.insert(pending_label, LabelValue::AbsoluteOffset(offset));
         }
 
         self.resolve_pending_equ();
@@ -277,6 +379,61 @@ impl Collector {
             // Reached the last line in an equ, add to table and reset
             self.labels
                 .insert(multiline_equ_label, LabelValue::Substitution(values));
+        }
+    }
+
+    fn push_for<T: Into<Option<String>>>(
+        &mut self,
+        label: T,
+        line: usize,
+        offset: u32,
+        expression: &str,
+    ) {
+        // TODO handle errors instead of unwrap
+        let expr_value = evaluation::evaluate_expression(expression.to_string()).unwrap();
+
+        self.for_stack.push(ForStatement {
+            index_label: label.into(),
+            iter_count: expr_value,
+            start_line: line,
+            start_offset: offset,
+        });
+    }
+
+    fn pop_for(&mut self) -> ForStatement {
+        let for_stmt = self.for_stack.pop().unwrap();
+        if let Some(label) = &for_stmt.index_label {
+            self.for_offsets
+                .insert(label.clone(), for_stmt.start_offset);
+        }
+        for_stmt
+    }
+
+    fn get_label_value(&self, label: &str, current_offset: u32) -> Option<LabelValue> {
+        let value = self.labels.get(label).cloned();
+
+        if let Some(LabelValue::Substitution(_)) = value {
+            // Always return substitutions even if we are in a for loop
+            value
+        } else if self.for_stack.is_empty() {
+            // Otherwise, only expand labels if we are finished unrolling loops
+            // This ensures the relative offsets are calculated after the unroll
+            if value.is_some() {
+                value
+            } else {
+                // Special-case for current line number
+                if label == "CURLINE" {
+                    // Similar to the impl of `default_labels`, use a relative offset
+                    // to avoid translating back to absolute
+                    dbg!(Some(LabelValue::RelativeOffset(current_offset as i32)))
+                } else {
+                    self.for_offsets.get(label).map(|start_offset| {
+                        LabelValue::RelativeOffset((current_offset as i32) - (*start_offset as i32))
+                    })
+                }
+            }
+        } else {
+            None
         }
     }
 
@@ -311,10 +468,8 @@ mod test {
         let labels = collector.finish();
 
         assert_eq!(
-            labels,
-            hashmap! {
-                String::from("foo") => Substitution(vec![String::from("1")])
-            }
+            Some(&Substitution(vec![String::from("1")])),
+            labels.get("foo"),
         );
     }
 
@@ -327,13 +482,11 @@ mod test {
         let labels = collector.finish();
 
         assert_eq!(
-            labels,
-            hashmap! {
-                String::from("foo") => Substitution(vec![
-                    String::from("mov 1, 1"),
-                    String::from("jne 0, -1"),
-                ])
-            }
+            Some(&Substitution(vec![
+                String::from("mov 1, 1"),
+                String::from("jne 0, -1"),
+            ])),
+            labels.get("foo")
         );
     }
 
@@ -350,13 +503,8 @@ mod test {
         collector.add_pending_label("gone");
         let labels = collector.finish();
 
-        assert_eq!(
-            labels,
-            hashmap! {
-                String::from("foo") => Offset(1),
-                String::from("bar") => Offset(1),
-            }
-        );
+        assert_eq!(Some(&AbsoluteOffset(1)), labels.get("foo"),);
+        assert_eq!(Some(&AbsoluteOffset(1)), labels.get("bar"),);
     }
 
     #[test_case("step", 0, 4, &["a"], &["a"]; "single line")]
@@ -429,7 +577,7 @@ mod test {
             "mov 1, 1",
         ],
         hashmap!{
-            "lbl1".into() => LabelValue::Offset(0),
+            "lbl1".into() => LabelValue::AbsoluteOffset(0),
         };
         "single label"
     )]
@@ -438,7 +586,7 @@ mod test {
             "lbl1 mov 1, 1",
         ],
         hashmap!{
-            "lbl1".into() => LabelValue::Offset(0),
+            "lbl1".into() => LabelValue::AbsoluteOffset(0),
         };
         "single label statement"
     )]
@@ -448,8 +596,8 @@ mod test {
             "lbl2 mov 1, 1",
         ],
         hashmap!{
-            "lbl1".into() => LabelValue::Offset(0),
-            "lbl2".into() => LabelValue::Offset(0),
+            "lbl1".into() => LabelValue::AbsoluteOffset(0),
+            "lbl2".into() => LabelValue::AbsoluteOffset(0),
         };
         "label alias"
     )]
@@ -462,9 +610,9 @@ mod test {
             "lbl3 mov 3, 4",
         ],
         hashmap!{
-            "lbl1".into() => LabelValue::Offset(1),
-            "lbl2".into() => LabelValue::Offset(1),
-            "lbl3".into() => LabelValue::Offset(3),
+            "lbl1".into() => LabelValue::AbsoluteOffset(1),
+            "lbl2".into() => LabelValue::AbsoluteOffset(1),
+            "lbl3".into() => LabelValue::AbsoluteOffset(3),
         };
         "multiple labels"
     )]
@@ -479,15 +627,161 @@ mod test {
         ],
         hashmap!{
             "foo".into() => LabelValue::Substitution(vec!["1".into()]),
-            "lbl1".into() => LabelValue::Offset(1),
-            "lbl2".into() => LabelValue::Offset(1),
-            "lbl3".into() => LabelValue::Offset(3),
+            "lbl1".into() => LabelValue::AbsoluteOffset(1),
+            "lbl2".into() => LabelValue::AbsoluteOffset(1),
+            "lbl3".into() => LabelValue::AbsoluteOffset(3),
         };
         "label with expansion"
     )]
     fn collects_and_expands_labels(lines: &[&str], expected: Labels) {
         let mut lines = lines.iter().map(|s| s.to_string()).collect();
-        assert_eq!(collect_and_expand(&mut lines), expected);
+        let result = collect_and_expand(&mut lines);
+
+        for (k, v) in expected.iter() {
+            assert_eq!(Some(v), result.get(k));
+        }
+    }
+
+    #[test_case(
+        &[
+            "for 3",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "repeat"
+    )]
+    #[test_case(
+        &[
+            "for 0",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[];
+        "empty"
+    )]
+    #[test_case(
+        &[
+            "for 3",
+            "mov 0, 1",
+            "mov 2, 3",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 2, 3",
+            "mov 0, 1",
+            "mov 2, 3",
+            "mov 0, 1",
+            "mov 2, 3",
+        ];
+        "repeat multiple"
+    )]
+    #[test_case(
+        &[
+            "for 2",
+            "for 3",
+            "mov 0, 1",
+            "rof",
+            "mov 1, 2",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 1, 2",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 1, 2",
+        ];
+        "nested for"
+    )]
+    #[test_case(
+        &[
+            "for 2 + 2",
+            "mov 0, 1",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "evaluate expression"
+    )]
+    #[test_case(
+        &[
+            "base",
+            "N for 2 + 2",
+            "mov base, N",
+            "rof",
+        ],
+        &[
+            "mov 0, 0", // base
+            "mov -1, 1",
+            "mov -2, 2",
+            "mov -3, 3",
+        ];
+        "repeat index"
+    )]
+    #[test_case(
+        &[
+            "foo equ mov 0, 1",
+            "for 3",
+            "foo",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov 0, 1",
+            "mov 0, 1",
+        ];
+        "repeat and expand"
+    )]
+    #[test_case(
+        &[
+            "for 3",
+            "foo equ mov 0, 1",
+            "rof",
+            "foo",
+        ],
+        &[
+            "mov 0, 1",
+        ];
+        "repeat equ"
+    )]
+    #[test_case(
+        &[
+            "five equ 5",
+            "lbl mov 0, 1",
+            "dat 0, 0",
+            "for five + lbl", // 5 - 2
+            "mov 1, 2",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "dat 0, 0",
+            "mov 1, 2",
+            "mov 1, 2",
+            "mov 1, 2",
+        ];
+        "expand expr labels"
+    )]
+    fn collects_and_expands_forrof(lines: &[&str], expected: &[&str]) {
+        let mut lines = lines.iter().map(|s| s.to_string()).collect();
+        let _ = collect_and_expand(&mut lines);
+
+        let expected_lines: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+
+        assert_eq!(lines, expected_lines);
     }
 
     #[test_case(
@@ -505,7 +799,8 @@ mod test {
             "step equ mov 1, 2",
             "lbl1 step",
             "step",
-            "nop lbl1, 0"],
+            "nop lbl1, 0",
+        ],
         &[
             "mov 1, 2",
             "mov 1, 2",
@@ -551,9 +846,9 @@ mod test {
         &[
             "org lbl_b",
             "four equ 2+2",
-            "lbl_a dat four+1, four+3",
+            "lbl_a dat four+1, four+3", // lbl_a = 0
             "nop -1, -1",
-            "lbl_b dat 1, 1",
+            "lbl_b dat 1, 1",   // lbl_b = 2
             "nop -1, -1",
             "lbl_c add #lbl_a+1, #lbl_b+four+3+4",
         ],
@@ -567,16 +862,31 @@ mod test {
         ];
         "equ in expression"
     )]
+    #[test_case(
+        &[
+            "add 2, CURLINE",
+            "mov 1, CORESIZE-1",
+            "add 3, CURLINE",
+            "dat MAXLENGTH, MAXLENGTH",
+        ],
+        &[
+            "add 2, 0",
+            "mov 1, 8000-1",
+            "add 3, 2",
+            "dat 100, 100",
+        ];
+        "expand default labels"
+    )]
     fn expands_substitutions(lines: &[&str], expected: &[&str]) {
         let lines = lines.iter().map(|s| s.to_string()).collect();
         let expected: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
 
         assert_eq!(
-            expand(lines, None),
             Lines {
                 text: expected,
                 origin: None,
-            }
+            },
+            expand(lines, None),
         );
     }
 

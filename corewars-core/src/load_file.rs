@@ -1,6 +1,7 @@
 use std::fmt;
 
 use lazy_static::lazy_static;
+use maplit::hashmap;
 
 mod metadata;
 mod offset;
@@ -13,18 +14,15 @@ pub use program::{Instructions, LabelMap, Program};
 pub use types::{AddressMode, Modifier, Opcode, PseudoOpcode, Value};
 
 lazy_static! {
-    pub static ref DEFAULT_CONSTANTS: LabelMap = {
-        let mut constants = LabelMap::new();
-        constants.insert("CORESIZE".into(), 8000);
-        constants.insert("MAXPROCESSES".into(), 8000);
-        constants.insert("MAXCYCLES".into(), 80_000);
-        constants.insert("MAXLENGTH".into(), 100);
-        constants.insert("MINDISTANCE".into(), 100);
-        constants.insert("ROUNDS".into(), 1);
-
-        // TODO: handle command-line constant redefinition and things like
-        // CURLINE, VERSION, WARRIORS, PSPACESIZE
-        constants
+    // TODO: handle command-line constant redefinition and things like
+    // CURLINE, VERSION, WARRIORS, PSPACESIZE
+    pub static ref DEFAULT_CONSTANTS: LabelMap = hashmap! {
+        "CORESIZE".into() => 8000,
+        "MAXPROCESSES".into() => 8000,
+        "MAXCYCLES".into() => 80_000,
+        "MAXLENGTH".into() => 100,
+        "MINDISTANCE".into() => 100,
+        "ROUNDS".into() => 1,
     };
 }
 
