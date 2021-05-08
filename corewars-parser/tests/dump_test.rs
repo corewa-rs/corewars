@@ -40,5 +40,5 @@ fn read_dir(input_file: &str) {
     let actual_lines: Vec<&str> = actual_output.trim().lines().collect();
     let expected_lines: Vec<&str> = expected_output.lines().collect();
 
-    assert_eq!(actual_lines, expected_lines);
+    assert_eq!(expected_lines, actual_lines);
 }
