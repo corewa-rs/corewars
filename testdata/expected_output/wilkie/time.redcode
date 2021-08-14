@@ -1,15 +1,11 @@
-;name TimeScape (1.0)
-;author J. Pohjalainen
-;strategy v1.0: added more havoc in above code  (or I hope so!)
-;assert CORESIZE==8000
 ORG     89
 SPL.B   @0,     }1800
-MOV.I   }-1,    >-1
+MOV.I   }7999,  >7999
 SPL.B   @0,     }3740
-MOV.I   }-1,    >-1
-MOV.I   {-1870, <1870
-MOV.I   {-3,    <1
-JMP.B   @0,     >-1922
+MOV.I   }7999,  >7999
+MOV.I   {6130,  <1870
+MOV.I   {7997,  <1
+JMP.B   @0,     >6078
 DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
@@ -92,14 +88,14 @@ DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
-SPL.B   $1,     <-200
-SPL.B   $1,     <-300
-MOV.I   $-1,    $0
-SPL.B   $-92,   <-400
+SPL.B   $1,     <7800
+SPL.B   $1,     <7700
+MOV.I   $7999,  $0
+SPL.B   $7908,  <7600
 SPL.B   @0,     }1800
-MOV.I   }-1,    >-1
+MOV.I   }7999,  >7999
 SPL.B   @0,     }3740
-MOV.I   }-1,    >-1
-MOV.I   <-1870, {1870
-MOV.I   {-3,    <1
-JMP.B   @0,     >-1922
+MOV.I   }7999,  >7999
+MOV.I   <6130,  {1870
+MOV.I   {7997,  <1
+JMP.B   @0,     >6078

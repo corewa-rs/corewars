@@ -21,7 +21,8 @@ begin:  add # 1, @ 2
         sne  0, 0
         slt  0, 0
         spl  0
-        nop  0
+        nop  0          ; NOTE: default modifier from pMars is F, but the spec
+                        ; says it should be B, so that's what expect for this
 
 loop
         mov.a 1, 2
