@@ -110,8 +110,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
             }
             Rule::Rof => {
                 let for_stmt = collector.pop_for();
-                // For now, we don't handle the label properly, just copy+paste
-                // the inner lines N times without any substitutions
+
                 let range_to_repeat = (for_stmt.start_line + 1)..i;
                 let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
 
@@ -119,11 +118,32 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 // those lines. They will be processed normally after substitution
                 offset -= range_to_repeat.len() as u32;
 
-                let new_contents = lines[range_to_repeat]
+                let new_contents = lines[range_to_repeat.clone()]
                     .iter()
                     .cloned()
                     .cycle()
                     .take(insert_line_count)
+                    .enumerate()
+                    .map(|(i, mut line)| {
+                        if let Some(label) = &for_stmt.index_label {
+                            let subst = i / range_to_repeat.len() + 1;
+
+                            // This method of label stuff is a little hacky,
+                            // but seems reasonable I guess...
+                            collector
+                                .labels
+                                .insert(label.clone(), LabelValue::RelativeOffset(subst as i32));
+
+                            substitute_offsets_in_line(
+                                &mut line,
+                                &collector.labels,
+                                for_stmt.start_offset + (i as u32),
+                            );
+
+                            collector.labels.remove(label);
+                        }
+                        line
+                    })
                     .collect::<Vec<_>>();
 
                 let range_to_replace = for_stmt.start_line..=i;
@@ -258,7 +278,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
 }
 
 fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u32) {
-    let tokenized_line = grammar::tokenize(&line);
+    let tokenized_line = grammar::tokenize(line);
 
     for token in tokenized_line.iter() {
         if token.as_rule() == grammar::Rule::Label {
@@ -267,10 +287,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
             let relative_offset = match label_value {
                 Some(&LabelValue::AbsoluteOffset(offset)) => (offset as i32) - (from_offset as i32),
                 Some(&LabelValue::RelativeOffset(offset)) => offset,
-                _ => {
-                    // TODO #25 actual error
-                    panic!("No label {:?} found", token.as_str());
-                }
+                _ => continue,
             };
 
             let span = token.as_span();
@@ -420,17 +437,11 @@ impl Collector {
             // This ensures the relative offsets are calculated after the unroll
             if value.is_some() {
                 value
-            } else {
+            } else if label == "CURLINE" {
                 // Special-case for current line number
-                if label == "CURLINE" {
-                    // Similar to the impl of `default_labels`, use a relative offset
-                    // to avoid translating back to absolute
-                    dbg!(Some(LabelValue::RelativeOffset(current_offset as i32)))
-                } else {
-                    self.for_offsets.get(label).map(|start_offset| {
-                        LabelValue::RelativeOffset((current_offset as i32) - (*start_offset as i32))
-                    })
-                }
+                Some(LabelValue::RelativeOffset(current_offset as i32))
+            } else {
+                None
             }
         } else {
             None
@@ -724,12 +735,30 @@ mod test {
             "rof",
         ],
         &[
-            "mov 0, 0", // base
-            "mov -1, 1",
-            "mov -2, 2",
-            "mov -3, 3",
+            "mov 0, 1",
+            "mov -1, 2",
+            "mov -2, 3",
+            "mov -3, 4",
         ];
         "repeat index"
+    )]
+    #[test_case(
+        &[
+            "base",
+            "N for 3",
+            "mov base, N",
+            "mov base, N",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov -1, 1",
+            "mov -2, 2",
+            "mov -3, 2",
+            "mov -4, 3",
+            "mov -5, 3",
+        ];
+        "repeat index twice"
     )]
     #[test_case(
         &[

@@ -16,6 +16,8 @@ corewars-core = { path = "../corewars-core", version = "0.2.0" }
 thiserror = "1.0.21"
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
-test-case = "1.0.0"
 corewars-parser = { path = "../corewars-parser", version = "0.2.0" }
+normalize-line-endings = "0.3.0"
+pretty_assertions = "0.6.1"
+test-case = "1.2.0"
+test-generator = "0.3.0"

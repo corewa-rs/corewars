@@ -2,6 +2,7 @@
 //! This is where all simulation of a Core Wars battle takes place.
 
 use std::fmt;
+use std::ops::{Index, Range};
 
 use thiserror::Error as ThisError;
 
@@ -75,7 +76,7 @@ impl Core {
 
     /// Get an instruction from a given index in the core
     pub fn get(&self, index: i32) -> &Instruction {
-        &self.get_offset(self.offset(index))
+        self.get_offset(self.offset(index))
     }
 
     /// Get an instruction from a given offset in the core
@@ -306,6 +307,14 @@ impl fmt::Debug for Core {
 impl fmt::Display for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.format_lines(formatter, |_, _| String::new(), |_, _| String::new())
+    }
+}
+
+impl Index<Range<usize>> for Core {
+    type Output = [Instruction];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        &self.instructions[index]
     }
 }
 

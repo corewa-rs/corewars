@@ -1,9 +1,3 @@
-;name Scan Man
-;author David van Dam
-;version 1.1.boot
-;date 15 May 1996
-;strategy v1.1.boot  Boot + Decoy
-;assert CORESIZE == 8000
 ORG     53
 DAT.F   $1,     $2
 DAT.F   $3,     $4
@@ -22,7 +16,7 @@ DAT.F   $25,    $26
 DAT.F   $0,     $0
 DAT.F   $27,    $28
 DAT.F   $29,    $30
-DAT.F   $12,    $-2
+DAT.F   $12,    $7998
 DAT.F   $31,    $32
 DAT.F   $33,    $34
 DAT.F   $35,    $36
@@ -33,12 +27,12 @@ DAT.F   $17,    $18
 DAT.F   $43,    $44
 DAT.F   $45,    $46
 DAT.F   $47,    $48
-ADD.F   $3,     $-11
-SNE.F   {-12,   >-12
-JMZ.B   $-2,    #0
-SPL.F   #-29,   <-31
-MOV.I   *19,    >-15
-DJN.F   $-1,    {-16
+ADD.F   $3,     $7989
+SNE.F   {7988,  >7988
+JMZ.B   $7998,  #0
+SPL.F   #7971,  <7969
+MOV.I   *19,    >7985
+DJN.F   $7999,  {7984
 DAT.F   $33,    $34
 DAT.F   $49,    $50
 DAT.F   $51,    $52
@@ -49,7 +43,7 @@ DAT.F   $57,    $58
 DAT.F   $59,    $60
 DAT.F   $61,    $62
 DAT.F   $63,    $64
-SNE.F   {-12,   <-12
+SNE.F   {7988,  <7988
 DAT.F   $65,    $66
 DAT.F   $67,    $68
 DAT.F   $69,    $70
@@ -57,8 +51,8 @@ DAT.F   $71,    $72
 DIV.F   #1,     #1
 DAT.F   #3,     #0
 DAT.F   #1,     #20
-SPL.B   #-39,   #37
-MOV.I   $-36,   $-2031
+SPL.B   #7961,  #37
+MOV.I   $7964,  $5969
 MOV.I   *10,    @10
 MOV.I   {9,     <9
 MOV.I   {8,     <8
@@ -69,8 +63,8 @@ SPL.B   @4,     $0
 MOV.I   }4,     >4
 MOV.I   }3,     >3
 MOV.I   }2,     >2
-DIV.F   #-31,   #-2026
-DAT.F   #-15,   #-2010
+DIV.F   #7969,  #5974
+DAT.F   #7985,  #5990
 DAT.F   $73,    $74
 DAT.F   $75,    $76
 DAT.F   $77,    $78

@@ -21,7 +21,8 @@ begin:  add # 1, @ 2
         sne  0, 0
         slt  0, 0
         spl  0
-        nop  0
+        nop  0          ; NOTE: default modifier from pMars is F, but the spec
+                        ; says it should be B, so that's what expect for this
 
 loop
         mov.a 1, 2
@@ -32,8 +33,15 @@ loop
         mov.x 1, 2
         mov.i 1, 2
 
-        jmp loop
+reset:  jmp loop
+
+start_for
+N for 5
+        mov.a start_for + N, reset - N
+        mov.b start_for + N, reset - N
+rof
 
         end begin
+
 
 Some Junk Here mov.ba 1,2

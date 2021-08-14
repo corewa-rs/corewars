@@ -1,7 +1,3 @@
-;name Blue Funk 3
-;author Steven Morrell
-;strategy Fixed another in-memory/in-register bug
-;assert CORESIZE==8000
 ORG     83
 DAT.F   <98,    <2667
 DAT.F   <97,    <2667
@@ -81,24 +77,24 @@ DAT.F   <24,    <2667
 DAT.F   <23,    <2667
 DAT.F   <22,    <2667
 DAT.F   <21,    <2667
-SPL.B   #-3044, <3044
-MOV.I   >-3044, $3045
-ADD.F   $-2,    $-1
-DJN.F   $-2,    <-53
-DAT.F   #0,     #-7
-MOV.I   $-1,    $-194
-SPL.B   @0,     $-200
-MOV.I   $-7,    >-1
-MOV.I   $-7,    >-2
-MOV.I   $-7,    >-3
-MOV.I   $-7,    >-4
+SPL.B   #4956,  <3044
+MOV.I   >4956,  $3045
+ADD.F   $7998,  $7999
+DJN.F   $7998,  <7947
+DAT.F   #0,     #7993
+MOV.I   $7999,  $7806
+SPL.B   @0,     $7800
+MOV.I   $7993,  >7999
+MOV.I   $7993,  >7998
+MOV.I   $7993,  >7997
+MOV.I   $7993,  >7996
 SPL.B   $6,     $0
 SPL.B   $3,     $0
 SPL.B   $6,     $0
 JMP.B   >0,     $6
-SPL.B   $-1,    $0
+SPL.B   $7999,  $0
 JMP.B   >0,     $5338
-SPL.B   $-4,    $0
-SPL.B   $-2,    $0
+SPL.B   $7996,  $0
+SPL.B   $7998,  $0
 JMP.B   >0,     $2668
 MOV.I   #3044,  $2667

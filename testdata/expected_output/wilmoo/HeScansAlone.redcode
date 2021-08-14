@@ -1,7 +1,3 @@
-;name He Scans Alone
-;author P.Kline
-;strategy 80% f-scanner switches from SPL to DAT carpet
-;assert CORESIZE == 8000
 ORG     85
 DAT.F   $100,   $4096
 DAT.F   $0,     $0
@@ -9,19 +5,19 @@ DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
-MOV.I   $14,    <-6
-MOV.I   >-7,    >-7
-JMN.F   $-2,    >-8
-SUB.X   #-12,   $-9
-SNE.I   *-10,   @-10
-SUB.X   *3,     @-2
-JMN.F   $3,     @-12
-JMZ.F   $-4,    *-13
-MOV.X   @-5,    @-5
-SLT.B   @-6,    #27
-DJN.B   $-10,   @-7
-DJN.B   *-3,    #13
-JMP.B   *-4,    }-12
+MOV.I   $14,    <7994
+MOV.I   >7993,  >7993
+JMN.F   $7998,  >7992
+SUB.X   #7988,  $7991
+SNE.I   *7990,  @7990
+SUB.X   *3,     @7998
+JMN.F   $3,     @7988
+JMZ.F   $7996,  *7987
+MOV.X   @7995,  @7995
+SLT.B   @7994,  #27
+DJN.B   $7990,  @7993
+DJN.B   *7997,  #13
+JMP.B   *7996,  }7988
 DAT.F   $0,     $0
 SPL.B   #1,     {1
 DAT.F   $0,     $0
@@ -88,7 +84,7 @@ DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
-MOV.I   <-1274, {-1272
-MOV.I   <-1272, {-1270
-MOV.I   <-1270, {-1268
-DJN.F   $-78,   <-1267
+MOV.I   <6726,  {6728
+MOV.I   <6728,  {6730
+MOV.I   <6730,  {6732
+DJN.F   $7922,  <6733
