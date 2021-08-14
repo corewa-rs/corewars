@@ -35,8 +35,10 @@ loop
 
 reset:  jmp loop
 
+start_for
 N for 5
-        mov 0, reset-N
+        mov.a start_for + N, reset - N
+        mov.b start_for + N, reset - N
 rof
 
         end begin
