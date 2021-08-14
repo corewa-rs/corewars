@@ -258,7 +258,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
 }
 
 fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u32) {
-    let tokenized_line = grammar::tokenize(&line);
+    let tokenized_line = grammar::tokenize(line);
 
     for token in tokenized_line.iter() {
         if token.as_rule() == grammar::Rule::Label {
@@ -425,6 +425,7 @@ impl Collector {
                 if label == "CURLINE" {
                     // Similar to the impl of `default_labels`, use a relative offset
                     // to avoid translating back to absolute
+                    // FIXME: This should actually be line number in the file, not the current offset
                     dbg!(Some(LabelValue::RelativeOffset(current_offset as i32)))
                 } else {
                     self.for_offsets.get(label).map(|start_offset| {

@@ -17,8 +17,7 @@ start
 	spl     starta, <1000   ;activate body n. 2
 
 	spl     1,      <300    ;\
-	; NOTE: for some reason, pMars deletes this mov instruction
-	mov     -1,     0       ;-\ generate 12
+	mov     -1,     0       ;-\ generate 12 ; NOTE: for some reason, pMars deletes this mov instruction, but not if this comment is placed on the line prior
 	spl     1,      <500    ;-/ parallel processes
 	spl     1,      <400    ;/
 
@@ -40,8 +39,7 @@ rof
 
 starta
 	spl     1,      <300    ;\
-	; NOTE: pMars also deletes this mov instruction
-	mov     -1,     0       ;-\ generate 12
+	mov     -1,     0       ;-\ generate 12 ; NOTE: pMars also deletes this mov instruction
 	spl     1,      <600    ;-/ consecutive processes
 	spl     1,      <400    ;/
 

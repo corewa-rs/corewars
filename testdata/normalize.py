@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+"""
+Simple helper script to make pMars load file output consistent for testing.
+"""
+
 import pathlib
 import sys
 
@@ -58,9 +63,7 @@ def _normalize_operand(op: str) -> str:
     if op[0].isdigit():
         return op
 
-    value = int(op[1:])
-    if value <= -8000 or value >= 8000:
-        value %= 8000
+    value = int(op[1:]) % 8000
     return f"{op[0]}{value}"
 
 

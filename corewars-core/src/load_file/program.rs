@@ -53,10 +53,12 @@ impl fmt::Display for Program {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut lines = Vec::new();
 
-        if let Some(offset) = self.origin {
-            // Width to match other instruction types
-            lines.push(format!("{:<8}{}", PseudoOpcode::Org, offset));
-        }
+        // Width to match other instruction types
+        lines.push(format!(
+            "{:<8}{}",
+            PseudoOpcode::Org,
+            self.origin.unwrap_or_default()
+        ));
 
         for instruction in self.instructions.iter() {
             lines.push(instruction.to_string());
