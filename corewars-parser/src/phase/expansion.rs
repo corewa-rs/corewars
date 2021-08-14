@@ -287,11 +287,7 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
             let relative_offset = match label_value {
                 Some(&LabelValue::AbsoluteOffset(offset)) => (offset as i32) - (from_offset as i32),
                 Some(&LabelValue::RelativeOffset(offset)) => offset,
-                _ => {
-                    // TODO #25 actual error
-                    // panic!("No label {:?} found", token.as_str());
-                    continue;
-                }
+                _ => continue,
             };
 
             let span = token.as_span();
@@ -441,17 +437,11 @@ impl Collector {
             // This ensures the relative offsets are calculated after the unroll
             if value.is_some() {
                 value
-            } else {
+            } else if label == "CURLINE" {
                 // Special-case for current line number
-                if label == "CURLINE" {
-                    Some(LabelValue::RelativeOffset(current_offset as i32))
-                } else {
-                    self.for_offsets.get(label).map(|start_offset| {
-                        // Add one to offset, since FOR index starts counting at 1
-                        let offset = (current_offset as i32) - (*start_offset as i32) + 1;
-                        LabelValue::RelativeOffset(offset)
-                    })
-                }
+                Some(LabelValue::RelativeOffset(current_offset as i32))
+            } else {
+                None
             }
         } else {
             None
