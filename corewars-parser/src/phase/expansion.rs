@@ -423,13 +423,12 @@ impl Collector {
             } else {
                 // Special-case for current line number
                 if label == "CURLINE" {
-                    // Similar to the impl of `default_labels`, use a relative offset
-                    // to avoid translating back to absolute
-                    // FIXME: This should actually be line number in the file, not the current offset
-                    dbg!(Some(LabelValue::RelativeOffset(current_offset as i32)))
+                    Some(LabelValue::RelativeOffset(current_offset as i32))
                 } else {
                     self.for_offsets.get(label).map(|start_offset| {
-                        LabelValue::RelativeOffset((current_offset as i32) - (*start_offset as i32))
+                        // Add one to offset, since FOR index starts counting at 1
+                        let offset = (current_offset as i32) - (*start_offset as i32) + 1;
+                        LabelValue::RelativeOffset(offset)
                     })
                 }
             }

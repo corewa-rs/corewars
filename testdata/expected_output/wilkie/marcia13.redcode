@@ -1,6 +1,7 @@
 ORG     0
 SPL.B   $84,    <1000
 SPL.B   $1,     <300
+MOV.I   $7999,  $0
 SPL.B   $1,     <500
 SPL.B   $1,     <400
 SPL.B   @0,     }3488
@@ -82,8 +83,8 @@ DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
 DAT.F   $0,     $0
-DAT.F   $0,     $0
 SPL.B   $1,     <300
+MOV.I   $7999,  $0
 SPL.B   $1,     <600
 SPL.B   $1,     <400
 SPL.B   @0,     }3620

@@ -33,8 +33,13 @@ loop
         mov.x 1, 2
         mov.i 1, 2
 
-        jmp loop
+reset:  jmp loop
+
+N for 5
+        mov 0, reset-N
+rof
 
         end begin
+
 
 Some Junk Here mov.ba 1,2

@@ -35,7 +35,7 @@ w2       dat   -7,cp-gate+3
 wipe     dat   -7,cp-gate+3
 sp       spl   #-1-step,-step    ; spl half of the incendiary
 in       sub   #step+step,1
-msm      mov   sm,*tgt+(step*count)-17228 ; TODO this seems like a bug even though mod math is equivalent"
+msm      mov   sm,*tgt+(step*count)-17228
 msp      mov   sp,@msm           ; bomb alternately with spl & mov
 tgt      jmz   in,#0             ; bombed with spl to start clear
 clr      mov   @cp,>gate
