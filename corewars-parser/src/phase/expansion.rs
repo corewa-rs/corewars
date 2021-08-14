@@ -745,12 +745,30 @@ mod test {
             "rof",
         ],
         &[
-            "mov 0, 0", // base
-            "mov -1, 1",
-            "mov -2, 2",
-            "mov -3, 3",
+            "mov 0, 1",
+            "mov -1, 2",
+            "mov -2, 3",
+            "mov -3, 4",
         ];
         "repeat index"
+    )]
+    #[test_case(
+        &[
+            "base",
+            "N for 3",
+            "mov base, N",
+            "mov base, N",
+            "rof",
+        ],
+        &[
+            "mov 0, 1",
+            "mov -1, 1",
+            "mov -2, 2",
+            "mov -3, 2",
+            "mov -4, 3",
+            "mov -5, 3",
+        ];
+        "repeat index twice"
     )]
     #[test_case(
         &[

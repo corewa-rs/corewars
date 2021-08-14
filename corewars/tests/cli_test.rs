@@ -11,7 +11,7 @@ lazy_static! {
     static ref EXPECTED_OUT: String = normalized(
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../testdata/expected_output/simple/basic.redcode"
+            "/tests/cli_out.redcode"
         ))
         .chars()
     )
