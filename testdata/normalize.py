@@ -30,19 +30,38 @@ def main():
                 org = tokens[1]
                 continue
 
+            if tokens[0] == "START":
+                if org == "START":
+                    org = i - 1
+
+                tokens = tokens[1:]
+
             assert len(tokens) > 1
             opcode = tokens[0]
             op_a = tokens[1] + tokens[2] if len(tokens) > 2 else tokens[1]
             op_b = "".join(after).strip() or ""
 
-            lines.append(f"{opcode:<8}{op_a+',':<8}{op_b}".strip())
+            op_a = _normalize_operand(op_a)
+            op_b = _normalize_operand(op_b)
+
+            lines.append(f"{opcode:<8}{op_a + ',':<8}{op_b}".strip())
 
         for i, line in enumerate(lines):
             if not line.startswith(";"):
                 lines[i:i] = [f"{'ORG':<8}{org}"]
                 break
 
-        file_path.write_text("\n".join(lines))
+        file_path.write_text("\n".join(lines) + "\n")
+
+
+def _normalize_operand(op: str) -> str:
+    if op[0].isdigit():
+        return op
+
+    value = int(op[1:])
+    if value <= -8000 or value >= 8000:
+        value %= 8000
+    return f"{op[0]}{value}"
 
 
 if __name__ == "__main__":
