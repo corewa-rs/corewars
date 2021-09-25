@@ -20,6 +20,7 @@ pub struct Program {
 }
 
 impl Program {
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<Instruction> {
         self.instructions.get(index).cloned()
     }
@@ -41,7 +42,7 @@ impl fmt::Debug for Program {
         let lines = self
             .instructions
             .iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>();
 
         write!(formatter, "lines: {:#?},", lines)?;
@@ -60,7 +61,7 @@ impl fmt::Display for Program {
             self.origin.unwrap_or_default()
         ));
 
-        for instruction in self.instructions.iter() {
+        for instruction in &self.instructions {
             lines.push(instruction.to_string());
         }
 

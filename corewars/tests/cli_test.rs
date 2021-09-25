@@ -55,7 +55,7 @@ fn dump_stdout() {
         .assert()
         .success();
 
-    let out_text = cmd.get_output().stdout.to_owned();
+    let out_text = cmd.get_output().stdout.clone();
 
     let file_contents: String = normalized(String::from_utf8(out_text).unwrap().chars()).collect();
     assert_eq!(file_contents, &**EXPECTED_OUT);

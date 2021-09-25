@@ -1,6 +1,7 @@
 //! A [`Core`](Core) is a block of "memory" in which Redcode programs reside.
 //! This is where all simulation of a Core Wars battle takes place.
 
+use std::convert::TryInto;
 use std::fmt;
 use std::ops::{Index, Range};
 
@@ -53,6 +54,7 @@ impl Core {
         })
     }
 
+    #[must_use]
     pub fn steps_taken(&self) -> usize {
         self.steps_taken
     }
@@ -66,15 +68,23 @@ impl Core {
     }
 
     fn offset<T: Into<i32>>(&self, value: T) -> Offset {
-        Offset::new(value.into(), self.size())
+        Offset::new(value.into(), self.len().try_into().unwrap())
     }
 
     /// Get the number of instructions in the core (available to programs via the `CORESIZE` label)
-    pub fn size(&self) -> u32 {
-        self.instructions.len() as _
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.instructions.len()
+    }
+
+    /// Whether the core is empty or not (almost always `false`)
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.instructions.is_empty()
     }
 
     /// Get an instruction from a given index in the core
+    #[must_use]
     pub fn get(&self, index: i32) -> &Instruction {
         self.get_offset(self.offset(index))
     }
@@ -97,7 +107,7 @@ impl Core {
     /// Write an instruction at a given index into the core
     #[cfg(test)]
     fn set(&mut self, index: i32, value: Instruction) {
-        self.set_offset(self.offset(index), value)
+        self.set_offset(self.offset(index), value);
     }
 
     /// Write an instruction at a given offset into the core
@@ -109,7 +119,7 @@ impl Core {
     /// Load a [`Warrior`](Warrior) into the core starting at the front (first instruction of the core).
     /// Returns an error if the Warrior was too long to fit in the core, or had unresolved labels
     pub fn load_warrior(&mut self, warrior: &Warrior) -> Result<(), Error> {
-        if warrior.len() > self.size() {
+        if warrior.len() > self.len() {
             return Err(Error::WarriorTooLong);
         }
 
@@ -214,7 +224,7 @@ impl Core {
     }
 
     /// Run a core to completion. Return value determines whether the core resulted
-    /// in a tie (Ok) or something cause the warrior to stop executing (ExecutionError)
+    /// in a tie (Ok) or something cause the warrior to stop executing ([`process::Error`])
     pub fn run<T: Into<Option<usize>>>(&mut self, max_cycles: T) -> Result<(), process::Error> {
         let max_cycles = max_cycles.into().unwrap_or(DEFAULT_MAXCYCLES);
 
@@ -248,7 +258,7 @@ impl Core {
                     instruction_prefix(j, instruction)
                         + &instruction.to_string()
                         + &instruction_suffix(j, instruction),
-                )
+                );
             };
 
             if *instruction == Instruction::default() {
@@ -338,7 +348,7 @@ mod tests {
     #[test]
     fn new_core() {
         let core = Core::new(128).unwrap();
-        assert_eq!(core.size(), 128);
+        assert_eq!(core.len(), 128);
     }
 
     #[test]
@@ -355,8 +365,10 @@ mod tests {
         .expect("Failed to parse warrior");
 
         core.load_warrior(&warrior).expect("Failed to load warrior");
-        let expected_core_size = 128_i32;
-        assert_eq!(core.size(), expected_core_size as u32);
+        let expected_core_size = 128_usize;
+        assert_eq!(core.len(), expected_core_size);
+
+        let jmp_target = (expected_core_size - 1).try_into().unwrap();
 
         assert_eq!(
             &core.instructions[..4],
@@ -364,12 +376,12 @@ mod tests {
                 Instruction::new(Opcode::Mov, Field::direct(1), Field::immediate(1)),
                 Instruction::new(
                     Opcode::Jmp,
-                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(jmp_target),
                     Field::immediate(2)
                 ),
                 Instruction::new(
                     Opcode::Jmp,
-                    Field::immediate(expected_core_size - 1),
+                    Field::immediate(jmp_target),
                     Field::immediate(2)
                 ),
                 Instruction::default(),
@@ -388,21 +400,21 @@ mod tests {
                 ],
                 origin: None,
             },
-            ..Default::default()
+            ..Warrior::default()
         };
 
         core.load_warrior(&warrior)
             .expect_err("Should have failed to load warrior: too long");
 
-        assert_eq!(core.size(), 128);
+        assert_eq!(core.len(), 128);
     }
 
     #[test]
     fn wrap_program_counter_on_overflow() {
         let mut core = build_core("mov $0, $1");
 
-        for i in 0..core.size() {
-            assert_eq!(core.program_counter().value(), i);
+        for i in 0..core.len() {
+            assert_eq!(core.program_counter().value() as usize, i);
             core.step().unwrap();
         }
 

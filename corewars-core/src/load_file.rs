@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -41,12 +41,14 @@ impl fmt::Display for Warrior {
 }
 
 impl Warrior {
-    /// The number of instrcutions defined in this Warrior's code
-    pub fn len(&self) -> u32 {
-        self.program.instructions.len() as u32
+    /// The number of instructions defined in this Warrior's code
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.program.instructions.len()
     }
 
     /// Whether the warrior's program is empty (i.e. 0 instructions)
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.program.instructions.is_empty()
     }
@@ -69,6 +71,7 @@ impl fmt::Display for Field {
 }
 
 impl Field {
+    #[must_use]
     pub fn direct(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Direct,
@@ -76,13 +79,14 @@ impl Field {
         }
     }
 
-    pub fn direct_label<S: ToString>(label: S) -> Self {
+    pub fn direct_label<S: ToString>(label: &S) -> Self {
         Self {
             address_mode: AddressMode::Direct,
             value: Value::Label(label.to_string()),
         }
     }
 
+    #[must_use]
     pub fn immediate(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Immediate,
@@ -90,16 +94,23 @@ impl Field {
         }
     }
 
+    #[must_use]
     pub fn unwrap_value(&self) -> i32 {
         self.value.unwrap()
     }
 
+    #[must_use]
     pub fn as_offset(&self, core_size: u32) -> Offset {
         Offset::new(self.unwrap_value(), core_size)
     }
 
     pub fn set_value(&mut self, offset: Offset) {
-        self.value = Value::Literal(offset.value() as i32)
+        self.value = Value::Literal(
+            offset
+                .value()
+                .try_into()
+                .expect("Offset should always be convertible to i32"),
+        );
     }
 }
 
@@ -112,6 +123,7 @@ pub struct Instruction {
 }
 
 impl Instruction {
+    #[must_use]
     pub fn new(opcode: Opcode, a_field: Field, b_field: Field) -> Self {
         let modifier =
             Modifier::default_88_to_94(opcode, a_field.address_mode, b_field.address_mode);
@@ -158,6 +170,6 @@ mod test {
             },
         };
 
-        assert_eq!(Instruction::default(), expected_instruction)
+        assert_eq!(Instruction::default(), expected_instruction);
     }
 }

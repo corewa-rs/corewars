@@ -56,7 +56,7 @@ impl<'a> Executor<'a> {
     where
         FieldOp: FnMut(Offset, Offset) -> Option<Offset>,
     {
-        self.run_on_instructions::<_, fn(_, _) -> _, _>(field_op, None)
+        self.run_on_instructions::<_, fn(_, _) -> _, _>(field_op, None);
     }
 
     /// Execute a given operation (`FieldOp`) on a given instruction.

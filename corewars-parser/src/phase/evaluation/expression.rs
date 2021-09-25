@@ -3,7 +3,7 @@
 //! Most functions here panic instead of returning Result because at this point
 //! any errors should have been caught earlier during initial parsing.
 
-use crate::grammar::*;
+use crate::grammar::{Pair, Rule};
 
 /// Evaluate an Expression. Panics if the expression tree is invalid, which
 /// should only happen due to programmer error (either the grammar or this code
@@ -123,7 +123,7 @@ fn evaluate_unary(pair: Pair) -> i32 {
 
     for inner_pair in pair.into_inner() {
         match inner_pair.as_rule() {
-            Rule::Number => result = Some(evaluate_number(inner_pair)),
+            Rule::Number => result = Some(evaluate_number(&inner_pair)),
             Rule::Expression => result = Some(evaluate(inner_pair)),
             Rule::UnaryOp => match inner_pair.as_str() {
                 "-" => unary_ops.push(|x| -x),
@@ -139,14 +139,14 @@ fn evaluate_unary(pair: Pair) -> i32 {
         }
     }
 
-    for op in unary_ops.into_iter() {
+    for op in unary_ops {
         result = result.map(op);
     }
 
     result.unwrap_or_else(|| panic!("UnaryExpr did not contain a value"))
 }
 
-fn evaluate_number(pair: Pair) -> i32 {
+fn evaluate_number(pair: &Pair) -> i32 {
     assert!(pair.as_rule() == Rule::Number);
     pair.as_str()
         .parse::<i32>()
@@ -156,6 +156,8 @@ fn evaluate_number(pair: Pair) -> i32 {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use crate::grammar::parse_expression;
 
     use test_case::test_case;
 

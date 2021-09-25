@@ -23,7 +23,10 @@ pub fn resolve_b_pointer(core: &Core, program_counter: Offset) -> Offset {
 }
 
 fn resolve_pointer(core: &Core, program_counter: Offset, field: &Field) -> Offset {
-    use AddressMode::*;
+    use AddressMode::{
+        Direct, Immediate, IndirectA, IndirectB, PostIncIndirectA, PostIncIndirectB,
+        PreDecIndirectA, PreDecIndirectB,
+    };
 
     let address_mode = field.address_mode;
     let field_value = field.unwrap_value();
@@ -58,7 +61,7 @@ pub fn apply_b_pointer(core: &mut Core, program_counter: Offset, eval_time: Eval
 }
 
 fn apply_pointer(core: &mut Core, program_counter: Offset, field: &Field, eval_time: EvalTime) {
-    use AddressMode::*;
+    use AddressMode::{PostIncIndirectA, PostIncIndirectB, PreDecIndirectA, PreDecIndirectB};
 
     let address_mode = field.address_mode;
     let pointer_location = program_counter + field.unwrap_value();
@@ -67,13 +70,13 @@ fn apply_pointer(core: &mut Core, program_counter: Offset, field: &Field, eval_t
     let a_value = core.offset(pointed_to.a_field.unwrap_value());
     let b_value = core.offset(pointed_to.b_field.unwrap_value());
 
-    let pointed_to = core.get_offset_mut(pointer_location);
+    let mut_pointed_to = core.get_offset_mut(pointer_location);
 
     match (eval_time, address_mode) {
-        (EvalTime::Pre, PreDecIndirectA) => pointed_to.a_field.set_value(a_value - 1),
-        (EvalTime::Pre, PreDecIndirectB) => pointed_to.b_field.set_value(b_value - 1),
-        (EvalTime::Post, PostIncIndirectA) => pointed_to.a_field.set_value(a_value + 1),
-        (EvalTime::Post, PostIncIndirectB) => pointed_to.b_field.set_value(b_value + 1),
+        (EvalTime::Pre, PreDecIndirectA) => mut_pointed_to.a_field.set_value(a_value - 1),
+        (EvalTime::Pre, PreDecIndirectB) => mut_pointed_to.b_field.set_value(b_value - 1),
+        (EvalTime::Post, PostIncIndirectA) => mut_pointed_to.a_field.set_value(a_value + 1),
+        (EvalTime::Post, PostIncIndirectB) => mut_pointed_to.b_field.set_value(b_value + 1),
         _ => {}
     }
 }

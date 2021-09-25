@@ -64,7 +64,7 @@ macro_rules! enum_string {
 
         impl $name {
             #[allow(dead_code)]
-            pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
+            #[must_use] pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
                 const VALUES: &[$name] = &[$($name::$variant,)*];
                 VALUES.iter()
             }
@@ -127,7 +127,7 @@ mod test {
 
     #[test]
     fn iter_values() {
-        let values_from_iter: Vec<Foo> = Foo::iter_values().cloned().collect();
+        let values_from_iter: Vec<Foo> = Foo::iter_values().copied().collect();
         assert_eq!(
             values_from_iter,
             vec![Foo::Bar, Foo::Baz, Foo::SomethingElse]

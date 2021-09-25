@@ -62,10 +62,13 @@ impl Default for Modifier {
 }
 
 impl Modifier {
+    #[must_use]
     pub fn default_88_to_94(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Self {
         /// Implemented based on the ICWS '94 document,
         /// section A.2.1.2: ICWS'88 to ICWS'94 Conversion
-        use Opcode::*;
+        use Opcode::{
+            Add, Cmp, Dat, Div, Djn, Jmn, Jmp, Jmz, Mod, Mov, Mul, Nop, Seq, Slt, Sne, Spl, Sub,
+        };
 
         match opcode {
             Dat => Modifier::F,
@@ -115,10 +118,11 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn unwrap(&self) -> i32 {
         match *self {
             Value::Literal(i32) => i32,
-            _ => panic!("unwrapped value of a Value without a literal i32"),
+            Value::Label(_) => panic!("unwrapped value of a Value without a literal i32"),
         }
     }
 }
@@ -150,7 +154,7 @@ mod test {
     use itertools::iproduct;
 
     use super::*;
-    use Opcode::*;
+    use Opcode::{Add, Cmp, Div, Djn, Jmn, Jmp, Jmz, Mod, Mov, Mul, Nop, Seq, Slt, Sne, Spl, Sub};
 
     #[test]
     fn dat_default() {
@@ -164,10 +168,9 @@ mod test {
     }
 
     #[test]
-    fn modifier_b_default() {
-        let opcodes = [Mov, Cmp, Seq, Sne];
-
-        for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
+    fn modifier_b_immediate() {
+        let codes = [Mov, Cmp, Seq, Sne, Add, Sub, Mul, Div, Mod];
+        for (&opcode, &a_mode) in iproduct!(codes.iter(), AddressMode::iter_values()) {
             if a_mode != AddressMode::Immediate {
                 assert_eq!(
                     Modifier::default_88_to_94(opcode, a_mode, AddressMode::Immediate),
@@ -175,32 +178,27 @@ mod test {
                 );
             }
         }
+    }
 
-        let opcodes = [Add, Sub, Mul, Div, Mod];
-
-        for (&opcode, &a_mode) in iproduct!(opcodes.iter(), AddressMode::iter_values()) {
-            if a_mode != AddressMode::Immediate {
-                assert_eq!(
-                    Modifier::default_88_to_94(opcode, a_mode, AddressMode::Immediate),
-                    Modifier::B
-                );
-            }
-        }
-
+    #[test]
+    fn modifier_b_slt() {
         for (&a_mode, &b_mode) in iproduct!(AddressMode::iter_values(), AddressMode::iter_values())
         {
             if a_mode != AddressMode::Immediate {
                 assert_eq!(
                     Modifier::default_88_to_94(Opcode::Slt, a_mode, b_mode),
                     Modifier::B
-                )
+                );
             }
         }
+    }
 
-        let opcodes = [Jmp, Jmz, Jmn, Djn, Spl, Nop];
+    #[test]
+    fn modifier_b_all_modes() {
+        let codes = [Jmp, Jmz, Jmn, Djn, Spl, Nop];
 
         for (&opcode, &a_mode, &b_mode) in iproduct!(
-            opcodes.iter(),
+            codes.iter(),
             AddressMode::iter_values(),
             AddressMode::iter_values()
         ) {
