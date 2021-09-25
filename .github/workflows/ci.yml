@@ -27,8 +27,7 @@ jobs:
       - name: Run clippy linting
         run: cargo clippy --color=always --workspace --verbose --all-targets
         env:
-          RUSTFLAGS:
-            "-D warnings"
+          RUSTFLAGS: "--deny=warnings --deny=clippy::pedantic"
 
   validate:
     strategy:
