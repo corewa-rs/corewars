@@ -8,7 +8,7 @@ use thiserror::Error as ThisError;
 use super::Offset;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ProcessEntry {
+pub struct Entry {
     pub name: String,
     pub thread: usize,
     pub offset: Offset,
@@ -19,7 +19,7 @@ pub struct ProcessEntry {
 #[derive(Debug)]
 pub struct Queue {
     /// The actual offsets enqueued to be executed
-    queue: VecDeque<ProcessEntry>,
+    queue: VecDeque<Entry>,
 
     /// A map of process names to the number of tasks each has in the queue.
     /// This is updated whenever instructions are added to/removed from the queue,
@@ -41,43 +41,40 @@ impl Queue {
     }
 
     /// Get the next offset for execution, removing it from the queue.
-    pub fn pop(&mut self) -> Result<ProcessEntry, Error> {
-        if let Some(entry) = self.queue.pop_front() {
-            let decremented = self.processes[&entry.name].saturating_sub(1);
-            self.processes
-                .entry(entry.name.clone())
-                .and_modify(|count| *count = decremented);
+    pub fn pop(&mut self) -> Result<Entry, Error> {
+        self.queue
+            .pop_front()
+            .map_or(Err(Error::NoRemainingProcesses), |entry| {
+                let decremented = self.processes[&entry.name].saturating_sub(1);
+                self.processes
+                    .entry(entry.name.clone())
+                    .and_modify(|count| *count = decremented);
 
-            Ok(entry)
-        } else {
-            Err(Error::NoRemainingProcesses)
-        }
+                Ok(entry)
+            })
     }
 
     /// Get the next offset for execution without modifying the queue.
     // TODO: this should probably just return Option<&ProcessEntry>
-    pub fn peek(&self) -> Result<&ProcessEntry, Error> {
-        if let Some(entry) = self.queue.get(0) {
-            Ok(entry)
-        } else {
-            Err(Error::NoRemainingProcesses)
-        }
+    pub fn peek(&self) -> Result<&Entry, Error> {
+        self.queue.get(0).ok_or(Error::NoRemainingProcesses)
     }
 
     /// Add an entry to the process queue. If specified, it will use the given thread ID,
     /// otherwise a new thread ID will be created based on the current number of
     /// threads active for this process name.
     pub fn push(&mut self, process_name: String, offset: Offset, thread: Option<usize>) {
-        let thread_id = if let Some(id) = thread {
-            id
-        } else {
-            let entry = self.next_thread_id.entry(process_name.clone()).or_insert(0);
-            let id = *entry;
-            *entry += 1;
-            id
-        };
+        let thread_id = thread.map_or_else(
+            || {
+                let entry = self.next_thread_id.entry(process_name.clone()).or_insert(0);
+                let id = *entry;
+                *entry += 1;
+                id
+            },
+            |id| id,
+        );
 
-        self.queue.push_back(ProcessEntry {
+        self.queue.push_back(Entry {
             name: process_name.clone(),
             thread: thread_id,
             offset,
@@ -130,7 +127,7 @@ mod tests {
         queue.push("p1".into(), starting_offset, None);
         assert_eq!(
             queue.peek().unwrap(),
-            &ProcessEntry {
+            &Entry {
                 name: "p1".into(),
                 thread: 0,
                 offset: starting_offset
@@ -143,7 +140,7 @@ mod tests {
 
         assert_eq!(
             queue.pop().unwrap(),
-            ProcessEntry {
+            Entry {
                 name: "p1".into(),
                 thread: 0,
                 offset: starting_offset
@@ -151,7 +148,7 @@ mod tests {
         );
         assert_eq!(
             queue.peek().unwrap(),
-            &ProcessEntry {
+            &Entry {
                 name: "p2".into(),
                 thread: 0,
                 offset: starting_offset + 5
@@ -162,7 +159,7 @@ mod tests {
 
         assert_eq!(
             queue.pop().unwrap(),
-            ProcessEntry {
+            Entry {
                 name: "p2".into(),
                 thread: 0,
                 offset: starting_offset + 5
@@ -186,7 +183,7 @@ mod tests {
         queue.push("p1".into(), starting_offset, None);
         assert_eq!(
             queue.peek().unwrap(),
-            &ProcessEntry {
+            &Entry {
                 name: "p1".into(),
                 thread: 0,
                 offset: starting_offset
@@ -199,7 +196,7 @@ mod tests {
         queue.pop().unwrap();
         assert_eq!(
             queue.peek().unwrap(),
-            &ProcessEntry {
+            &Entry {
                 name: "p1".into(),
                 thread: 1,
                 offset: starting_offset
@@ -211,7 +208,7 @@ mod tests {
         queue.pop().unwrap();
         assert_eq!(
             queue.peek().unwrap(),
-            &ProcessEntry {
+            &Entry {
                 name: "p1".into(),
                 thread: 1,
                 offset: starting_offset

@@ -123,7 +123,7 @@ fn evaluate_unary(pair: Pair) -> i32 {
 
     for inner_pair in pair.into_inner() {
         match inner_pair.as_rule() {
-            Rule::Number => result = Some(evaluate_number(inner_pair)),
+            Rule::Number => result = Some(evaluate_number(&inner_pair)),
             Rule::Expression => result = Some(evaluate(inner_pair)),
             Rule::UnaryOp => match inner_pair.as_str() {
                 "-" => unary_ops.push(|x| -x),
@@ -146,7 +146,7 @@ fn evaluate_unary(pair: Pair) -> i32 {
     result.unwrap_or_else(|| panic!("UnaryExpr did not contain a value"))
 }
 
-fn evaluate_number(pair: Pair) -> i32 {
+fn evaluate_number(pair: &Pair) -> i32 {
     assert!(pair.as_rule() == Rule::Number);
     pair.as_str()
         .parse::<i32>()
@@ -156,6 +156,8 @@ fn evaluate_number(pair: Pair) -> i32 {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use crate::grammar::parse_expression;
 
     use test_case::test_case;
 

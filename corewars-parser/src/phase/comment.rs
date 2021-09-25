@@ -1,6 +1,6 @@
 //! In this phase, all comments are removed from the input phase.
 //! Any comments like `;redcode` and `;author` will be parsed and stored in
-//! load_file::Metadata. This phase also finds the origin and end of the program.
+//! [`Metadata`]. This phase also finds the origin and end of the program.
 
 use super::CommentsRemoved;
 
@@ -92,13 +92,9 @@ fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
                         Err(())
                     }
                 }
-                "END" => {
-                    if let Some(remainder) = remainder {
-                        Ok(EndWithNewOrigin(remainder.to_owned()))
-                    } else {
-                        Ok(End)
-                    }
-                }
+                "END" => remainder.map_or(Ok(End), |remainder| {
+                    Ok(EndWithNewOrigin(remainder.to_owned()))
+                }),
                 _ => Ok(NotFound),
             }
         }
@@ -108,6 +104,8 @@ fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::default_trait_access)]
+
     use test_case::test_case;
     use textwrap_macros::dedent;
 
@@ -119,7 +117,7 @@ mod test {
     }
 
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                   foo who
@@ -138,7 +136,7 @@ mod test {
         "no comments"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "foo who
                 ; bar di bar
@@ -155,7 +153,7 @@ mod test {
         "remove comments"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ;redcode
@@ -177,7 +175,7 @@ mod test {
         "parse info comments"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ORG 5
@@ -196,7 +194,7 @@ mod test {
         "parse ORG"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ORG lbl1
@@ -215,7 +213,7 @@ mod test {
         "parse ORG label"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ORG lbl1 + 1
@@ -234,7 +232,7 @@ mod test {
         "parse ORG expression"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ORG 5
@@ -251,7 +249,7 @@ mod test {
         "parse multiple ORG"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 org 5
@@ -267,7 +265,7 @@ mod test {
         "parse ORG and END"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 MOV 1, 1
@@ -284,7 +282,7 @@ mod test {
         "parse END"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 MOV 1, 1
@@ -302,7 +300,7 @@ mod test {
         "parse multiple END"
     )]
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ; no real data in this input
@@ -312,13 +310,14 @@ mod test {
         };
         "empty result"
     )]
-    fn parse(param: Param) {
+    fn parse(param: &Param) {
         let result = extract_from_string(param.input);
 
         assert_eq!(result, param.expected);
     }
+
     #[test_case(
-        Param {
+        &Param {
             input: dedent!(
                 "
                 ORG
@@ -332,7 +331,7 @@ mod test {
         };
         "inconclusive(should error): parse ORG without arg"
     )]
-    fn parse_error(param: Param) {
+    fn parse_error(param: &Param) {
         let result = extract_from_string(param.input);
 
         assert_eq!(result, param.expected);

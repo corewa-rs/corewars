@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign};
+use std::{
+    convert::TryInto,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
+};
 
 /// A non-negative offset from the beginning of a core.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -10,17 +13,17 @@ pub struct Offset {
 impl Offset {
     /// Create a new Offset. The value will be adjusted to be within bounds of the core.
     ///
-    /// Panics if `core_size` is invalid. Both 0 and `u32::MAX` are disallowed.
+    /// # Panics
+    /// If `core_size` is invalid. Both 0 and `u32::MAX` are disallowed.
     #[must_use]
     pub fn new(value: i32, core_size: u32) -> Self {
         // TODO: should there be a minimum allowed core size?
-        let core_isize = core_size as i32;
-        if !core_isize.is_positive() {
+        TryInto::<i32>::try_into(core_size).unwrap_or_else(|_| {
             panic!(
                 "Attempt to create offset with invalid core_size {}",
-                core_isize
+                core_size
             )
-        }
+        });
 
         let mut result = Self {
             value: 0,
@@ -39,22 +42,21 @@ impl Offset {
     /// Set the value of the offset. The value will be adjusted to be within
     /// bounds of the core size.
     pub fn set_value(&mut self, value: i32) {
-        let core_isize = self.core_size as i32;
-        let new_value = value.rem_euclid(core_isize);
-        self.value = if new_value.is_negative() {
-            new_value + core_isize
-        } else {
-            new_value
-        } as u32;
+        let core_isize = self
+            .core_size
+            .try_into()
+            .expect("Core size should never be > i32::MAX");
+
+        self.value = value.rem_euclid(core_isize) as u32;
     }
 
     /// Verify another offset has the same core size. Panics otherwise
-    fn check_core_size(&self, other: &Self) {
+    fn check_core_size(self, other: Self) {
         if self.core_size != other.core_size {
             panic!(
                 "attempt to add mismatching core sizes: {} != {}",
                 self.core_size, other.core_size
-            )
+            );
         }
     }
 }
@@ -77,7 +79,7 @@ macro_rules! impl_offset_op {
             /// Panics if the  right-hand side has a different `core_size`
             /// than the left-hand side.
             fn $op(self, rhs: Self) -> Self {
-                self.check_core_size(&rhs);
+                self.check_core_size(rhs);
                 let mut result = Self::new(0, self.core_size);
                 result.set_value((self.value as i32).$op(rhs.value as i32));
                 result

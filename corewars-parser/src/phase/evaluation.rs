@@ -30,14 +30,15 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
 
 /// Parse and evaluate a single expression string to find the entry point to
 /// a warrior.
-pub fn evaluate_expression(expr: String) -> Result<u32, Error> {
-    let expr_pair = grammar::parse_expression(&expr)?;
+pub fn evaluate_expression(expr: &str) -> Result<u32, Error> {
+    let expr_pair = grammar::parse_expression(expr)?;
 
     let origin = expression::evaluate(expr_pair);
 
     Ok(u32::try_from(origin)?)
 }
 
+#[allow(clippy::option_if_let_else)] // TODO
 fn parse_instruction(
     mut instruction_pairs: grammar::Pairs,
 ) -> Result<load_file::Instruction, Error> {
@@ -175,13 +176,12 @@ mod test {
 
     #[test]
     fn evaluates_origin() {
-        let evaluated =
-            evaluate_expression("2 * (4 + 3)".into()).expect("Should parse successfully");
+        let evaluated = evaluate_expression("2 * (4 + 3)").expect("Should parse successfully");
         assert_eq!(evaluated, 14);
     }
 
     #[test]
     fn fails_for_negative_origin() {
-        evaluate_expression("-10".into()).expect_err("-10 should be an invalid origin");
+        evaluate_expression("-10").expect_err("-10 should be an invalid origin");
     }
 }

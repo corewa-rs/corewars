@@ -38,6 +38,7 @@ pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
 
 /// Collect and strip out offset-based label declarations, meanwhile expanding
 /// `EQU` labels.
+#[allow(clippy::too_many_lines)] // TODO(#74): fix this
 fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     use grammar::Rule;
 
@@ -69,15 +70,15 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                                 expand_lines(
                                     lines,
                                     i,
-                                    token.as_span(),
+                                    &token.as_span(),
                                     &[relative_offset.to_string()],
                                 );
                             }
                             LabelValue::RelativeOffset(rel_offset) => {
-                                expand_lines(lines, i, token.as_span(), &[rel_offset.to_string()]);
+                                expand_lines(lines, i, &token.as_span(), &[rel_offset.to_string()]);
                             }
                             LabelValue::Substitution(subst) => {
-                                expand_lines(lines, i, token.as_span(), &subst);
+                                expand_lines(lines, i, &token.as_span(), &subst);
                             }
                         }
 
@@ -85,7 +86,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     }
 
                     if is_for_expr {
-                        panic!("No label value found for expr {:?}", token.as_str())
+                        panic!("No label value found for expr {:?}", token.as_str());
                     } else {
                         // this is probably a forward usage of a label not
                         // yet declared, which _could_ be an error
@@ -188,7 +189,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 if let Some(LabelValue::Substitution(substitution)) =
                     collector.get_label_value(first_token.as_str(), offset)
                 {
-                    expand_lines(lines, i, first_token.as_span(), &substitution);
+                    expand_lines(lines, i, &first_token.as_span(), &substitution);
                     continue;
                 }
 
@@ -237,7 +238,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
     collector.finish()
 }
 
-fn expand_lines(lines: &mut Vec<String>, index: usize, span: Span, substitution: &[String]) {
+fn expand_lines(lines: &mut Vec<String>, index: usize, span: &Span, substitution: &[String]) {
     let line = &lines[index];
 
     let before = &line[..span.start()];
@@ -369,7 +370,7 @@ impl Collector {
             values.push(substitution.to_string());
         } else {
             // TODO #25 real error
-            eprintln!("Error: first occurrence of EQU without label")
+            eprintln!("Error: first occurrence of EQU without label");
         }
     }
 
@@ -387,7 +388,7 @@ impl Collector {
 
         self.resolve_pending_equ();
 
-        self.labels.extend(result.into_iter())
+        self.labels.extend(result.into_iter());
     }
 
     fn resolve_pending_equ(&mut self) {
@@ -408,7 +409,7 @@ impl Collector {
         expression: &str,
     ) {
         // TODO handle errors instead of unwrap
-        let expr_value = evaluation::evaluate_expression(expression.to_string()).unwrap();
+        let expr_value = evaluation::evaluate_expression(expression).unwrap();
 
         self.for_stack.push(ForStatement {
             index_label: label.into(),
@@ -578,7 +579,7 @@ mod test {
 
         let mut lines = vec![line.to_string()];
 
-        expand_lines(&mut lines, 0, span, &substitution);
+        expand_lines(&mut lines, 0, &span, &substitution);
 
         assert_eq!(lines, expected);
     }
@@ -588,7 +589,7 @@ mod test {
             "lbl1",
             "mov 1, 1",
         ],
-        hashmap!{
+        &hashmap!{
             "lbl1".into() => LabelValue::AbsoluteOffset(0),
         };
         "single label"
@@ -597,7 +598,7 @@ mod test {
         &[
             "lbl1 mov 1, 1",
         ],
-        hashmap!{
+        &hashmap!{
             "lbl1".into() => LabelValue::AbsoluteOffset(0),
         };
         "single label statement"
@@ -607,7 +608,7 @@ mod test {
             "lbl1",
             "lbl2 mov 1, 1",
         ],
-        hashmap!{
+        &hashmap!{
             "lbl1".into() => LabelValue::AbsoluteOffset(0),
             "lbl2".into() => LabelValue::AbsoluteOffset(0),
         };
@@ -621,7 +622,7 @@ mod test {
             "mov 2, 3",
             "lbl3 mov 3, 4",
         ],
-        hashmap!{
+        &hashmap!{
             "lbl1".into() => LabelValue::AbsoluteOffset(1),
             "lbl2".into() => LabelValue::AbsoluteOffset(1),
             "lbl3".into() => LabelValue::AbsoluteOffset(3),
@@ -637,7 +638,7 @@ mod test {
             "mov 2, foo",
             "lbl3 mov 3, foo",
         ],
-        hashmap!{
+        &hashmap!{
             "foo".into() => LabelValue::Substitution(vec!["1".into()]),
             "lbl1".into() => LabelValue::AbsoluteOffset(1),
             "lbl2".into() => LabelValue::AbsoluteOffset(1),
@@ -645,11 +646,11 @@ mod test {
         };
         "label with expansion"
     )]
-    fn collects_and_expands_labels(lines: &[&str], expected: Labels) {
+    fn collects_and_expands_labels(lines: &[&str], expected: &Labels) {
         let mut lines = lines.iter().map(ToString::to_string).collect();
         let result = collect_and_expand(&mut lines);
 
-        for (k, v) in &expected {
+        for (k, v) in expected {
             assert_eq!(Some(v), result.get(k));
         }
     }
@@ -807,7 +808,7 @@ mod test {
     )]
     fn collects_and_expands_forrof(lines: &[&str], expected: &[&str]) {
         let mut lines = lines.iter().map(ToString::to_string).collect();
-        let _ = collect_and_expand(&mut lines);
+        collect_and_expand(&mut lines);
 
         let expected_lines: Vec<String> = expected.iter().map(ToString::to_string).collect();
 

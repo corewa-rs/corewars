@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -41,10 +41,10 @@ impl fmt::Display for Warrior {
 }
 
 impl Warrior {
-    /// The number of instrcutions defined in this Warrior's code
+    /// The number of instructions defined in this Warrior's code
     #[must_use]
-    pub fn len(&self) -> u32 {
-        self.program.instructions.len() as u32
+    pub fn len(&self) -> usize {
+        self.program.instructions.len()
     }
 
     /// Whether the warrior's program is empty (i.e. 0 instructions)
@@ -79,7 +79,7 @@ impl Field {
         }
     }
 
-    pub fn direct_label<S: ToString>(label: S) -> Self {
+    pub fn direct_label<S: ToString>(label: &S) -> Self {
         Self {
             address_mode: AddressMode::Direct,
             value: Value::Label(label.to_string()),
@@ -105,7 +105,12 @@ impl Field {
     }
 
     pub fn set_value(&mut self, offset: Offset) {
-        self.value = Value::Literal(offset.value() as i32)
+        self.value = Value::Literal(
+            offset
+                .value()
+                .try_into()
+                .expect("Offset should always be convertible to i32"),
+        );
     }
 }
 
@@ -165,6 +170,6 @@ mod test {
             },
         };
 
-        assert_eq!(Instruction::default(), expected_instruction)
+        assert_eq!(Instruction::default(), expected_instruction);
     }
 }

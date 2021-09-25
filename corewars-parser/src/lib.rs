@@ -2,6 +2,9 @@
 //! It operates in multiple phases, which are found in the [phase](phase/index.html)
 //! module. Each phase passes its result to the next phase.
 
+// TODO(#43)
+#![allow(clippy::missing_panics_doc)]
+
 pub use error::{Error, Warning};
 pub use result::Result;
 

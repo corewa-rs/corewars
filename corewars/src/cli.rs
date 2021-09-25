@@ -122,6 +122,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
 fn print_warnings(warnings: &[parser::Warning]) {
     for warning in warnings.iter() {
-        eprintln!("Warning: {}", warning)
+        eprintln!("Warning: {}", warning);
     }
 }

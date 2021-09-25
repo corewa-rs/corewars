@@ -88,6 +88,8 @@ mod test {
         }) => {
             $(
                 for $value in [$($input,)*].iter() {
+                    // https://github.com/pest-parser/pest/issues/530
+                    #![allow(non_fmt_panic)]
                     parses_to! {
                         parser: Grammar,
                         input: $value,
@@ -100,6 +102,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn parse_expression() {
         match_parse!(Expression {
             "123" => [
@@ -346,11 +349,11 @@ mod test {
         });
     }
 
-    #[test_case("lbl", vec![(Label, "lbl")]; "label")]
-    #[test_case("lbl: ", vec![(Label, "lbl")]; "label with colon")]
+    #[test_case("lbl", &[(Label, "lbl")]; "label")]
+    #[test_case("lbl: ", &[(Label, "lbl")]; "label with colon")]
     #[test_case(
         "lbl: mov 0, 1",
-        vec![
+        &[
             (Label, "lbl"),
             (Opcode, "mov"),
             (Number, "0"),
@@ -360,35 +363,35 @@ mod test {
     )]
     #[test_case(
         "lbl equ 4",
-        vec![(Label, "lbl"), (Substitution, "4")];
+        &[(Label, "lbl"), (Substitution, "4")];
         "label equ expr"
     )]
     #[test_case(
         "lbl equ mov 1, 2",
-        vec![(Label, "lbl"), (Substitution, "mov 1, 2")];
+        &[(Label, "lbl"), (Substitution, "mov 1, 2")];
         "label equ instruction"
     )]
     #[test_case(
         "equ mov 1, 2",
-        vec![(Substitution, "mov 1, 2")];
+        &[(Substitution, "mov 1, 2")];
         "equ continuation"
     )]
     #[test_case(
         "equ mov 1, (1 + 2)",
-        vec![(Substitution, "mov 1, (1 + 2)")];
+        &[(Substitution, "mov 1, (1 + 2)")];
         "equ continuation expr"
     )]
     #[test_case(
         "for CORESIZE + 10",
-        vec![(For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
+        &[(For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
         "for statement"
     )]
     #[test_case(
         "N for CORESIZE + 10",
-        vec![(Label, "N"), (For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
+        &[(Label, "N"), (For, "for"), (Label, "CORESIZE"), (AddOp, "+"), (Number, "10")];
         "for statement index"
     )]
-    fn tokenize_line(input: &str, expected_result: Vec<(Rule, &str)>) {
+    fn tokenize_line(input: &str, expected_result: &[(Rule, &str)]) {
         let actual: Vec<(Rule, &str)> = tokenize(input)
             .iter()
             .map(|pair| (pair.as_rule(), pair.as_str()))

@@ -15,6 +15,8 @@ pub struct Executed {
 }
 
 /// TODO: docstring
+// TODO
+#[allow(clippy::too_many_lines)]
 pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, process::Error> {
     let instruction = core.get_offset(program_counter).clone();
     let opcode = instruction.opcode;
@@ -76,7 +78,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
             executor.run_on_instructions(
                 |a, b| {
                     if a != b {
-                        program_counter_offset.set(None)
+                        program_counter_offset.set(None);
                     }
                     None
                 },
@@ -87,7 +89,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                     }
                     None
                 },
-            )
+            );
         }
         Opcode::Slt => {
             program_counter_offset.set(skip_one.into());
@@ -96,7 +98,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                     program_counter_offset.set(None);
                 }
                 None
-            })
+            });
         }
         Opcode::Sne => {
             let next_instruction = Some(skip_one);
@@ -113,7 +115,7 @@ pub fn execute(core: &mut Core, program_counter: Offset) -> Result<Executed, pro
                     }
                     None
                 },
-            )
+            );
         }
 
         // Jumping control flow opcodes
@@ -213,8 +215,8 @@ mod tests {
                 &vec![
                     instruction.clone(),
                     instruction,
-                    Default::default(),
-                    Default::default(),
+                    Instruction::default(),
+                    Instruction::default(),
                 ][..]
             );
         }
@@ -310,25 +312,25 @@ mod tests {
             assert_eq!(
                 *core.get(2),
                 Instruction::new(Opcode::Dat, Field::immediate(2), Field::immediate(3)),
-            )
+            );
         }
 
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(3))
+            &Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(3))
             ; "a_zero"
         )]
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0))
+            &Instruction::new(Opcode::Dat, Field::direct(2), Field::direct(0))
             ; "b_zero"
         )]
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
+            &Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
             ; "both_zero"
         )]
-        fn execute_div_by_zero(divisor: Instruction, result: Instruction) {
+        fn execute_div_by_zero(divisor: Instruction, result: &Instruction) {
             use pretty_assertions::assert_eq;
 
             let mut core = build_core(
@@ -343,7 +345,7 @@ mod tests {
             let err = execute(&mut core, pc).unwrap_err();
 
             assert_eq!(err, Error::DivideByZero);
-            assert_eq!(core.get(2), &result)
+            assert_eq!(core.get(2), result);
         }
 
         #[test]
@@ -362,25 +364,25 @@ mod tests {
             assert_eq!(
                 *core.get(2),
                 Instruction::new(Opcode::Dat, Field::immediate(0), Field::immediate(1)),
-            )
+            );
         }
 
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(4)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2))
+            &Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(2))
             ; "a_zero"
         )]
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(3), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(1), Field::direct(0))
+            &Instruction::new(Opcode::Dat, Field::direct(1), Field::direct(0))
             ; "b_zero"
         )]
         #[test_case(
             Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0)),
-            Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
+            &Instruction::new(Opcode::Dat, Field::direct(0), Field::direct(0))
             ; "both_zero"
         )]
-        fn execute_mod_by_zero(divisor: Instruction, result: Instruction) {
+        fn execute_mod_by_zero(divisor: Instruction, result: &Instruction) {
             use pretty_assertions::assert_eq;
 
             let mut core = build_core(
@@ -395,7 +397,7 @@ mod tests {
             let err = execute(&mut core, pc).unwrap_err();
 
             assert_eq!(err, Error::DivideByZero);
-            assert_eq!(core.get(2), &result)
+            assert_eq!(core.get(2), result);
         }
     }
 
@@ -618,9 +620,9 @@ mod tests {
                 &core.instructions[1..5],
                 &vec![
                     Instruction::new(Opcode::Jmp, Field::direct(3), Field::immediate(0)),
-                    Default::default(),
-                    Default::default(),
-                    Default::default()
+                    Instruction::default(),
+                    Instruction::default(),
+                    Instruction::default()
                 ][..]
             );
         }
@@ -642,9 +644,9 @@ mod tests {
                 &core.instructions[1..5],
                 &vec![
                     Instruction::new(Opcode::Spl, Field::direct(3), Field::immediate(0)),
-                    Default::default(),
-                    Default::default(),
-                    Default::default()
+                    Instruction::default(),
+                    Instruction::default(),
+                    Instruction::default()
                 ][..]
             );
         }
