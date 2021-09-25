@@ -62,10 +62,13 @@ impl Default for Modifier {
 }
 
 impl Modifier {
+    #[must_use]
     pub fn default_88_to_94(opcode: Opcode, a_mode: AddressMode, b_mode: AddressMode) -> Self {
         /// Implemented based on the ICWS '94 document,
         /// section A.2.1.2: ICWS'88 to ICWS'94 Conversion
-        use Opcode::*;
+        use Opcode::{
+            Add, Cmp, Dat, Div, Djn, Jmn, Jmp, Jmz, Mod, Mov, Mul, Nop, Seq, Slt, Sne, Spl, Sub,
+        };
 
         match opcode {
             Dat => Modifier::F,
@@ -115,6 +118,7 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn unwrap(&self) -> i32 {
         match *self {
             Value::Literal(i32) => i32,
@@ -150,7 +154,7 @@ mod test {
     use itertools::iproduct;
 
     use super::*;
-    use Opcode::*;
+    use Opcode::{Add, Cmp, Div, Djn, Jmn, Jmp, Jmz, Mod, Mov, Mul, Nop, Seq, Slt, Sne, Spl, Sub};
 
     #[test]
     fn dat_default() {

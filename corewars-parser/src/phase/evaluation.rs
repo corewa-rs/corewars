@@ -14,7 +14,7 @@ use super::super::grammar;
 pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
     let mut instructions = Vec::with_capacity(lines.len());
 
-    for line in lines.into_iter() {
+    for line in lines {
         if let Some(parse_result) = grammar::parse_line(&line)?.next() {
             match &parse_result.as_rule() {
                 grammar::Rule::Instruction => {
@@ -88,7 +88,7 @@ fn parse_instruction(
         // about this except for the introductory guide:
         // http://vyznev.net/corewar/guide.html#deep_instr
         // Basically just ported from the pMARS reference implementation: src/asm.c:1300
-        use load_file::Opcode::*;
+        use load_file::Opcode::{Dat, Jmp, Nop, Spl};
 
         match opcode {
             Dat => Ok(load_file::Instruction {
@@ -155,7 +155,7 @@ mod test {
             "jmp -1",
         ]
         .iter()
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect();
 
         let expected_core = vec![

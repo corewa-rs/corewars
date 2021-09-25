@@ -53,6 +53,7 @@ impl Core {
         })
     }
 
+    #[must_use]
     pub fn steps_taken(&self) -> usize {
         self.steps_taken
     }
@@ -70,11 +71,13 @@ impl Core {
     }
 
     /// Get the number of instructions in the core (available to programs via the `CORESIZE` label)
+    #[must_use]
     pub fn size(&self) -> u32 {
         self.instructions.len() as _
     }
 
     /// Get an instruction from a given index in the core
+    #[must_use]
     pub fn get(&self, index: i32) -> &Instruction {
         self.get_offset(self.offset(index))
     }

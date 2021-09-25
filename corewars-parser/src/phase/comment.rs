@@ -67,7 +67,7 @@ pub fn extract_from_string(input: &str) -> CommentsRemoved {
 
 /// Find and return the origin defined in the given line.
 fn find_origin_in_line(line: &str) -> Result<OriginInLine, ()> {
-    use OriginInLine::*;
+    use OriginInLine::{End, EndWithNewOrigin, NewOrigin, NotFound};
 
     let tokenized = grammar::tokenize(line);
 

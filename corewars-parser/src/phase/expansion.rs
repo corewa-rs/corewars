@@ -6,6 +6,7 @@
 //! Labels used in the right-hand side of an expression substituted in-place.
 
 use std::collections::{HashMap, HashSet};
+use std::string::ToString;
 
 use pest::Span;
 
@@ -280,7 +281,7 @@ fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
 fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u32) {
     let tokenized_line = grammar::tokenize(line);
 
-    for token in tokenized_line.iter() {
+    for token in &tokenized_line {
         if token.as_rule() == grammar::Rule::Label {
             let label_value = labels.get(token.as_str());
 
@@ -380,7 +381,7 @@ impl Collector {
         let mut result = HashMap::new();
 
         let pending_labels = std::mem::take(&mut self.pending_labels);
-        for pending_label in pending_labels.into_iter() {
+        for pending_label in pending_labels {
             result.insert(pending_label, LabelValue::AbsoluteOffset(offset));
         }
 
@@ -469,7 +470,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use LabelValue::*;
+    use LabelValue::{AbsoluteOffset, Substitution};
 
     #[test]
     fn collects_equ() {
@@ -572,7 +573,7 @@ mod test {
 
         let substitution = substitution
             .iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>();
 
         let mut lines = vec![line.to_string()];
@@ -645,10 +646,10 @@ mod test {
         "label with expansion"
     )]
     fn collects_and_expands_labels(lines: &[&str], expected: Labels) {
-        let mut lines = lines.iter().map(|s| s.to_string()).collect();
+        let mut lines = lines.iter().map(ToString::to_string).collect();
         let result = collect_and_expand(&mut lines);
 
-        for (k, v) in expected.iter() {
+        for (k, v) in &expected {
             assert_eq!(Some(v), result.get(k));
         }
     }
@@ -805,10 +806,10 @@ mod test {
         "expand expr labels"
     )]
     fn collects_and_expands_forrof(lines: &[&str], expected: &[&str]) {
-        let mut lines = lines.iter().map(|s| s.to_string()).collect();
+        let mut lines = lines.iter().map(ToString::to_string).collect();
         let _ = collect_and_expand(&mut lines);
 
-        let expected_lines: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+        let expected_lines: Vec<String> = expected.iter().map(ToString::to_string).collect();
 
         assert_eq!(lines, expected_lines);
     }
@@ -907,8 +908,8 @@ mod test {
         "expand default labels"
     )]
     fn expands_substitutions(lines: &[&str], expected: &[&str]) {
-        let lines = lines.iter().map(|s| s.to_string()).collect();
-        let expected: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+        let lines = lines.iter().map(ToString::to_string).collect();
+        let expected: Vec<String> = expected.iter().map(ToString::to_string).collect();
 
         assert_eq!(
             Lines {
@@ -985,8 +986,8 @@ mod test {
         origin: Option<String>,
         expected_origin: Option<String>,
     ) {
-        let lines = lines.iter().map(|s| s.to_string()).collect();
-        let expected: Vec<String> = expected_lines.iter().map(|s| s.to_string()).collect();
+        let lines = lines.iter().map(ToString::to_string).collect();
+        let expected: Vec<String> = expected_lines.iter().map(ToString::to_string).collect();
 
         assert_eq!(
             expand(lines, origin),

@@ -34,7 +34,7 @@ impl Metadata {
     /// Parse warrior metadata out of a line. Any comments will be removed and
     /// the resulting string returned, with whitespace trimmed.
     pub fn parse_line(&mut self, line: &str) -> String {
-        let split_line: Vec<&str> = line.splitn(2, ';').map(|p| p.trim()).collect();
+        let split_line: Vec<&str> = line.splitn(2, ';').map(str::trim).collect();
 
         if split_line.len() > 1 {
             let split_comment: Vec<&str> = split_line[1].splitn(2, char::is_whitespace).collect();

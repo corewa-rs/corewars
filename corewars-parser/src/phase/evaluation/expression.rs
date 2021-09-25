@@ -3,7 +3,7 @@
 //! Most functions here panic instead of returning Result because at this point
 //! any errors should have been caught earlier during initial parsing.
 
-use crate::grammar::*;
+use crate::grammar::{Pair, Rule};
 
 /// Evaluate an Expression. Panics if the expression tree is invalid, which
 /// should only happen due to programmer error (either the grammar or this code
@@ -139,7 +139,7 @@ fn evaluate_unary(pair: Pair) -> i32 {
         }
     }
 
-    for op in unary_ops.into_iter() {
+    for op in unary_ops {
         result = result.map(op);
     }
 

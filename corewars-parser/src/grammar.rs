@@ -54,13 +54,11 @@ pub fn parse_expression(line: &str) -> Result<Pair, Error> {
 #[cfg(any(test, doctest))] // cfg(doctest) so we run the helper's doctest
 mod test {
     // pest::parses_to seems to have a panic that doesn't conform to rust 2021
-    #![allow(non_fmt_panic)]
-
     use pest::{consumes_to, parses_to};
     use test_case::test_case;
 
     use super::*;
-    use Rule::*;
+    use Rule::{AddOp, For, Label, Number, Opcode, Substitution};
 
     /// A macro to assert on the way a certain input string parses
     /// Two forms are allowed. One has no identifier:

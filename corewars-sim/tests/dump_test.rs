@@ -22,9 +22,10 @@ fn read_dir(input_file: &str) {
 
     let expected_out_file = PathBuf::from(input_file.replace("input", "expected_output"));
 
-    let expected_output = fs::read_to_string(&expected_out_file)
-        .map(|s| normalized(s.trim().chars()).collect::<String>())
-        .unwrap_or_else(|err| panic!("Unable to read file {:?}: {:?}", input_file, err));
+    let expected_output = fs::read_to_string(&expected_out_file).map_or_else(
+        |err| panic!("Unable to read file {:?}: {:?}", input_file, err),
+        |s| normalized(s.trim().chars()).collect::<String>(),
+    );
 
     let parsed_warrior = match corewars_parser::parse(&input) {
         ParseResult::Ok(core, _) => core,

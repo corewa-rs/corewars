@@ -11,6 +11,7 @@ impl Offset {
     /// Create a new Offset. The value will be adjusted to be within bounds of the core.
     ///
     /// Panics if `core_size` is invalid. Both 0 and `u32::MAX` are disallowed.
+    #[must_use]
     pub fn new(value: i32, core_size: u32) -> Self {
         // TODO: should there be a minimum allowed core size?
         let core_isize = core_size as i32;
@@ -30,6 +31,7 @@ impl Offset {
     }
 
     /// Get the value of the offset. This will always be less than the core size.
+    #[must_use]
     pub fn value(&self) -> u32 {
         self.value
     }
@@ -150,17 +152,17 @@ mod tests {
     fn add_offset() {
         let mut offset = Offset::new(0, 12);
 
-        assert_eq!(offset + 17i32, Offset::new(5, 12));
-        assert_eq!(offset + -17i32, Offset::new(7, 12));
+        assert_eq!(offset + 17_i32, Offset::new(5, 12));
+        assert_eq!(offset + -17_i32, Offset::new(7, 12));
         assert_eq!(offset + Offset::new(17, 12), Offset::new(5, 12));
         assert_eq!(offset + Offset::new(-17, 12), Offset::new(7, 12));
-        assert_eq!(offset + 17u32, Offset::new(5, 12));
+        assert_eq!(offset + 17_u32, Offset::new(5, 12));
 
-        offset += 17i32;
+        offset += 17_i32;
         assert_eq!(offset, Offset::new(5, 12));
         offset = Offset::new(0, 12);
 
-        offset += -17i32;
+        offset += -17_i32;
         assert_eq!(offset, Offset::new(7, 12));
         offset = Offset::new(0, 12);
 
@@ -172,7 +174,7 @@ mod tests {
         assert_eq!(offset, Offset::new(7, 12));
         offset = Offset::new(0, 12);
 
-        offset += 17u32;
+        offset += 17_u32;
         assert_eq!(offset, Offset::new(5, 12));
     }
 
@@ -180,17 +182,17 @@ mod tests {
     fn sub_offset() {
         let mut offset = Offset::new(0, 12);
 
-        assert_eq!(offset - 17i32, Offset::new(7, 12));
-        assert_eq!(offset - -17i32, Offset::new(5, 12));
+        assert_eq!(offset - 17_i32, Offset::new(7, 12));
+        assert_eq!(offset - -17_i32, Offset::new(5, 12));
         assert_eq!(offset - Offset::new(17, 12), Offset::new(7, 12));
         assert_eq!(offset - Offset::new(-17, 12), Offset::new(5, 12));
-        assert_eq!(offset - 17u32, Offset::new(7, 12));
+        assert_eq!(offset - 17_u32, Offset::new(7, 12));
 
-        offset -= 17i32;
+        offset -= 17_i32;
         assert_eq!(offset, Offset::new(7, 12));
 
         offset = Offset::new(0, 12);
-        offset -= -17i32;
+        offset -= -17_i32;
         assert_eq!(offset, Offset::new(5, 12));
 
         offset = Offset::new(0, 12);
@@ -202,7 +204,7 @@ mod tests {
         assert_eq!(offset, Offset::new(5, 12));
 
         offset = Offset::new(0, 12);
-        offset -= 17u32;
+        offset -= 17_u32;
         assert_eq!(offset, Offset::new(7, 12));
     }
 
@@ -210,17 +212,17 @@ mod tests {
     fn mul_offset() {
         let mut offset = Offset::new(2, 12);
 
-        assert_eq!(offset * 5i32, Offset::new(10, 12));
-        assert_eq!(offset * -5i32, Offset::new(2, 12));
+        assert_eq!(offset * 5_i32, Offset::new(10, 12));
+        assert_eq!(offset * -5_i32, Offset::new(2, 12));
         assert_eq!(offset * Offset::new(5, 12), Offset::new(10, 12));
         assert_eq!(offset * Offset::new(-5, 12), Offset::new(2, 12));
-        assert_eq!(offset * 5u32, Offset::new(10, 12));
+        assert_eq!(offset * 5_u32, Offset::new(10, 12));
 
-        offset *= 5i32;
+        offset *= 5_i32;
         assert_eq!(offset, Offset::new(10, 12));
 
         offset = Offset::new(2, 12);
-        offset *= -5i32;
+        offset *= -5_i32;
         assert_eq!(offset, Offset::new(2, 12));
 
         offset = Offset::new(2, 12);
@@ -232,7 +234,7 @@ mod tests {
         assert_eq!(offset, Offset::new(2, 12));
 
         offset = Offset::new(2, 12);
-        offset *= 5u32;
+        offset *= 5_u32;
         assert_eq!(offset, Offset::new(10, 12));
     }
 
@@ -240,17 +242,17 @@ mod tests {
     fn div_offset() {
         let mut offset = Offset::new(10, 12);
 
-        assert_eq!(offset / 5i32, Offset::new(2, 12));
-        assert_eq!(offset / -5i32, Offset::new(1, 12));
+        assert_eq!(offset / 5_i32, Offset::new(2, 12));
+        assert_eq!(offset / -5_i32, Offset::new(1, 12));
         assert_eq!(offset / Offset::new(5, 12), Offset::new(2, 12));
         assert_eq!(offset / Offset::new(-5, 12), Offset::new(1, 12));
-        assert_eq!(offset / 5u32, Offset::new(2, 12));
+        assert_eq!(offset / 5_u32, Offset::new(2, 12));
 
-        offset /= 5i32;
+        offset /= 5_i32;
         assert_eq!(offset, Offset::new(2, 12));
 
         offset = Offset::new(10, 12);
-        offset /= -5i32;
+        offset /= -5_i32;
         assert_eq!(offset, Offset::new(1, 12));
 
         offset = Offset::new(10, 12);
@@ -262,7 +264,7 @@ mod tests {
         assert_eq!(offset, Offset::new(1, 12));
 
         offset = Offset::new(10, 12);
-        offset /= 5u32;
+        offset /= 5_u32;
         assert_eq!(offset, Offset::new(2, 12));
     }
 
@@ -270,17 +272,17 @@ mod tests {
     fn rem_offset() {
         let mut offset = Offset::new(8, 12);
 
-        assert_eq!(offset % 5i32, Offset::new(3, 12));
-        assert_eq!(offset % -5i32, Offset::new(1, 12));
+        assert_eq!(offset % 5_i32, Offset::new(3, 12));
+        assert_eq!(offset % -5_i32, Offset::new(1, 12));
         assert_eq!(offset % Offset::new(5, 12), Offset::new(3, 12));
         assert_eq!(offset % Offset::new(-5, 12), Offset::new(1, 12));
-        assert_eq!(offset % 5u32, Offset::new(3, 12));
+        assert_eq!(offset % 5_u32, Offset::new(3, 12));
 
-        offset %= 5i32;
+        offset %= 5_i32;
         assert_eq!(offset, Offset::new(3, 12));
 
         offset = Offset::new(8, 12);
-        offset %= -5i32;
+        offset %= -5_i32;
         assert_eq!(offset, Offset::new(1, 12));
 
         offset = Offset::new(8, 12);
@@ -292,7 +294,7 @@ mod tests {
         assert_eq!(offset, Offset::new(1, 12));
 
         offset = Offset::new(8, 12);
-        offset %= 5u32;
+        offset %= 5_u32;
         assert_eq!(offset, Offset::new(3, 12));
     }
 }

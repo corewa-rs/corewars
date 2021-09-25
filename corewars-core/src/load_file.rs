@@ -42,11 +42,13 @@ impl fmt::Display for Warrior {
 
 impl Warrior {
     /// The number of instrcutions defined in this Warrior's code
+    #[must_use]
     pub fn len(&self) -> u32 {
         self.program.instructions.len() as u32
     }
 
     /// Whether the warrior's program is empty (i.e. 0 instructions)
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.program.instructions.is_empty()
     }
@@ -69,6 +71,7 @@ impl fmt::Display for Field {
 }
 
 impl Field {
+    #[must_use]
     pub fn direct(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Direct,
@@ -83,6 +86,7 @@ impl Field {
         }
     }
 
+    #[must_use]
     pub fn immediate(value: i32) -> Self {
         Self {
             address_mode: AddressMode::Immediate,
@@ -90,10 +94,12 @@ impl Field {
         }
     }
 
+    #[must_use]
     pub fn unwrap_value(&self) -> i32 {
         self.value.unwrap()
     }
 
+    #[must_use]
     pub fn as_offset(&self, core_size: u32) -> Offset {
         Offset::new(self.unwrap_value(), core_size)
     }
@@ -112,6 +118,7 @@ pub struct Instruction {
 }
 
 impl Instruction {
+    #[must_use]
     pub fn new(opcode: Opcode, a_field: Field, b_field: Field) -> Self {
         let modifier =
             Modifier::default_88_to_94(opcode, a_field.address_mode, b_field.address_mode);

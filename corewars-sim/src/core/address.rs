@@ -23,7 +23,10 @@ pub fn resolve_b_pointer(core: &Core, program_counter: Offset) -> Offset {
 }
 
 fn resolve_pointer(core: &Core, program_counter: Offset, field: &Field) -> Offset {
-    use AddressMode::*;
+    use AddressMode::{
+        Direct, Immediate, IndirectA, IndirectB, PostIncIndirectA, PostIncIndirectB,
+        PreDecIndirectA, PreDecIndirectB,
+    };
 
     let address_mode = field.address_mode;
     let field_value = field.unwrap_value();
@@ -58,7 +61,7 @@ pub fn apply_b_pointer(core: &mut Core, program_counter: Offset, eval_time: Eval
 }
 
 fn apply_pointer(core: &mut Core, program_counter: Offset, field: &Field, eval_time: EvalTime) {
-    use AddressMode::*;
+    use AddressMode::{PostIncIndirectA, PostIncIndirectB, PreDecIndirectA, PreDecIndirectB};
 
     let address_mode = field.address_mode;
     let pointer_location = program_counter + field.unwrap_value();
