@@ -1,7 +1,9 @@
 //! Definitions for types that hold information about a Redcode warrior (called
 //! a Program in memory)
 
-use std::{collections::HashMap, convert::TryInto, fmt};
+use std::collections::HashMap;
+use std::convert::TryInto;
+use std::fmt;
 
 use super::{Instruction, PseudoOpcode};
 
