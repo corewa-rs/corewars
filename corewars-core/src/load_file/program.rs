@@ -1,7 +1,9 @@
 //! Definitions for types that hold information about a Redcode warrior (called
 //! a Program in memory)
 
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
+use std::convert::TryInto;
+use std::fmt;
 
 use super::{Instruction, PseudoOpcode};
 
@@ -20,12 +22,28 @@ pub struct Program {
 }
 
 impl Program {
+    /// The number of instructions defined in this [`Program`]
     #[must_use]
-    pub fn get(&self, index: usize) -> Option<Instruction> {
-        self.instructions.get(index).cloned()
+    pub fn len(&self) -> u32 {
+        self.instructions
+            .len()
+            .try_into()
+            .expect("Program should not have > u32::MAX instructions")
     }
 
-    pub fn set(&mut self, index: usize, value: Instruction) {
+    /// Whether the warrior's program is empty (i.e. 0 instructions)
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.instructions.is_empty()
+    }
+
+    #[must_use]
+    pub fn get(&self, index: u32) -> Option<Instruction> {
+        self.instructions.get(index as usize).cloned()
+    }
+
+    pub fn set(&mut self, index: u32, value: Instruction) {
+        let index = index as usize;
         if index >= self.instructions.len() {
             self.instructions.resize_with(index + 1, Default::default);
         }

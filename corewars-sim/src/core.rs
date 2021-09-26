@@ -68,13 +68,17 @@ impl Core {
     }
 
     fn offset<T: Into<i32>>(&self, value: T) -> Offset {
-        Offset::new(value.into(), self.len().try_into().unwrap())
+        Offset::new(value.into(), self.len())
     }
 
-    /// Get the number of instructions in the core (available to programs via the `CORESIZE` label)
+    /// Get the number of instructions in the core (available to programs
+    /// via the `CORESIZE` label)
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.instructions.len()
+    pub fn len(&self) -> u32 {
+        self.instructions
+            .len()
+            .try_into()
+            .expect("Core has > u32::MAX instructions")
     }
 
     /// Whether the core is empty or not (almost always `false`)
@@ -137,11 +141,15 @@ impl Core {
             .clone()
             .unwrap_or_else(|| String::from("Warrior0"));
 
-        self.process_queue.push(
-            warrior_name,
-            self.offset(warrior.program.origin.unwrap_or(0) as i32),
-            None,
-        );
+        let origin: i32 = warrior
+            .program
+            .origin
+            .unwrap_or(0)
+            .try_into()
+            .unwrap_or_else(|err| panic!("Warrior {:?} has invalid origin: {}", warrior_name, err));
+
+        self.process_queue
+            .push(warrior_name, self.offset(origin), None);
 
         Ok(())
     }
@@ -228,11 +236,7 @@ impl Core {
     pub fn run<T: Into<Option<usize>>>(&mut self, max_cycles: T) -> Result<(), process::Error> {
         let max_cycles = max_cycles.into().unwrap_or(DEFAULT_MAXCYCLES);
 
-        loop {
-            if self.steps_taken >= max_cycles {
-                break;
-            }
-
+        while self.steps_taken < max_cycles {
             let result = self.step();
             if result.is_err() {
                 return result;
@@ -303,7 +307,11 @@ impl fmt::Debug for Core {
             |i, _| format!("{:0>6} ", i),
             |i, _| {
                 if let Ok(process) = self.process_queue.peek() {
-                    if i as u32 == process.offset.value() {
+                    let i: u32 = i.try_into().unwrap_or_else(|_| {
+                        panic!("Instruction count of process {:?} > u32::MAX", process.name)
+                    });
+
+                    if i == process.offset.value() {
                         return format!("{:>8}", "; <= PC");
                     }
                 }
@@ -365,7 +373,7 @@ mod tests {
         .expect("Failed to parse warrior");
 
         core.load_warrior(&warrior).expect("Failed to load warrior");
-        let expected_core_size = 128_usize;
+        let expected_core_size = 128_u32;
         assert_eq!(core.len(), expected_core_size);
 
         let jmp_target = (expected_core_size - 1).try_into().unwrap();
@@ -414,7 +422,7 @@ mod tests {
         let mut core = build_core("mov $0, $1");
 
         for i in 0..core.len() {
-            assert_eq!(core.program_counter().value() as usize, i);
+            assert_eq!(core.program_counter().value(), i);
             core.step().unwrap();
         }
 

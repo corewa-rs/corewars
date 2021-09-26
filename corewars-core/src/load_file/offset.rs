@@ -3,7 +3,7 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
 };
 
-/// A non-negative offset from the beginning of a core.
+/// An absolute (non-negative) offset from the beginning of a core.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Offset {
     value: u32,
@@ -69,7 +69,10 @@ impl std::fmt::Display for Offset {
 
 /// Implement a `std::ops` operation for `Offset`.
 macro_rules! impl_offset_op {
-    ($op_trait:ident :: $op:ident , $assign_trait:ident :: $assign:ident ) => {
+    (
+        $op_trait:ident :: $op:ident ,
+        $assign_trait:ident :: $assign:ident $(,)?
+    ) => {
         impl $op_trait for Offset {
             type Output = Self;
 
@@ -103,7 +106,11 @@ impl_offset_op! { Rem::rem, RemAssign::rem_assign }
 
 /// Implement a `std::ops` operation for `Offset` and another type
 macro_rules! impl_op {
-    ($rhs:ty, $op_trait:ident :: $op:ident , $assign_trait:ident :: $assign:ident ) => {
+    (
+        $rhs:ty,
+        $op_trait:ident :: $op:ident ,
+        $assign_trait:ident :: $assign:ident $(,)?
+    ) => {
         impl $op_trait<$rhs> for Offset {
             type Output = Self;
 
