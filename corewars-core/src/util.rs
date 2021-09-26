@@ -8,7 +8,6 @@
 /// #
 /// enum_string! {
 ///     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-///     #[allow(dead_code)]
 ///     pub enum Foo {
 ///         Bar => "Bar",
 ///         Baz => "BAZ",
@@ -64,7 +63,8 @@ macro_rules! enum_string {
 
         impl $name {
             #[allow(dead_code)]
-            #[must_use] pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
+            #[must_use]
+            pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
                 const VALUES: &[$name] = &[$($name::$variant,)*];
                 VALUES.iter()
             }

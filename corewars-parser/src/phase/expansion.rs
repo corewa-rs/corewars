@@ -6,6 +6,7 @@
 //! Labels used in the right-hand side of an expression substituted in-place.
 
 use std::collections::{HashMap, HashSet};
+use std::convert::{TryFrom, TryInto};
 use std::string::ToString;
 
 use pest::Span;
@@ -66,7 +67,15 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     if let Some(label_value) = label_value {
                         match label_value {
                             LabelValue::AbsoluteOffset(abs_offset) => {
-                                let relative_offset = (abs_offset as i32) - (offset as i32);
+                                let abs_offset: i32 = abs_offset
+                                    .try_into()
+                                    .expect("Label value should never be > i32::MAX");
+
+                                let offset: i32 = offset.try_into().expect(
+                                    "Greater than i32::MAX instructions found in expansion",
+                                );
+
+                                let relative_offset = abs_offset - offset;
                                 expand_lines(
                                     lines,
                                     i,
@@ -114,11 +123,16 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                 let for_stmt = collector.pop_for();
 
                 let range_to_repeat = (for_stmt.start_line + 1)..i;
+                let i_range_len = i32::try_from(range_to_repeat.len())
+                    .expect("FOR expansion resulted in > i32::MAX lines");
+                let range_len = u32::try_from(range_to_repeat.len())
+                    .expect("FOR expansion resulted in > u32::MAX lines");
+
                 let insert_line_count = for_stmt.iter_count as usize * range_to_repeat.len();
 
                 // We need to subtract the offset, since we end up replacing
                 // those lines. They will be processed normally after substitution
-                offset -= range_to_repeat.len() as u32;
+                offset -= range_len as u32;
 
                 let new_contents = lines[range_to_repeat.clone()]
                     .iter()
@@ -128,18 +142,24 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
                     .enumerate()
                     .map(|(i, mut line)| {
                         if let Some(label) = &for_stmt.index_label {
-                            let subst = i / range_to_repeat.len() + 1;
+                            // UNWRAP: we already checked i_range_len above
+                            let i = i32::try_from(i).unwrap();
+
+                            let subst = i / i_range_len + 1;
 
                             // This method of label stuff is a little hacky,
                             // but seems reasonable I guess...
                             collector
                                 .labels
-                                .insert(label.clone(), LabelValue::RelativeOffset(subst as i32));
+                                .insert(label.clone(), LabelValue::RelativeOffset(subst));
+
+                            // UNWRAP: we already checked range_len above
+                            let i = u32::try_from(i).unwrap();
 
                             substitute_offsets_in_line(
                                 &mut line,
                                 &collector.labels,
-                                for_stmt.start_offset + (i as u32),
+                                for_stmt.start_offset + i,
                             );
 
                             collector.labels.remove(label);
@@ -287,7 +307,14 @@ fn substitute_offsets_in_line(line: &mut String, labels: &Labels, from_offset: u
             let label_value = labels.get(token.as_str());
 
             let relative_offset = match label_value {
-                Some(&LabelValue::AbsoluteOffset(offset)) => (offset as i32) - (from_offset as i32),
+                Some(&LabelValue::AbsoluteOffset(offset)) => {
+                    let offset =
+                        i32::try_from(offset).expect("Substitution resulted in offset > i32::MAX");
+                    let from_offset = i32::try_from(from_offset)
+                        .expect("Substitution resulted in > i32::MAX number of lines");
+
+                    offset - from_offset
+                }
                 Some(&LabelValue::RelativeOffset(offset)) => offset,
                 _ => continue,
             };
@@ -321,7 +348,10 @@ fn default_labels() -> Labels {
         .iter()
         // Counterintuitively, we use a relative offset here so that it doesn't
         // get translated like absolute offset labels would be
-        .map(|(lbl, value)| (lbl.clone(), LabelValue::RelativeOffset(*value as i32)))
+        .map(|(lbl, value)| {
+            let value = i32::try_from(*value).expect("Default constant values contain invalid i32");
+            (lbl.clone(), LabelValue::RelativeOffset(value))
+        })
         .collect()
 }
 
@@ -441,7 +471,8 @@ impl Collector {
                 value
             } else if label == "CURLINE" {
                 // Special-case for current line number
-                Some(LabelValue::RelativeOffset(current_offset as i32))
+                let current_offset = i32::try_from(current_offset).expect("CURLINE > i32::MAX");
+                Some(LabelValue::RelativeOffset(current_offset))
             } else {
                 None
             }
