@@ -52,12 +52,11 @@ impl Offset {
 
     /// Verify another offset has the same core size. Panics otherwise
     fn check_core_size(self, other: Self) {
-        if self.core_size != other.core_size {
-            panic!(
-                "attempt to add mismatching core sizes: {} != {}",
-                self.core_size, other.core_size
-            );
-        }
+        assert_eq!(
+            self.core_size, other.core_size,
+            "attempt to add mismatching core sizes: {} != {}",
+            self.core_size, other.core_size,
+        );
     }
 }
 

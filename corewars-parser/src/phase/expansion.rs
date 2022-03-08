@@ -30,8 +30,8 @@ pub fn expand(mut text: Vec<String>, mut origin: Option<String>) -> Lines {
 
     substitute_offsets(&mut text, &labels);
 
-    if let Some(mut origin_str) = origin.as_mut() {
-        substitute_offsets_in_line(&mut origin_str, &labels, 0);
+    if let Some(origin_str) = origin.as_mut() {
+        substitute_offsets_in_line(origin_str, &labels, 0);
     }
 
     Lines { text, origin }
