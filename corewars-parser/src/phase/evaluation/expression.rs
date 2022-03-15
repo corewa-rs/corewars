@@ -21,8 +21,8 @@ pub fn evaluate(pair: Pair) -> i32 {
             }
             Rule::BooleanOp => {
                 boolean_op = match inner_pair.as_str() {
-                    "&&" => |a, b| (a != 0 && b != 0) as i32,
-                    "||" => |a, b| (a != 0 || b != 0) as i32,
+                    "&&" => |a, b| i32::from(a != 0 && b != 0),
+                    "||" => |a, b| i32::from(a != 0 || b != 0),
                     op => unreachable!("Invalid BooleanOp {:?}", op),
                 }
             }
@@ -47,12 +47,12 @@ fn evaluate_value(pair: Pair) -> i32 {
             Rule::CompareOp => {
                 // Casting bool to integer is always 0 or 1
                 compare_op = match inner_pair.as_str() {
-                    ">" => |a, b| (a > b) as i32,
-                    ">=" => |a, b| (a >= b) as i32,
-                    "<" => |a, b| (a < b) as i32,
-                    "<=" => |a, b| (a <= b) as i32,
-                    "==" => |a, b| (a == b) as i32,
-                    "!=" => |a, b| (a != b) as i32,
+                    ">" => |a, b| i32::from(a > b),
+                    ">=" => |a, b| i32::from(a >= b),
+                    "<" => |a, b| i32::from(a < b),
+                    "<=" => |a, b| i32::from(a <= b),
+                    "==" => |a, b| i32::from(a == b),
+                    "!=" => |a, b| i32::from(a != b),
                     op => unreachable!("Invalid CompareOp {:?}", op),
                 };
             }
@@ -128,7 +128,7 @@ fn evaluate_unary(pair: Pair) -> i32 {
             Rule::UnaryOp => match inner_pair.as_str() {
                 "-" => unary_ops.push(|x| -x),
                 "+" => (), // Identity function
-                "!" => unary_ops.push(|x| (x == 0) as i32),
+                "!" => unary_ops.push(|x| i32::from(x == 0)),
                 other => unreachable!("Invalid unary operator {:?}", other),
             },
             other => unreachable!(
