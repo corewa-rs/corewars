@@ -145,7 +145,7 @@ impl fmt::Display for Instruction {
             // |----->||----->|
             "{op:<8}{a:<8}{b}",
             op = format_args!("{}.{}", self.opcode, self.modifier),
-            a = self.a_field,
+            a = format_args!("{},", self.a_field),
             b = self.b_field,
         ))
     }
