@@ -273,7 +273,7 @@ fn expand_lines(lines: &mut Vec<String>, index: usize, span: &Span, substitution
     lines.splice(index..=index, new_lines);
 }
 
-fn substitute_offsets(lines: &mut Vec<String>, labels: &Labels) {
+fn substitute_offsets(lines: &mut [String], labels: &Labels) {
     let mut i = 0;
     for line in lines.iter_mut() {
         let cloned = line.clone();
