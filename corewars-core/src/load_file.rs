@@ -139,13 +139,15 @@ impl Instruction {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // https://github.com/rust-lang/rust-clippy/issues/8643
+        #[allow(clippy::format_in_format_args)]
         f.pad(&format!(
             // Example output:
             // MOV.AB  $-100,  $1
             // |----->||----->|
             "{op:<8}{a:<8}{b}",
-            op = format_args!("{}.{}", self.opcode, self.modifier),
-            a = format_args!("{},", self.a_field),
+            op = format!("{}.{}", self.opcode, self.modifier),
+            a = format!("{},", self.a_field),
             b = self.b_field,
         ))
     }
