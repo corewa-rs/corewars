@@ -144,8 +144,8 @@ impl fmt::Display for Instruction {
             // MOV.AB  $-100,  $1
             // |----->||----->|
             "{op:<8}{a:<8}{b}",
-            op = format!("{}.{}", self.opcode, self.modifier),
-            a = format!("{},", self.a_field),
+            op = format_args!("{}.{}", self.opcode, self.modifier),
+            a = self.a_field,
             b = self.b_field,
         ))
     }
