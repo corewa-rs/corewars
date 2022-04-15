@@ -237,7 +237,7 @@ impl Core {
         let max_cycles = max_cycles.into().unwrap_or(DEFAULT_MAXCYCLES);
 
         while self.steps_taken < max_cycles {
-            let _ = self.step()?;
+            self.step()?;
         }
 
         Ok(())
