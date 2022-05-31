@@ -63,7 +63,6 @@ macro_rules! enum_string {
 
         impl $name {
             #[allow(dead_code)]
-            #[must_use]
             pub fn iter_values() -> ::std::slice::Iter<'static, Self> {
                 const VALUES: &[$name] = &[$($name::$variant,)*];
                 VALUES.iter()
