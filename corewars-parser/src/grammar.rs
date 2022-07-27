@@ -62,7 +62,7 @@ mod test {
 
     /// A macro to assert on the way a certain input string parses
     /// Two forms are allowed. One has no identifier:
-    /// ```
+    /// ```ignore <https://github.com/rust-lang/rust/issues/97030>
     /// match_parse!(Field {
     ///     "123" | "4567" => [
     ///         // This should look like the `tokens` field of `parses_to!`
@@ -71,7 +71,7 @@ mod test {
     /// ```
     ///
     /// The other allows you to bind the input string so you can use it in your
-    /// ```
+    /// ```ignore <https://github.com/rust-lang/rust/issues/97030>
     /// match_parse!(input, Field {
     ///     "123" | "4567" => [
     ///         // You can do something with e.g. `input.len()` here, which
