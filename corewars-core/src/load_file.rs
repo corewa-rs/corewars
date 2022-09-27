@@ -114,7 +114,7 @@ impl Field {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,
