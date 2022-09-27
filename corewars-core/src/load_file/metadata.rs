@@ -4,7 +4,7 @@
 use std::fmt;
 
 /// Metadata about a Redcode program that is stored in the comments.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Metadata {
     /// The Redcode standard for this warrior (e.g. "94").
     // TODO #38 handle directives like `redcode-94` etc.
