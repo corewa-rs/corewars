@@ -58,7 +58,7 @@ impl Warrior {
 // based on the address mode I guess...
 //
 // See docs/icws94.txt:891
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Field {
     pub address_mode: AddressMode,
     pub value: Value,
@@ -114,7 +114,7 @@ impl Field {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub modifier: Modifier,

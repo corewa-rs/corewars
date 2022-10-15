@@ -11,7 +11,7 @@ pub type Instructions = Vec<Instruction>;
 pub type LabelMap = HashMap<String, u32>;
 
 /// A parsed Redcode program, which can be loaded into a core for execution
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Eq)]
 pub struct Program {
     /// The list of instructions in the program. These are one-to-one copied into
     /// the core when loaded for execution

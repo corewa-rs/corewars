@@ -111,7 +111,7 @@ impl Default for AddressMode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Value {
     Label(String),
     Literal(i32),
