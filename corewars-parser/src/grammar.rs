@@ -89,7 +89,7 @@ mod test {
             $(
                 for $value in [$($input,)*].iter() {
                     // https://github.com/pest-parser/pest/issues/530
-                    #![allow(non_fmt_panic)]
+                    #![allow(non_fmt_panics)]
                     parses_to! {
                         parser: Grammar,
                         input: $value,

@@ -18,7 +18,7 @@ mod process;
 const DEFAULT_MAXCYCLES: usize = 10_000;
 
 /// An error occurred during loading or core creation
-#[derive(ThisError, Debug, PartialEq)]
+#[derive(ThisError, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
     /// The warrior was longer than the core size

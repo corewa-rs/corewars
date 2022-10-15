@@ -18,7 +18,7 @@ use super::evaluation;
 use corewars_core::load_file::DEFAULT_CONSTANTS;
 
 /// The result of expansion and substitution
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Lines {
     pub text: Vec<String>,
     pub origin: Option<String>,

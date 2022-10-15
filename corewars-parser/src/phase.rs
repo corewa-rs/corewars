@@ -35,7 +35,7 @@ impl From<&str> for Phase<Raw> {
 
 /// The Phase after comments have been removed and metadata parsed from comments.
 /// This phase also parses ORG and END, and removes any text after END
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct CommentsRemoved {
     pub lines: Vec<String>,
     pub metadata: load_file::Metadata,
