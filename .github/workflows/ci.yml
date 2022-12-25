@@ -16,10 +16,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup default Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
-          toolchain: stable
 
       - name: Setup problem matchers
         uses: r7kamura/rust-problem-matchers@v1
@@ -51,7 +50,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
 
