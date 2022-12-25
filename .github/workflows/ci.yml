@@ -27,7 +27,7 @@ jobs:
         run: cargo fmt --all --verbose -- --check
 
       - name: Run clippy linting
-        run: cargo clippy --color=always --workspace --verbose --all-targets
+        run: cargo clippy --color=never --workspace --verbose --all-targets
         env:
           RUSTFLAGS:
             --warn=clippy::pedantic
