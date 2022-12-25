@@ -31,22 +31,22 @@ pub fn tokenize(line: &str) -> Vec<Pair> {
 
 /// Parse a single line of input according to the grammar.
 pub fn parse_line(line: &str) -> Result<Pairs, Error> {
-    Ok(Grammar::parse(Rule::Line, line)?)
+    Ok(Grammar::parse(Rule::Line, line).map_err(Box::new)?)
 }
 
 /// Parse a single expression as a string.
 pub fn parse_expression(line: &str) -> Result<Pair, Error> {
-    let mut pairs = Grammar::parse(Rule::Expression, line)?;
+    let mut pairs = Grammar::parse(Rule::Expression, line).map_err(Box::new)?;
 
     pairs
         .find(|pair| pair.as_rule() == Rule::Expression)
         .ok_or_else(|| {
-            SyntaxError::new_from_span(
+            Box::new(SyntaxError::new_from_span(
                 CustomError {
                     message: "Invalid expression".into(),
                 },
                 pest::Span::new(line, 0, line.len()).unwrap(),
-            )
+            ))
             .into()
         })
 }

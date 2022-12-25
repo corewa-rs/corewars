@@ -13,23 +13,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup default Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
-          toolchain: stable
+
+      - name: Setup problem matchers
+        uses: r7kamura/rust-problem-matchers@v1
 
       - name: Check formatting
         run: cargo fmt --all --verbose -- --check
 
       - name: Run clippy linting
-        run: cargo clippy --color=always --workspace --verbose --all-targets
+        run: cargo clippy --color=never --workspace --verbose --all-targets
         env:
           RUSTFLAGS:
-            --deny=warnings
-            --deny=clippy::pedantic
+            --warn=clippy::pedantic
 
   validate:
     strategy:
@@ -46,12 +47,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
+
+      - name: Setup problem matchers
+        uses: r7kamura/rust-problem-matchers@v1
 
       - name: Build and run tests
         run: cargo test --color=always --workspace

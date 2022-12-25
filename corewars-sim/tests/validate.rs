@@ -22,7 +22,7 @@ fn validate_redcode() {
     let mut core = Core::new(8_000).unwrap();
     core.load_warrior(&warrior).unwrap();
 
-    eprintln!("Before run:\n{:?}\n==============================", core);
+    eprintln!("Before run:\n{core:?}\n==============================");
 
     // If the run fails, check the flag output to see where it failed
     if let Err(error) = core.run(10_000) {

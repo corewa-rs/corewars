@@ -20,7 +20,7 @@ pub fn evaluate(lines: Vec<String>) -> Result<load_file::Instructions, Error> {
                 grammar::Rule::Instruction => {
                     instructions.push(parse_instruction(parse_result.into_inner())?);
                 }
-                rule => eprintln!("Unexpected rule {:?}", rule),
+                rule => eprintln!("Unexpected rule {rule:?}"),
             }
         }
     }

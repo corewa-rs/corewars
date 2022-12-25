@@ -132,7 +132,7 @@ fn collect_and_expand(lines: &mut Vec<String>) -> Labels {
 
                 // We need to subtract the offset, since we end up replacing
                 // those lines. They will be processed normally after substitution
-                offset -= range_len as u32;
+                offset -= range_len;
 
                 let new_contents = lines[range_to_repeat.clone()]
                     .iter()

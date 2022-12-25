@@ -74,9 +74,9 @@ impl fmt::Display for Metadata {
         ] {
             if let Some(value) = field.as_deref() {
                 if value.is_empty() {
-                    writeln!(formatter, ";{}", name)?;
+                    writeln!(formatter, ";{name}")?;
                 } else {
-                    writeln!(formatter, ";{} {}", name, value)?;
+                    writeln!(formatter, ";{name} {value}")?;
                 }
             }
         }
