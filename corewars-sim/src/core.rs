@@ -301,7 +301,7 @@ impl fmt::Debug for Core {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.format_lines(
             formatter,
-            |i, _| format!("{:0>6} ", i),
+            |i, _| format!("{i:0>6} "),
             |i, _| {
                 if let Ok(process) = self.process_queue.peek() {
                     let i: u32 = i.try_into().unwrap_or_else(|_| {

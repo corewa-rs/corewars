@@ -164,7 +164,7 @@ mod test {
             expected: CommentsRemoved {
                 lines: vec!["MOV 1, 1".to_string()],
                 metadata: Metadata {
-                    redcode: Some("".to_string()),
+                    redcode: Some(String::new()),
                     name: Some("my-amazing-warrior".to_string()),
                     author: Some("Ian Chamberlain".to_string()),
                     ..Default::default()

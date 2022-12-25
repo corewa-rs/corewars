@@ -63,7 +63,7 @@ impl fmt::Debug for Program {
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>();
 
-        write!(formatter, "lines: {:#?},", lines)?;
+        write!(formatter, "lines: {lines:#?},")?;
         writeln!(formatter, "}}")
     }
 }

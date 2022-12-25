@@ -22,7 +22,7 @@ pub enum Error {
 
     /// The input string was ill-formed Redcode syntax.
     #[error("invalid syntax")]
-    InvalidSyntax(#[from] super::grammar::SyntaxError),
+    InvalidSyntax(#[from] Box<super::grammar::SyntaxError>),
 
     /// The given opcode was not given enough arguments.
     #[error("expected additional arguments for {opcode} opcode")]

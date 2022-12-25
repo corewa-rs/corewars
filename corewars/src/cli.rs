@@ -89,9 +89,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
 
             if output_file == *IO_SENTINEL {
-                println!("{}", parsed_core);
+                println!("{parsed_core}");
             } else {
-                fs::write(output_file, format!("{}\n", parsed_core))?;
+                fs::write(output_file, format!("{parsed_core}\n"))?;
             };
         }
         Command::Run { max_cycles } => {
@@ -108,11 +108,11 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     },
                     core.steps_taken()
                 ),
-                Err(err) => println!("Warrior failed after {} steps: {}", core.steps_taken(), err),
+                Err(err) => println!("Warrior failed after {} steps: {err}", core.steps_taken()),
             }
 
             if cli_options.verbose {
-                println!("Core after execution:\n{}", core);
+                println!("Core after execution:\n{core}");
             }
         }
     };
@@ -122,6 +122,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
 fn print_warnings(warnings: &[parser::Warning]) {
     for warning in warnings.iter() {
-        eprintln!("Warning: {}", warning);
+        eprintln!("Warning: {warning}");
     }
 }
