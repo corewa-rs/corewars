@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "bundler"
+    directory: "/public"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "monthly"
