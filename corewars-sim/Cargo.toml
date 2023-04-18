@@ -19,5 +19,5 @@ thiserror = "1.0.21"
 corewars-parser = { path = "../corewars-parser", version = "0.2.0" }
 normalize-line-endings = "0.3.0"
 pretty_assertions = "1.3.0"
-test-case = "1.2.0"
+test-case = "3.1.0"
 test-generator = "0.3.0"

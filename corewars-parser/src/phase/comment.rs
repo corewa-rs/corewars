@@ -328,8 +328,8 @@ mod test {
                 lines: vec!["MOV 0, 1".to_string()],
                 ..Default::default()
             }
-        };
-        "inconclusive(should error): parse ORG without arg"
+        } => ignore ["should error"];
+        "parse ORG without arg"
     )]
     fn parse_error(param: &Param) {
         let result = extract_from_string(param.input);
