@@ -13,7 +13,7 @@ description = "A placeholder subcrate for corewars"
 
 [dependencies]
 corewars-core = { path = "../corewars-core", version = "=0.2.0" }
-pest = "2.6.0"
+pest = "2.7.1"
 pest_derive = "2.7.0"
 thiserror = "1.0.40"
 
