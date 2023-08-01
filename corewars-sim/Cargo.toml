@@ -13,7 +13,7 @@ description = "Simulation library for a Redcode warrior"
 
 [dependencies]
 corewars-core = { path = "../corewars-core", version = "0.2.0" }
-thiserror = "1.0.43"
+thiserror = "1.0.44"
 
 [dev-dependencies]
 corewars-parser = { path = "../corewars-parser", version = "0.2.0" }
