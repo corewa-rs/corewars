@@ -13,15 +13,15 @@ description = "A placeholder subcrate for corewars"
 
 [dependencies]
 corewars-core = { path = "../corewars-core", version = "=0.2.0" }
-pest = "2.7.3"
-pest_derive = "2.7.3"
-thiserror = "1.0.47"
+pest = "2.7.4"
+pest_derive = "2.7.4"
+thiserror = "1.0.49"
 
 [dev-dependencies]
 maplit = "1.0.2"
 normalize-line-endings = "0.3.0"
 pretty_assertions = "1.4.0"
-test-case = "3.1.0"
+test-case = "3.2.1"
 test-generator = "0.3.1"
 textwrap = "0.16.0"
 textwrap-macros = "0.3.0"
