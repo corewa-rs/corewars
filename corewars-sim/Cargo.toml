@@ -13,11 +13,11 @@ description = "Simulation library for a Redcode warrior"
 
 [dependencies]
 corewars-core = { path = "../corewars-core", version = "0.2.0" }
-thiserror = "1.0.47"
+thiserror = "1.0.49"
 
 [dev-dependencies]
 corewars-parser = { path = "../corewars-parser", version = "0.2.0" }
 normalize-line-endings = "0.3.0"
 pretty_assertions = "1.4.0"
-test-case = "3.1.0"
+test-case = "3.2.1"
 test-generator = "0.3.1"
