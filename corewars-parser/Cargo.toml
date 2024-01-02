@@ -15,7 +15,7 @@ description = "A placeholder subcrate for corewars"
 corewars-core = { path = "../corewars-core", version = "=0.2.0" }
 pest = "2.7.5"
 pest_derive = "2.7.5"
-thiserror = "1.0.50"
+thiserror = "1.0.53"
 
 [dev-dependencies]
 maplit = "1.0.2"
