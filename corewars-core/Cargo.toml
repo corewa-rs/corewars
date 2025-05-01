@@ -12,7 +12,7 @@ repository = "https://github.com/corewa-rs/corewars"
 description = "Data structures and common utilities for the corewars crate"
 
 [dependencies]
-itertools = "0.13.0"
+itertools = "0.14.0"
 lazy_static = "1.5.0"
 maplit = "1.0.2"
 
